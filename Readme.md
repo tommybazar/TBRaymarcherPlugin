@@ -275,10 +275,12 @@ Our old project can be found at [my supervisor's github](https://github.com/TheH
 
 # License 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-Licensed under MIT license. See License.txt.
+
+Licensed under MIT license.
+
 Both me and Technical University of Munich are copyright holders, as major parts of this software were written as part of my thesis and/or working-student employment for TUM.
 
-See License.txt for full license text.
+See LICENSE file for full license text.
 
 ## Example MHDAsset files
 In `TBRaymarcherPlugin/Content/DefaultResources/` are MHDAssets and volume textures created by importing data from Subset0 of [LUNA2016 grand challenge](https://luna16.grand-challenge.org/download/).
