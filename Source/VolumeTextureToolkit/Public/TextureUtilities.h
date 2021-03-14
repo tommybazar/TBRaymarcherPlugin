@@ -1,6 +1,6 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
-// Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks (original raymarching code).
+// Created by Tommy Bazar. No rights reserved :)
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision)
+// and Ryan Brucks (original raymarching code).
 
 // Contains functions for creating and updating volume texture assets.
 // Also contains helper functions for reading RAW files.
@@ -19,9 +19,6 @@
 #include "SceneInterface.h"
 #include "SceneUtils.h"
 #include "UObject/ObjectMacros.h"
-#include "VolumeAsset/VolumeAsset.h"
-
-class UTextureRenderTargetVolume;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTextureUtils, All, All);
 class VOLUMETEXTURETOOLKIT_API UVolumeTextureToolkit
@@ -44,7 +41,7 @@ public:
 	*/
 	static bool CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, FString AssetName, FString FolderName,
 		EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData = nullptr, bool IsPersistent = false,
-		bool ShouldUpdateResource = true);
+		bool ShouldUpdateResource = true, bool bUAVTargettable = false);
 
 	/** Updates the provided Volume Texture asset to have the provided format,
 	 * dimensions and pixel data*/
@@ -62,19 +59,17 @@ public:
 
 	/** Creates a transient Volume Texture (no asset name, cannot be saved)*/
 	static bool CreateVolumeTextureTransient(UVolumeTexture*& OutTexture, EPixelFormat PixelFormat, FIntVector Dimensions,
-		uint8* BulkData = nullptr, bool ShouldUpdateResource = true);
+		uint8* BulkData = nullptr, bool ShouldUpdateResource = true, bool bUAVTargettable = false);
 
 	/** Loads a RAW file into a newly allocated uint8* array. Loads the given number
 	 * of bytes.*/
 	static uint8* LoadRawFileIntoArray(const FString FileName, const int64 BytesToLoad);
 
-	static uint8* LoadZLibCompressedRawFileIntoArray(const FString FileName, const int64 BytesToLoad, const int64 CompressedBytes);
-
 	/** Normalizes an array InArray to maximum G16 type. If the InType is 8bit, normalizes to G8. Creates a new array, user is
 	   responsible for deleting that. The type of data going in is determined by a Format name used in .mhd files - e.g.
 	   "MET_SHORT".*/
-	static uint8* NormalizeArrayByFormat(const EVolumeVoxelFormat VoxelFormat, uint8* InArray, const int64 ArrayByteSize,
-		float& OutOriginalMin, float& OutOriginalMax);
+	static uint8* NormalizeArrayByFormat(
+		const FString FormatName, uint8* InArray, const int64 ArrayByteSize, float& OutOriginalMin, float& OutOriginalMax);
 
 	/** Loads a RAW file into a newly created Volume Texture Asset. Will output error log messages
 	 * and return if unsuccessful.
@@ -174,7 +169,7 @@ public:
 		return NewData;
 	};
 
-	static float* ConvertArrayToFloat(const EVolumeVoxelFormat VoxelFormat, uint8* InArray, uint64 VoxelCount);
+	static float* ConvertArrayToFloat(uint8* InArray, uint64 VoxelCount, const FString FormatName);
 
 	/** Tells you which source format to use for a texture's source according to the
 	 * Pixel format. */
@@ -184,8 +179,4 @@ public:
 		SetVolumeTextureDetails, CreateVolumeTextureMip and CreateVolumeTextureEditorData. In this order. */
 	static void SetupVolumeTexture(
 		UVolumeTexture*& OutVolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* InSourceArray, bool Persistent);
-
-	/** Clears a Volume Texture. */
-	UFUNCTION(BlueprintCallable, Category = " Volume Texture Utilities")
-	static void ClearVolumeTexture(UTextureRenderTargetVolume* RTVolume, float ClearValue);
 };

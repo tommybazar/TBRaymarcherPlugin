@@ -1,7 +1,6 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
-// Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Created by Tommy Bazar. No rights reserved :)
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision)
+// and Ryan Brucks (original raymarching code).
 
 #pragma once
 
@@ -18,15 +17,13 @@
 #include "SceneInterface.h"
 #include "SceneUtils.h"
 #include "UObject/ObjectMacros.h"
-#include "VolumeAsset/VolumeInfo.h"
+#include "MHD/WindowingParameters.h"
 
 #include <algorithm>	// std::sort
 #include <utility>		// std::pair, std::make_pair
 #include <vector>		// std::pair, std::make_pair
 
 #include "RaymarchTypes.generated.h"
-
-class UTextureRenderTargetVolume;
 
 // USTRUCT for Directional light parameters.
 USTRUCT(BlueprintType)
@@ -106,16 +103,16 @@ struct FBasicRaymarchRenderingResources
 	bool bIsInitialized = false;
 
 	/// Pointer to the Data Volume texture.
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Basic Raymarch Rendering Resources")
 	UVolumeTexture* DataVolumeTextureRef;
 
 	/// Pointer to the Transfer Function Volume texture.
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Basic Raymarch Rendering Resources")
 	UTexture2D* TFTextureRef;
 
-	/// Pointer to the illumination volume texture render target.
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
-	UTextureRenderTargetVolume* LightVolumeRenderTarget;
+	/// Pointer to the illumination volume texture.
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Basic Raymarch Rendering Resources")
+	UVolumeTexture* LightVolumeTextureRef;
 
 	/// If true, Light Volume texture will be created with it's side scaled down by 1/2 (-> 1/8 total voxels!)
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Basic Raymarch Rendering Resources")

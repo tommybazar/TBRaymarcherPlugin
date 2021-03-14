@@ -1,12 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
-// Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
-
 #include "Actor/VR/VRPawn.h"
-
-#include "Actor/VR/VRMotionController.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
+#include "Actor/VR/VRMotionController.h"
+
 
 AVRPawn::AVRPawn()
 {
@@ -24,27 +19,22 @@ void AVRPawn::BeginPlay()
 	Super::BeginPlay();
 
 	UHeadMountedDisplayFunctionLibrary::SetTrackingOrigin(EHMDTrackingOrigin::Floor);
-
+		
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	SpawnParams.Owner = this;
 
-	EVRPlatform VRPlatformType = EVRPlatform::Default;
-	FControllerPlatformClasses PlatformClasses;
-
-	if (PerPlatformControllers.Contains(VRPlatformType))
+	if (LeftControllerClass && RightControllerClass)
 	{
-		PlatformClasses = PerPlatformControllers[VRPlatformType];
-	}
+		RightController = GetWorld()->SpawnActor<AVRMotionController>(RightControllerClass, SpawnParams);
+		LeftController = GetWorld()->SpawnActor<AVRMotionController>(LeftControllerClass, SpawnParams);
 
-	if (PlatformClasses.LeftControllerClass && PlatformClasses.RightControllerClass)
-	{
-		RightController = GetWorld()->SpawnActor<AVRMotionController>(PlatformClasses.RightControllerClass, SpawnParams);
-		LeftController = GetWorld()->SpawnActor<AVRMotionController>(PlatformClasses.LeftControllerClass, SpawnParams);
+		FAttachmentTransformRules Rules(
+			EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, false);
 
-		RightController->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-		LeftController->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-
+		RightController->AttachToComponent(RootComponent, Rules);
+		LeftController->AttachToComponent(RootComponent, Rules);
+	
 		RightController->SetupInput(InputComponent);
 		LeftController->SetupInput(InputComponent);
 	}

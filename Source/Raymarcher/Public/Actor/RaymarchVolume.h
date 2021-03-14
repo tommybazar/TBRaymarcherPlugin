@@ -1,17 +1,15 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
-// Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Created by Tommy Bazar. No rights reserved :)
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision)
+// and Ryan Brucks (original raymarching code).
+
 
 #pragma once
 
 #include "Actor/RaymarchClipPlane.h"
 #include "Actor/RaymarchLight.h"
 #include "CoreMinimal.h"
+#include "MHD/MHDAsset.h"
 #include "Math/IntVector.h"
-#include "UObject/UnrealType.h"
-#include "VR/Grabbable.h"
-#include "VolumeAsset/VolumeAsset.h"
 
 #include "RaymarchVolume.generated.h"
 
@@ -20,7 +18,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogRaymarchVolume, Log, All);
 DECLARE_DYNAMIC_DELEGATE(FOnVolumeLoaded);
 
 UCLASS()
-class RAYMARCHER_API ARaymarchVolume : public AActor, public IGrabbable
+class RAYMARCHER_API ARaymarchVolume : public AActor
 {
 	GENERATED_BODY()
 
@@ -30,9 +28,7 @@ public:
 
 	/** Called after the actor is loaded from disk in editor or when spawned in game.
 		This is the last action that is performed before BeginPlay.*/
-	virtual void PostRegisterAllComponents() override;
-
-	virtual void OnConstruction(const FTransform& Transform) override;
+	void PostRegisterAllComponents();
 
 	/** Updates a single provided light affecting the LightVolume. */
 	void UpdateSingleLight(ARaymarchLight* UpdatedLight);
@@ -49,15 +45,7 @@ public:
 
 	/** Sets a new MHDAsset and reinitializes the raymarching resources.*/
 	UFUNCTION(BlueprintCallable)
-	bool SetMHDAsset(UVolumeAsset* InMHDAsset);
-
-	/** Use faster shader for light calculation. Leads to instability with more lights.*/
-	UPROPERTY(EditAnywhere)
-	bool bFastShader = true;
-
-	/// Map for storing previous ticks parameters per-light. Used to detect changes.
-	UPROPERTY(Transient)
-	TMap<ARaymarchLight*, FDirLightParameters> LightParametersMap;
+	bool SetMHDAsset(UMHDAsset* InMHDAsset);
 
 protected:
 	/** Initializes the Raymarch Resources to work with the provided Data Volume Texture.**/
@@ -87,13 +75,9 @@ public:
 	/** Fired when data in the MHD asset is changed.*/
 	FDelegateHandle MHDAssetUpdatedDelegateHandle;
 
-	/** Function that is bound to the current MHDAssets OnCurveChanged delegate (in-editor only). Gets fired when the asset's curve
-	 * changes.*/
-	void OnMHDAssetChangedTF(UCurveLinearColor* Curve);
-
-	/** Function that is bound to the current transfer function color curve and gets fired when that gets changed (e.g. when the
-	 * user edits the curve in curve editor. */
-	void OnTFColorCurveUpdated(UCurveBase* Curve, EPropertyChangeType::Type ChangeType);
+	/** Function that is bound to the current MHD's color curve OnUpdateGradient and MHD OnCurveChanged delegates (in-editor only)*/
+	UFUNCTION()
+	void OnCurveUpdatedInEditor(UCurveLinearColor* Curve);
 
 	/** Called when the MHD asset is modified in-editor.*/
 	UFUNCTION()
@@ -112,10 +96,10 @@ public:
 
 	/** The loaded MHD asset belonging to this volume*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	UVolumeAsset* MHDAsset = nullptr;
+	UMHDAsset* MHDAsset = nullptr;
 
 	/** Only kept so that we can compare to it when a user changes the MHDAsset. See SetMHDAsset().*/
-	UVolumeAsset* OldMHDAsset = nullptr;
+	UMHDAsset* OldMHDAsset = nullptr;
 
 	/** The base material for volumetric rendering.*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -163,37 +147,33 @@ public:
 	FRaymarchWorldParameters WorldParameters;
 
 	/** The number of steps to take when raymarching. This is multiplied by the volume thickness in texture space, so can be
-	 * multiplied by anything from 0 to sqrt(3), Raymarcher will only take exactly this many steps when the path through the cube is
+	 * multiplied by anything from 0 to sqrt(3), Raymarcher will only take exactly this many steps when the path through the cube is 
 	 * equal to the lenght of it's side. **/
 	UPROPERTY(EditAnywhere)
 	float RaymarchingSteps = 150;
 
-	/** If true, the light volume texture will be created using R32F format instead of the standard G8. This allows
-		Illumination values greater than 1 (over-lighted) to be visible. Comes at the cost of 4x memory consumption and
+	/** If true, the light volume texture will be created using R32F format instead of the standard G8. This allows 
+		Illumination values greater than 1 (over-lighted) to be visible. Comes at the cost of 4x memory consumption and 
 		noticeably (but not significantly, in the ballpark of 10%) slower illumination calculation and materials.	**/
 	UPROPERTY(EditAnywhere)
 	bool bLightVolume32Bit = false;
 
 	/** Switches to using a new Transfer function curve.**/
 	UFUNCTION(BlueprintCallable)
-	void SetTFCurve(UCurveLinearColor* InTFCurve);
+	void SetTFCurve(UCurveLinearColor*& InTFCurve);
 
-	/** Saves the current windowing parameters as default in the MHD Asset.*/
+	/** Saves the current windowing parameters as default in the MHD Asset*/
 	void SaveCurrentParamsToMHDAsset();
 
-	/** Loads the specified MHD file into the volume. Will also create a transient Float32 MHD file and VolumeTexture that will be
-	 * used.**/
+	/** Loads the specified MHD file into the volume. Will also create a transient Float32 MHD file and VolumeTexture that will be used.**/
 	UFUNCTION(BlueprintCallable)
 	bool LoadNewFileIntoVolumeTransientR32F(FString FileName);
 
-	/** Loads the specified MHD file into the volume. Will also create a persistent G8/G16 MHD file and VolumeTexture that will be
-	used. If the volume is to be persistent, add OutFolder relative to content directory (with a forward slash at the end!).
+	/** Loads the specified MHD file into the volume. Will also create a persistent G8/G16 MHD file and VolumeTexture that will be used.
+		If the volume is to be persistent, add OutFolder relative to content directory (with a forward slash at the end!).
 	**/
 	UFUNCTION(BlueprintCallable)
 	bool LoadNewFileIntoVolumeNormalized(FString FileName, bool bPersistent, FString OutFolder);
-
-	// 	UFUNCTION(BlueprintCallable)
-	// 	void TestReadDICOM(FString FileName);
 
 	/** Sets all material parameters to the raymarching materials. Usually called only after loading a new volume.**/
 	void SetAllMaterialParameters();

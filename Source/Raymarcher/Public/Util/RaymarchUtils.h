@@ -1,7 +1,6 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
-// Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Created by Tommy Bazar. No rights reserved :)
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision)
+// and Ryan Brucks (original raymarching code).
 
 #pragma once
 
@@ -11,8 +10,9 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "RHI.h"
 #include "RHIResources.h"
-#include "Rendering/LightingShaders.h"
 #include "Rendering/RaymarchTypes.h"
+#include "Rendering/LightingShaders.h"
+
 #include "UObject/ObjectMacros.h"
 
 #include "RaymarchUtils.generated.h"
@@ -32,13 +32,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
 	static RAYMARCHER_API void AddDirLightToSingleVolume(const FBasicRaymarchRenderingResources& Resources,
 		const FDirLightParameters& LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters,
-		bool& LightAdded, bool bGPUSync = false);
+		bool& LightAdded);
 
 	/** Changes a light in the light volume.	 */
 	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
 	static RAYMARCHER_API void ChangeDirLightInSingleVolume(FBasicRaymarchRenderingResources& Resources,
 		const FDirLightParameters OldLightParameters, const FDirLightParameters NewLightParameters,
-		const FRaymarchWorldParameters WorldParameters, bool& LightAdded, bool bGPUSync = false);
+		const FRaymarchWorldParameters WorldParameters, bool& LightAdded);
+
+	/** Clears a light volume. */
+	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
+	static RAYMARCHER_API void ClearVolumeTexture(UVolumeTexture* VolumeTexture, float ClearValue);
 
 	/** Clears a light volume in provided raymarch resources. */
 	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
@@ -58,6 +62,7 @@ public:
 	/** Will create a 1D texture asset from a ColorCurve. */
 	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
 	static RAYMARCHER_API void ColorCurveToTexture(UCurveLinearColor* Curve, UTexture2D*& OutTexture);
+
 
 	//
 	//

@@ -1,7 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
-// Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Created by Tommy Bazar. No rights reserved :)
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision)
+// and Ryan Brucks (original raymarching code).
+
 
 using UnrealBuildTool;
 
@@ -10,10 +10,6 @@ public class VolumeTextureToolkit : ModuleRules
     public VolumeTextureToolkit(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-
-        AddEngineThirdPartyPrivateStaticDependencies(Target, "zlib");
-
-        CppStandard = CppStandardVersion.Cpp17;
 
         PublicIncludePaths.AddRange(
             new string[] {
@@ -24,7 +20,9 @@ public class VolumeTextureToolkit : ModuleRules
 
         PrivateIncludePaths.AddRange(
             new string[] {
-                "VolumeTextureToolkit"
+                "VolumeTextureToolkit",
+                "VolumeTextureToolkit/Public/",
+                "VolumeTextureToolkit/Public/MHD"
                 }
             );
 

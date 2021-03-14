@@ -1,16 +1,11 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
-// Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Created by Tommy Bazar. No rights reserved :)
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision)
+// and Ryan Brucks (original raymarching code).
 
 #include "TextureUtilities.h"
 
 #include "AssetRegistryModule.h"
-#include "Util/UtilityShaders.h"
-#include "VolumeAsset/VolumeAsset.h"
-
-#include <Engine/TextureRenderTargetVolume.h>
-#include <Misc/Compression.h>
+#include "ComputeVolumeTexture.h"
 
 DEFINE_LOG_CATEGORY(LogTextureUtils);
 
@@ -78,7 +73,8 @@ void UVolumeTextureToolkit::CreateVolumeTextureMip(
 }
 
 bool UVolumeTextureToolkit::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, FString AssetName, FString FolderName,
-	EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData, bool IsPersistent, bool ShouldUpdateResource)
+	EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData, bool IsPersistent, bool ShouldUpdateResource,
+	bool bUAVTargettable)
 {
 	if (Dimensions.X == 0 || Dimensions.Y == 0 || Dimensions.Z == 0)
 	{
@@ -86,11 +82,21 @@ bool UVolumeTextureToolkit::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture
 	}
 
 	FString PackageName = MakePackageName(AssetName, FolderName);
-	UPackage* Package = CreatePackage(*PackageName);
+	UPackage* Package = CreatePackage(NULL, *PackageName);
 	Package->FullyLoad();
 
 	UVolumeTexture* VolumeTexture = nullptr;
-	VolumeTexture = NewObject<UVolumeTexture>((UObject*) Package, FName(*AssetName), RF_Public | RF_Standalone | RF_MarkAsRootSet);
+
+	if (bUAVTargettable)
+	{
+		VolumeTexture =
+			NewObject<UComputeVolumeTexture>((UObject*) Package, FName(*AssetName), RF_Public | RF_Standalone | RF_MarkAsRootSet);
+	}
+	else
+	{
+		VolumeTexture =
+			NewObject<UVolumeTexture>((UObject*) Package, FName(*AssetName), RF_Public | RF_Standalone | RF_MarkAsRootSet);
+	}
 
 	// Prevent garbage collection of the texture
 	VolumeTexture->AddToRoot();
@@ -200,15 +206,22 @@ bool UVolumeTextureToolkit::Create2DTextureTransient(UTexture2D*& OutTexture, EP
 	return true;
 }
 
-bool UVolumeTextureToolkit::CreateVolumeTextureTransient(
-	UVolumeTexture*& OutTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData, bool ShouldUpdateResource)
+bool UVolumeTextureToolkit::CreateVolumeTextureTransient(UVolumeTexture*& OutTexture, EPixelFormat PixelFormat,
+	FIntVector Dimensions, uint8* BulkData, bool ShouldUpdateResource, bool bUAVTargettable)
 {
 	UVolumeTexture* VolumeTexture = nullptr;
-	VolumeTexture = NewObject<UVolumeTexture>(GetTransientPackage(), NAME_None, RF_Transient);
+	if (bUAVTargettable)
+	{
+		VolumeTexture = NewObject<UComputeVolumeTexture>(GetTransientPackage(), NAME_None, RF_Transient);
+	}
+	else
+	{
+		VolumeTexture = NewObject<UVolumeTexture>(GetTransientPackage(), NAME_None, RF_Transient);
+	}
 
 	SetVolumeTextureDetails(VolumeTexture, PixelFormat, Dimensions);
 	CreateVolumeTextureMip(VolumeTexture, PixelFormat, Dimensions, BulkData);
-
+	
 	// Update resource, mark that the folder needs to be rescan and notify editor
 	// about asset creation.
 	if (ShouldUpdateResource)
@@ -258,94 +271,76 @@ uint8* UVolumeTextureToolkit::LoadRawFileIntoArray(const FString FileName, const
 	return LoadedArray;
 }
 
-uint8* UVolumeTextureToolkit::LoadZLibCompressedRawFileIntoArray(
-	const FString FileName, const int64 BytesToLoad, const int64 CompressedBytes)
-{
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	// Try opening as absolute path.
-	IFileHandle* FileHandle = PlatformFile.OpenRead(*FileName);
-
-	// If opening as absolute path failed, open as relative to content directory.
-	if (!FileHandle)
-	{
-		FString FullPath = FPaths::ProjectContentDir() + FileName;
-		FileHandle = PlatformFile.OpenRead(*FullPath);
-	}
-
-	if (!FileHandle)
-	{
-		UE_LOG(LogTextureUtils, Error, TEXT("Raw compressed file could not be opened."));
-		return nullptr;
-	}
-	else if (FileHandle->Size() < CompressedBytes)
-	{
-		UE_LOG(LogTextureUtils, Error, TEXT("Raw compressed file is smaller than expected, cannot read volume."));
-		delete FileHandle;
-		return nullptr;
-	}
-	else if (FileHandle->Size() > CompressedBytes)
-	{
-		UE_LOG(LogTextureUtils, Warning,
-			TEXT("Raw compressed file is larger than expected, check your dimensions and pixel format. (nonfatal, but the texture "
-				 "will "
-				 "probably be screwed up)"));
-	}
-
-	uint8* LoadedArray = new uint8[CompressedBytes];
-	FileHandle->Read(LoadedArray, CompressedBytes);
-
-	uint8* UncompressedArray = new uint8[BytesToLoad];
-	FCompression::UncompressMemory(NAME_Zlib, UncompressedArray, BytesToLoad, LoadedArray, CompressedBytes);
-
-	delete[] LoadedArray;
-	return UncompressedArray;
-}
-
 uint8* UVolumeTextureToolkit::NormalizeArrayByFormat(
-	const EVolumeVoxelFormat VoxelFormat, uint8* InArray, const int64 ByteSize, float& OutInMin, float& OutInMax)
+	const FString FormatName, uint8* InArray, const int64 ByteSize, float& OutInMin, float& OutInMax)
 {
-	switch (VoxelFormat)
+	// #TODO maybe figure out a nice way to get the format->C++ type instead of this if/else monstrosity
+	if (FormatName.Equals("MET_CHAR"))
 	{
-		case EVolumeVoxelFormat::UnsignedChar:
-			return ConvertArrayToNormalizedArray<uint8, uint8>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::SignedChar:
-			return ConvertArrayToNormalizedArray<int8, uint8>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::UnsignedShort:
-			return ConvertArrayToNormalizedArray<uint16, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::SignedShort:
-			return ConvertArrayToNormalizedArray<int16, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::UnsignedInt:
-			return ConvertArrayToNormalizedArray<uint32, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::SignedInt:
-			return ConvertArrayToNormalizedArray<int32, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::Float:
-			return ConvertArrayToNormalizedArray<float, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		default:
-			ensure(false);
-			return nullptr;
+		return ConvertArrayToNormalizedArray<int8, uint8>(InArray, ByteSize, OutInMin, OutInMax);
+	}
+	else if (FormatName.Equals("MET_UCHAR"))
+	{
+		return ConvertArrayToNormalizedArray<uint8, uint8>(InArray, ByteSize, OutInMin, OutInMax);
+	}
+	else if (FormatName.Equals("MET_SHORT"))
+	{
+		return ConvertArrayToNormalizedArray<int16, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+	}
+	else if (FormatName.Equals("MET_USHORT"))
+	{
+		return ConvertArrayToNormalizedArray<uint16, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+	}
+	else if (FormatName.Equals("MET_INT"))
+	{
+		return ConvertArrayToNormalizedArray<int32, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+	}
+	else if (FormatName.Equals("MET_UINT"))
+	{
+		return ConvertArrayToNormalizedArray<uint32, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+	}
+	else if (FormatName.Equals("MET_FLOAT"))
+	{
+		return ConvertArrayToNormalizedArray<float, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+	}
+	else
+	{
+		ensure(false);
+		return nullptr;
 	}
 }
 
-float* UVolumeTextureToolkit::ConvertArrayToFloat(const EVolumeVoxelFormat VoxelFormat, uint8* InArray, uint64 VoxelCount)
+float* UVolumeTextureToolkit::ConvertArrayToFloat(uint8* InArray, uint64 VoxelCount, const FString FormatName)
 {
-	switch (VoxelFormat)
+	// #TODO maybe figure out a nice way to get the format->C++ type instead of this if/else monstrosity
+	if (FormatName.Equals("MET_CHAR"))
 	{
-		case EVolumeVoxelFormat::UnsignedChar:
-			return ConvertArrayToFloatTemplated<uint8>(InArray, VoxelCount);
-		case EVolumeVoxelFormat::SignedChar:
-			return ConvertArrayToFloatTemplated<int8>(InArray, VoxelCount);
-		case EVolumeVoxelFormat::UnsignedShort:
-			return ConvertArrayToFloatTemplated<uint16>(InArray, VoxelCount);
-		case EVolumeVoxelFormat::SignedShort:
-			return ConvertArrayToFloatTemplated<int16>(InArray, VoxelCount);
-		case EVolumeVoxelFormat::UnsignedInt:
-			return ConvertArrayToFloatTemplated<uint32>(InArray, VoxelCount);
-		case EVolumeVoxelFormat::SignedInt:
-			return ConvertArrayToFloatTemplated<int32>(InArray, VoxelCount);
-		case EVolumeVoxelFormat::Float:	   // fall through
-		default:
-			ensure(false);
-			return nullptr;
+		return ConvertArrayToFloatTemplated<int8>(InArray, VoxelCount);
+	}
+	else if (FormatName.Equals("MET_UCHAR"))
+	{
+		return ConvertArrayToFloatTemplated<uint8>(InArray, VoxelCount);
+	}
+	else if (FormatName.Equals("MET_SHORT"))
+	{
+		return ConvertArrayToFloatTemplated<int16>(InArray, VoxelCount);
+	}
+	else if (FormatName.Equals("MET_USHORT"))
+	{
+		return ConvertArrayToFloatTemplated<uint16>(InArray, VoxelCount);
+	}
+	else if (FormatName.Equals("MET_INT"))
+	{
+		return ConvertArrayToFloatTemplated<int32>(InArray, VoxelCount);
+	}
+	else if (FormatName.Equals("MET_UINT"))
+	{
+		return ConvertArrayToFloatTemplated<uint32>(InArray, VoxelCount);
+	}
+	else
+	{
+		ensure(false);
+		return nullptr;
 	}
 }
 
@@ -424,19 +419,4 @@ void UVolumeTextureToolkit::SetupVolumeTexture(
 	// Actually create the texture MIP.
 	CreateVolumeTextureMip(OutVolumeTexture, PixelFormat, Dimensions, ConvertedArray);
 	CreateVolumeTextureEditorData(OutVolumeTexture, PixelFormat, Dimensions, ConvertedArray, Persistent);
-}
-
-void UVolumeTextureToolkit::ClearVolumeTexture(UTextureRenderTargetVolume* RTVolume, float ClearValue)
-{
-	if (!RTVolume || !RTVolume->Resource || !RTVolume->Resource->TextureRHI)
-	{
-		return;
-	}
-
-	FRHITexture3D* VolumeTextureResource = RTVolume->Resource->TextureRHI->GetTexture3D();
-
-	// Call the actual rendering code on RenderThread.
-	ENQUEUE_RENDER_COMMAND(CaptureCommand)
-	([VolumeTextureResource, ClearValue](
-		 FRHICommandListImmediate& RHICmdList) { ClearVolumeTexture_RenderThread(RHICmdList, VolumeTextureResource, ClearValue); });
 }

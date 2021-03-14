@@ -1,25 +1,24 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
-// Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Created by Tommy Bazar. No rights reserved :)
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision)
+// and Ryan Brucks (original raymarching code).
 
 #pragma once
 
-#include "Components/SphereComponent.h"
-#include "Components/StaticMeshComponent.h"
-#include "Components/WidgetInteractionComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/PlayerController.h"
-#include "Grabbable.h"
 #include "MotionControllerComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/WidgetInteractionComponent.h"
 
 #include "VRMotionController.generated.h"
 
 class UMotionControllerComponent;
+class USkeletalMeshComponent;
 
 /**
- * A class for motion controller actors.
+ * Base class for motion controllers in BodyMap.
  */
 UCLASS(Abstract)
 class AVRMotionController : public AActor
@@ -32,7 +31,6 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Collision component to detect overlaps with other scene actors.
 	UPROPERTY(EditAnywhere)
 	USphereComponent* CollisionComponent;
 
@@ -42,25 +40,26 @@ public:
 
 	/// Skeletal mesh of the controller.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MotionController | Component")
-	UStaticMeshComponent* ControllerStaticMeshComponent = nullptr;
+	USkeletalMeshComponent* ControllerSkeletalMeshComponent = nullptr;
 
-	/// Widget interactor which allows interacting with VR UI.
 	UPROPERTY(EditAnywhere)
 	UWidgetInteractionComponent* WidgetInteractor;
-
-	/// Skeletal mesh representing the WidgetInteractor ray.
-	UPROPERTY(EditAnywhere)
-	UStaticMeshComponent* WidgetInteractorVisualizer;
 
 	/// If true, this controller should go into the right hand.
 	UPROPERTY(EditAnywhere)
 	bool bIsInRightHand = true;
+
+	/// Animation used on the skeletal mesh, cast to our custom Animation Instance, to drive
+	/// button animations.
+	UAnimInstance* ControllerAnimation = nullptr;
 
 	/// Sets up this controller's actions to the provided InputComponent.
 	virtual void SetupInput(UInputComponent* InInputComponent);
 
 	/// True if the controller grip is pressed.
 	bool bIsGripPressed = false;
+
+	/// IMotionControllerHandler interface begin :
 
 	virtual void OnGripPressed();
 
@@ -69,8 +68,6 @@ public:
 	virtual void OnTriggerAxis(float Axis);
 
 	virtual void OnTriggerPressed();
-
-	virtual void OnTriggerReleased();
 
 	virtual void OnGripAxis(float Axis);
 
@@ -82,13 +79,17 @@ public:
 	void OnOverlapEnd(class UPrimitiveComponent* OverlappedComponent, class AActor* OtherActor, UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex);
 
-	UFUNCTION()
-	void OnWidgetInteractorHoverChanged(UWidgetComponent* Old, UWidgetComponent* New);
+	/// The actor currently hovered by the sphere collision.
+	AActor* HoveredActor = nullptr;
 
-	/// The actor currently hovered by the sphere collision, if any.
-	/// Could be remade into an array to allow hovering multiple actors at once.
-	IGrabbable* HoveredActor = nullptr;
+	AActor* GrabbedActor = nullptr;
 
-	/// The currently grabbed actor, if any.
-	IGrabbable* GrabbedActor = nullptr;
+	virtual void OnActorHovered();
+
+protected:
+	// A weak pointer to the owning player controller.
+	TWeakObjectPtr<APlayerController> PlayerControllerWeakPtr;
+
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
 };
