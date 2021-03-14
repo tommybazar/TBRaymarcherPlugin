@@ -280,7 +280,7 @@ Licensed under MIT license.
 
 Both me and Technical University of Munich are copyright holders, as major parts of this software were written as part of my thesis and/or working-student employment for TUM.
 
-See LICENSE file for full license text.
+See License.txt for full license text.
 
 ## Example MHDAsset files
 In `TBRaymarcherPlugin/Content/DefaultResources/` are MHDAssets and volume textures created by importing data from Subset0 of [LUNA2016 grand challenge](https://luna16.grand-challenge.org/download/).
