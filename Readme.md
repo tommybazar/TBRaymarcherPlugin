@@ -5,6 +5,7 @@ Allows volume rendering of .MHD data with Unreal Engine.
 
 ## Updated for UE 4.26 - for 4.25 version, checkout the "4.25" branch.
 
+For a project that works out of the box, see example project at https://github.com/tommybazar/TBRaymarchProject.
 
 ![
 ](https://github.com/tommybazar/TBRaymarchProject/blob/master/Documents/Render1.png)
