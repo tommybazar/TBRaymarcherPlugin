@@ -13,6 +13,7 @@
 
 #include <Curves/CurveLinearColor.h>
 #include <Engine/TextureRenderTargetVolume.h>
+#include "VolumeAsset/Loaders/MHDLoader.h"
 
 DEFINE_LOG_CATEGORY(LogRaymarchVolume)
 
@@ -130,9 +131,9 @@ void ARaymarchVolume::PostRegisterAllComponents()
 		}
 	}
 
-	if (MHDAsset)
+	if (VolumeAsset)
 	{
-		SetMHDAsset(MHDAsset);
+		SetVolumeAsset(VolumeAsset);
 	}
 }
 
@@ -152,7 +153,7 @@ void ARaymarchVolume::OnConstruction(const FTransform& Transform)
 
 #if WITH_EDITOR
 
-void ARaymarchVolume::OnMHDAssetChangedTF(UCurveLinearColor* Curve)
+void ARaymarchVolume::OnVolumeAssetChangedTF(UCurveLinearColor* Curve)
 {
 	// Remove OnUpdateGradient delegate from old curve (if it exists)
 	bool bChangedCurve = false;
@@ -176,11 +177,11 @@ void ARaymarchVolume::OnTFColorCurveUpdated(UCurveBase* Curve, EPropertyChangeTy
 	SetTFCurve(Cast<UCurveLinearColor>(Curve));
 }
 
-void ARaymarchVolume::OnImageInfoChangedInEditro()
+void ARaymarchVolume::OnImageInfoChangedInEditor()
 {
-	// Just update parameters from default MHD values, that's the only thing that can change that's interesting in the Image Info
+	// Just update parameters from default VolumeAsset values, that's the only thing that can change that's interesting in the Image Info
 	// we're initialized.
-	RaymarchResources.WindowingParameters = MHDAsset->ImageInfo.DefaultWindowingParameters;
+	RaymarchResources.WindowingParameters = VolumeAsset->ImageInfo.DefaultWindowingParameters;
 	SetMaterialWindowingParameters();
 
 	static double LastTimeReset = 0.0f;
@@ -189,16 +190,16 @@ void ARaymarchVolume::OnImageInfoChangedInEditro()
 		// Don't wait for recompute for next frame.
 
 		// Editor-viewport sometimes doesn't tick when it doesn't have focus, so
-		// if we're dragging Window Center/Width from within the MHD asset window,
+		// if we're dragging Window Center/Width from within the VolumeAsset window,
 		// lighting wouldn't get recomputed until we let go of the slider.
 
 		// #TODO figure out how to force the editor to tick no matter what and this can be changed to :
 		// bRequestedRecompute = true;
 
-		// Until then, make sure that this only causes lights recalculating 50 times a second, otherwise sliders can
+		// Until then, make sure that this only causes lights recalculating 60 times a second, otherwise sliders can
 		// send the event like a 1000 times per second, causing noticeable slowdown.
 		double CurrentTime = FPlatformTime::Seconds();
-		if (CurrentTime - 0.02 > LastTimeReset)
+		if (CurrentTime - 0.016 > LastTimeReset)
 		{
 			ResetAllLights();
 			LastTimeReset = CurrentTime;
@@ -211,9 +212,9 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	//	RaymarchResources.PostEditChangeProperty(PropertyChangedEvent);
 	FName PropertyName = PropertyChangedEvent.GetPropertyName();
-	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, MHDAsset))
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, VolumeAsset))
 	{
-		SetMHDAsset(MHDAsset);
+		SetVolumeAsset(VolumeAsset);
 		return;
 	}
 
@@ -296,7 +297,7 @@ void ARaymarchVolume::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Uncomment to see logs of potentially weird ticking behavior in-editor when dragging sliders in MHD info.
+	// Uncomment to see logs of potentially weird ticking behavior in-editor when dragging sliders in VolumeInfo.
 	//
 	// 	static int TickFrame = 0;
 	//
@@ -421,9 +422,9 @@ void ARaymarchVolume::UpdateSingleLight(ARaymarchLight* UpdatedLight)
 	}
 }
 
-bool ARaymarchVolume::SetMHDAsset(UVolumeAsset* InMHDAsset)
+bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 {
-	if (!InMHDAsset)
+	if (!InVolumeAsset)
 	{
 		return false;
 	}
@@ -431,22 +432,22 @@ bool ARaymarchVolume::SetMHDAsset(UVolumeAsset* InMHDAsset)
 #if WITH_EDITOR
 	if (!GetWorld() || !GetWorld()->IsGameWorld())
 	{
-		if (InMHDAsset != OldMHDAsset)
+		if (InVolumeAsset != OldVolumeAsset)
 		{
 			// If we're in editor and we already have an asset loaded before, unbind the delegate
 			// from it's color curve change broadcast and also the OnCurve and OnVolumeInfo changed broadcasts.
-			if (OldMHDAsset)
+			if (OldVolumeAsset)
 			{
-				OldMHDAsset->TransferFuncCurve->OnUpdateCurve.Remove(CurveGradientUpdateDelegateHandle);
-				OldMHDAsset->OnCurveChanged.Remove(CurveChangedInMHDDelegateHandle);
-				OldMHDAsset->OnImageInfoChanged.Remove(MHDAssetUpdatedDelegateHandle);
+				OldVolumeAsset->TransferFuncCurve->OnUpdateCurve.Remove(CurveGradientUpdateDelegateHandle);
+				OldVolumeAsset->OnCurveChanged.Remove(CurveChangedInVolumeDelegateHandle);
+				OldVolumeAsset->OnImageInfoChanged.Remove(VolumeAssetUpdatedDelegateHandle);
 			}
-			if (InMHDAsset)
+			if (InVolumeAsset)
 			{
-				CurveChangedInMHDDelegateHandle =
-					InMHDAsset->OnCurveChanged.AddUObject(this, &ARaymarchVolume::OnMHDAssetChangedTF);
-				MHDAssetUpdatedDelegateHandle =
-					InMHDAsset->OnImageInfoChanged.AddUObject(this, &ARaymarchVolume::OnImageInfoChangedInEditro);
+				CurveChangedInVolumeDelegateHandle =
+					InVolumeAsset->OnCurveChanged.AddUObject(this, &ARaymarchVolume::OnVolumeAssetChangedTF);
+				VolumeAssetUpdatedDelegateHandle =
+					InVolumeAsset->OnImageInfoChanged.AddUObject(this, &ARaymarchVolume::OnImageInfoChangedInEditor);
 			}
 		}
 	}
@@ -456,14 +457,14 @@ bool ARaymarchVolume::SetMHDAsset(UVolumeAsset* InMHDAsset)
 	// Initialize resources calls FlushRenderingCommands(), so it ensures the TF is useable by the time we bind it.
 
 	// Generate texture for transfer function from curve or make default (if none provided).
-	if (InMHDAsset->TransferFuncCurve)
+	if (InVolumeAsset->TransferFuncCurve)
 	{
-		CurrentTFCurve = InMHDAsset->TransferFuncCurve;
+		CurrentTFCurve = InVolumeAsset->TransferFuncCurve;
 		URaymarchUtils::ColorCurveToTexture(CurrentTFCurve, RaymarchResources.TFTextureRef);
 
 #if WITH_EDITOR
 		// Bind a listener to the delegate notifying about color curve changes
-		if ((!GetWorld() || !GetWorld()->IsGameWorld()) && InMHDAsset != OldMHDAsset)
+		if ((!GetWorld() || !GetWorld()->IsGameWorld()) && InVolumeAsset != OldVolumeAsset)
 		{
 			CurveGradientUpdateDelegateHandle =
 				CurrentTFCurve->OnUpdateCurve.AddUObject(this, &ARaymarchVolume::OnTFColorCurveUpdated);
@@ -472,14 +473,14 @@ bool ARaymarchVolume::SetMHDAsset(UVolumeAsset* InMHDAsset)
 	}
 	else
 	{
-		// Create default black-to-white texture if the MHD volume doesn't have one.
+		// Create default black-to-white texture if the VolumeAsset doesn't have one.
 		URaymarchUtils::MakeDefaultTFTexture(RaymarchResources.TFTextureRef);
 	}
 
-	MHDAsset = InMHDAsset;
-	OldMHDAsset = InMHDAsset;
+	VolumeAsset = InVolumeAsset;
+	OldVolumeAsset = InVolumeAsset;
 
-	InitializeRaymarchResources(MHDAsset->AssociatedTexture);
+	InitializeRaymarchResources(VolumeAsset->DataTexture);
 
 	if (!RaymarchResources.bIsInitialized)
 	{
@@ -493,10 +494,10 @@ bool ARaymarchVolume::SetMHDAsset(UVolumeAsset* InMHDAsset)
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
 	}
 
-	RaymarchResources.WindowingParameters = MHDAsset->ImageInfo.DefaultWindowingParameters;
+	RaymarchResources.WindowingParameters = VolumeAsset->ImageInfo.DefaultWindowingParameters;
 
 	// Unreal units = cm, MHD and Dicoms both have sizes in mm -> divide by 10.
-	StaticMeshComponent->SetRelativeScale3D(InMHDAsset->ImageInfo.WorldDimensions / 10);
+	StaticMeshComponent->SetRelativeScale3D(InVolumeAsset->ImageInfo.WorldDimensions / 10);
 
 	// Update world, set all parameters and request recompute.
 	UpdateWorldParameters();
@@ -524,28 +525,30 @@ void ARaymarchVolume::SetTFCurve(UCurveLinearColor* InTFCurve)
 	}
 }
 
-void ARaymarchVolume::SaveCurrentParamsToMHDAsset()
+void ARaymarchVolume::SaveCurrentParamsToVolumeAsset()
 {
-	if (MHDAsset)
+	if (VolumeAsset)
 	{
-		MHDAsset->TransferFuncCurve = CurrentTFCurve;
-		MHDAsset->ImageInfo.DefaultWindowingParameters = RaymarchResources.WindowingParameters;
+		VolumeAsset->TransferFuncCurve = CurrentTFCurve;
+		VolumeAsset->ImageInfo.DefaultWindowingParameters = RaymarchResources.WindowingParameters;
 
-		UPackage* Package = MHDAsset->GetOutermost();
+		UPackage* Package = VolumeAsset->GetOutermost();
 
-		UPackage::SavePackage(Package, MHDAsset, EObjectFlags::RF_Public | EObjectFlags::RF_Standalone,
+		UPackage::SavePackage(Package, VolumeAsset, EObjectFlags::RF_Public | EObjectFlags::RF_Standalone,
 			*(Package->FileName.ToString()), GError, nullptr, false, true, SAVE_NoError);
 	}
 }
 
-bool ARaymarchVolume::LoadNewFileIntoVolumeTransientR32F(FString FileName)
+bool ARaymarchVolume::LoadMHDFileIntoVolumeTransientR32F(FString FileName)
 {
-	UVolumeAsset* NewInfo;
-	UVolumeTexture* NewTexture;
-	UVolumeAsset::CreateAssetFromMhdFileR32F(FileName, NewInfo, NewTexture);
-	if (NewInfo)
+	UVolumeAsset* NewVolumeAsset;
+
+	UMHDLoader* Loader = UMHDLoader::Get();
+	NewVolumeAsset = Loader->CreateVolumeFromFile(FileName, false, true);
+
+	if (NewVolumeAsset)
 	{
-		return SetMHDAsset(NewInfo);
+		return SetVolumeAsset(NewVolumeAsset);
 	}
 	else
 	{
@@ -553,14 +556,16 @@ bool ARaymarchVolume::LoadNewFileIntoVolumeTransientR32F(FString FileName)
 	}
 }
 
-bool ARaymarchVolume::LoadNewFileIntoVolumeNormalized(FString FileName, bool bPersistent, FString OutFolder)
+bool ARaymarchVolume::LoadMHDFileIntoVolumeNormalized(FString FileName, bool bPersistent, FString OutFolder)
 {
-	UVolumeAsset* NewInfo;
-	UVolumeTexture* NewTexture;
-	UVolumeAsset::CreateAssetFromMhdFileNormalized(FileName, NewInfo, NewTexture, bPersistent, OutFolder);
-	if (NewInfo)
+	UVolumeAsset* NewVolumeAsset;
+
+	UMHDLoader* Loader = UMHDLoader::Get();
+	NewVolumeAsset = Loader->CreateVolumeFromFile(FileName, true, false);
+
+	if (NewVolumeAsset)
 	{
-		return SetMHDAsset(NewInfo);
+		return SetVolumeAsset(NewVolumeAsset);
 	}
 	else
 	{
@@ -655,8 +660,8 @@ void ARaymarchVolume::SetMaterialClippingParameters()
 
 void ARaymarchVolume::GetMinMaxValues(float& Min, float& Max)
 {
-	Min = MHDAsset->ImageInfo.MinValue;
-	Max = MHDAsset->ImageInfo.MaxValue;
+	Min = VolumeAsset->ImageInfo.MinValue;
+	Max = VolumeAsset->ImageInfo.MaxValue;
 }
 
 void ARaymarchVolume::SetWindowCenter(const float& Center)

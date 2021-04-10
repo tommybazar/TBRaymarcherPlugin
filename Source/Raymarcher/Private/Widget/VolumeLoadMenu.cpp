@@ -57,27 +57,25 @@ void UVolumeLoadMenu::OnLoadNormalizedClicked()
 			FDesktopPlatformModule::Get()->OpenFileDialog(ParentWindowHandle, "Select MHD file", "", "", ".mhd", 0, FileNames);
 		if (FileNames.Num() > 0)
 		{
-			FString Filename = FileNames[0];
-			UVolumeAsset* OutAsset;
-			UVolumeTexture* OutTexture;
-			UVolumeAsset::CreateAssetFromMhdFileNormalized(Filename, OutAsset, OutTexture, false);
+			FString FileName = FileNames[0];
+			UMHDLoader* Loader = UMHDLoader::Get();
+			UVolumeAsset* OutAsset = Loader->CreateVolumeFromFile(FileName, true, false);
 
 			if (OutAsset)
 			{
 				UE_LOG(VolumeLoadMenu, Display,
 					TEXT("Creating MHD asset from filename %s succeeded, seting MHD asset into associated listener volumes."),
-					*Filename);
-
+					*FileName);
 
 				// Add the asset to list of already loaded assets and select it through the combobox. This will call
-				// OnAssetSelected().
+				// OnAssetSelected(), so the asset will get set in the Listener Volumes.
 				AssetArray.Add(OutAsset);
 				AssetSelectionComboBox->AddOption(GetNameSafe(OutAsset));
 				AssetSelectionComboBox->SetSelectedOption(GetNameSafe(OutAsset));
 			}
 			else
 			{
-				UE_LOG(VolumeLoadMenu, Warning, TEXT("Creating MHD asset from filename %s failed."), *Filename);
+				UE_LOG(VolumeLoadMenu, Warning, TEXT("Creating MHD asset from filename %s failed."), *FileName);
 			}
 		}
 		else
@@ -87,7 +85,8 @@ void UVolumeLoadMenu::OnLoadNormalizedClicked()
 	}
 	else
 	{
-		UE_LOG(VolumeLoadMenu, Warning, TEXT("Attempted to load MHD file with no Raymarched Volume associated with menu, exiting."));
+		UE_LOG(
+			VolumeLoadMenu, Warning, TEXT("Attempted to load MHD file with no Raymarched Volume associated with menu, exiting."));
 	}
 }
 
@@ -107,25 +106,25 @@ void UVolumeLoadMenu::OnLoadF32Clicked()
 			FDesktopPlatformModule::Get()->OpenFileDialog(ParentWindowHandle, "Select MHD file", "", "", ".mhd", 0, FileNames);
 		if (FileNames.Num() > 0)
 		{
-			FString Filename = FileNames[0];
-			UVolumeAsset* OutAsset;
-			UVolumeTexture* OutTexture;
-			UVolumeAsset::CreateAssetFromMhdFileR32F(Filename, OutAsset, OutTexture);
+			FString FileName = FileNames[0];
+			UMHDLoader* Loader = UMHDLoader::Get();
+			UVolumeAsset* OutAsset = Loader->CreateVolumeFromFile(FileName, false, true);
 
 			if (OutAsset)
 			{
 				UE_LOG(VolumeLoadMenu, Display,
 					TEXT("Creating MHD asset from filename %s succeeded, seting MHD asset into associated listener volumes."),
-					*Filename);
+					*FileName);
 
-				// Add the asset to list of already loaded assets and select it through the combobox. This will call OnAssetSelected().
+				// Add the asset to list of already loaded assets and select it through the combobox. This will call
+				// OnAssetSelected().
 				AssetArray.Add(OutAsset);
 				AssetSelectionComboBox->AddOption(GetNameSafe(OutAsset));
 				AssetSelectionComboBox->SetSelectedOption(GetNameSafe(OutAsset));
 			}
 			else
 			{
-				UE_LOG(VolumeLoadMenu, Warning, TEXT("Creating MHD asset from filename %s failed."), *Filename);
+				UE_LOG(VolumeLoadMenu, Warning, TEXT("Creating MHD asset from filename %s failed."), *FileName);
 			}
 		}
 		else
@@ -135,7 +134,8 @@ void UVolumeLoadMenu::OnLoadF32Clicked()
 	}
 	else
 	{
-		UE_LOG(VolumeLoadMenu, Warning, TEXT("Attempted to load MHD file with no Raymarched Volume associated with menu, exiting."));
+		UE_LOG(
+			VolumeLoadMenu, Warning, TEXT("Attempted to load MHD file with no Raymarched Volume associated with menu, exiting."));
 	}
 }
 
@@ -158,7 +158,7 @@ void UVolumeLoadMenu::OnAssetSelected(FString AssetName, ESelectInfo::Type Selec
 	// Set Volume Asset to all listeners.
 	for (ARaymarchVolume* ListenerVolume : ListenerVolumes)
 	{
-		ListenerVolume->SetMHDAsset(SelectedAsset);
+		ListenerVolume->SetVolumeAsset(SelectedAsset);
 	}
 }
 

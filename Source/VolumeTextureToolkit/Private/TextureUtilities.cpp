@@ -258,8 +258,8 @@ uint8* UVolumeTextureToolkit::LoadRawFileIntoArray(const FString FileName, const
 	return LoadedArray;
 }
 
-uint8* UVolumeTextureToolkit::LoadZLibCompressedRawFileIntoArray(
-	const FString FileName, const int64 BytesToLoad, const int64 CompressedBytes)
+uint8* UVolumeTextureToolkit::LoadZLibCompressedFileIntoArray(
+	const FString FileName, const int64 UncompressedByteSize, const int64 CompressedByteSize)
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	// Try opening as absolute path.
@@ -277,13 +277,13 @@ uint8* UVolumeTextureToolkit::LoadZLibCompressedRawFileIntoArray(
 		UE_LOG(LogTextureUtils, Error, TEXT("Raw compressed file could not be opened."));
 		return nullptr;
 	}
-	else if (FileHandle->Size() < CompressedBytes)
+	else if (FileHandle->Size() < CompressedByteSize)
 	{
 		UE_LOG(LogTextureUtils, Error, TEXT("Raw compressed file is smaller than expected, cannot read volume."));
 		delete FileHandle;
 		return nullptr;
 	}
-	else if (FileHandle->Size() > CompressedBytes)
+	else if (FileHandle->Size() > CompressedByteSize)
 	{
 		UE_LOG(LogTextureUtils, Warning,
 			TEXT("Raw compressed file is larger than expected, check your dimensions and pixel format. (nonfatal, but the texture "
@@ -291,11 +291,11 @@ uint8* UVolumeTextureToolkit::LoadZLibCompressedRawFileIntoArray(
 				 "probably be screwed up)"));
 	}
 
-	uint8* LoadedArray = new uint8[CompressedBytes];
-	FileHandle->Read(LoadedArray, CompressedBytes);
+	uint8* LoadedArray = new uint8[CompressedByteSize];
+	FileHandle->Read(LoadedArray, CompressedByteSize);
 
-	uint8* UncompressedArray = new uint8[BytesToLoad];
-	FCompression::UncompressMemory(NAME_Zlib, UncompressedArray, BytesToLoad, LoadedArray, CompressedBytes);
+	uint8* UncompressedArray = new uint8[UncompressedByteSize];
+	FCompression::UncompressMemory(NAME_Zlib, UncompressedArray, UncompressedByteSize, LoadedArray, CompressedByteSize);
 
 	delete[] LoadedArray;
 	return UncompressedArray;
@@ -424,6 +424,7 @@ void UVolumeTextureToolkit::SetupVolumeTexture(
 	// Actually create the texture MIP.
 	CreateVolumeTextureMip(OutVolumeTexture, PixelFormat, Dimensions, ConvertedArray);
 	CreateVolumeTextureEditorData(OutVolumeTexture, PixelFormat, Dimensions, ConvertedArray, Persistent);
+	OutVolumeTexture->UpdateResource();
 }
 
 void UVolumeTextureToolkit::ClearVolumeTexture(UTextureRenderTargetVolume* RTVolume, float ClearValue)

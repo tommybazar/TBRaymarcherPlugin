@@ -5,15 +5,12 @@
 
 #include "VolumeAsset/VolumeInfo.h"
 
-#include "sstream"
-#include "string"
-
-int64 FVolumeInfo::GetTotalBytes()
+int64 FVolumeInfo::GetByteSize() const
 {
 	return Dimensions.X * Dimensions.Y * Dimensions.Z * BytesPerVoxel;
 }
 
-int64 FVolumeInfo::GetTotalVoxels()
+int64 FVolumeInfo::GetTotalVoxels() const
 {
 	return Dimensions.X * Dimensions.Y * Dimensions.Z;
 }
@@ -57,6 +54,70 @@ float FVolumeInfo::DenormalizeRange(float InRange)
 	return (InRange * (MaxValue - MinValue));
 }
 
+int32 FVolumeInfo::VoxelFormatByteSize(EVolumeVoxelFormat InFormat)
+{
+	switch (InFormat)
+	{
+		case EVolumeVoxelFormat::UnsignedChar:	  // fall through
+		case EVolumeVoxelFormat::SignedChar:
+			return 1;
+		case EVolumeVoxelFormat::UnsignedShort:	   // fall through
+		case EVolumeVoxelFormat::SignedShort:
+			return 2;
+		case EVolumeVoxelFormat::UnsignedInt:	 // fall through
+		case EVolumeVoxelFormat::SignedInt:		 // fall through
+		case EVolumeVoxelFormat::Float:
+			return 4;
+		default:
+			ensure(false);
+			return 0;
+	}
+}
+
+bool FVolumeInfo::IsVoxelFormatSigned(EVolumeVoxelFormat InFormat)
+{
+	switch (InFormat)
+	{
+		case EVolumeVoxelFormat::UnsignedChar:	   // fall through
+		case EVolumeVoxelFormat::UnsignedShort:	   // fall through
+		case EVolumeVoxelFormat::UnsignedInt:
+			return false;
+		case EVolumeVoxelFormat::SignedChar:	 // fall through
+		case EVolumeVoxelFormat::SignedShort:	 // fall through
+		case EVolumeVoxelFormat::SignedInt:		 // fall through
+		case EVolumeVoxelFormat::Float:
+			return true;
+		default:
+			ensure(false);
+			return false;
+	}
+}
+
+EPixelFormat FVolumeInfo::VoxelFormatToPixelFormat(EVolumeVoxelFormat InFormat)
+{
+	switch (InFormat)
+	{
+		case EVolumeVoxelFormat::UnsignedChar:	  // fall through
+		case EVolumeVoxelFormat::SignedChar:
+			return EPixelFormat::PF_G8;
+
+		case EVolumeVoxelFormat::UnsignedShort:	   // fall through
+		case EVolumeVoxelFormat::SignedShort:
+			return EPixelFormat::PF_G16;
+
+		case EVolumeVoxelFormat::UnsignedInt:
+			return EPixelFormat::PF_R32_SINT;	 // Experimental - materials will need to use asuint() to read the actual value!
+		case EVolumeVoxelFormat::SignedInt:
+			return EPixelFormat::PF_R32_SINT;	 // Experimental - materials will need to use asint() to read the actual value!
+
+		case EVolumeVoxelFormat::Float:
+			return EPixelFormat::PF_R32_FLOAT;	  // Cannot be saved.
+		default:
+			ensure(false);
+			return EPixelFormat::PF_Unknown;
+	}
+}
+
 FString FVolumeInfo::ToString() const
 {
 	FString text = "File name " + DataFileName + " details:" + "\nDimensions = " + Dimensions.ToString() +
@@ -65,167 +126,4 @@ FString FVolumeInfo::ToString() const
 				   "\nDefault window width : " + FString::SanitizeFloat(DefaultWindowingParameters.Width) + "\nOriginal Range : [" +
 				   FString::SanitizeFloat(MinValue) + " - " + FString::SanitizeFloat(MaxValue) + "]";
 	return text;
-}
-
-FVolumeInfo FVolumeInfo::ParseFromString(const FString FileString)
-{
-	// #TODO UE probably has a nicer string parser than istringstream...
-	// And the way I'm doing this is the ugliest you could imagine.
-	// But hey, this is probably literally the first C++ code I ever wrote in Unreal, so I'm keeping it this way, so
-	// I can look at it and shed a tear of remembering the sweet, sweet days of yesteryear.
-
-	FVolumeInfo OutVolumeInfo;
-	OutVolumeInfo.bParseWasSuccessful = false;
-
-	// #TODO stop being sentimental and use FConsole::Parse()
-	{
-		std::string MyStdString(TCHAR_TO_UTF8(*FileString));
-		std::istringstream inStream = std::istringstream(MyStdString);
-
-		std::string ReadWord;
-
-		// Skip until we get to Dimensions.
-		while (inStream.good() && ReadWord != "DimSize")
-		{
-			inStream >> ReadWord;
-		}
-		// Should be at the "=" after DimSize now.
-		if (inStream.good())
-		{
-			// Get rid of equal sign.
-			inStream >> ReadWord;
-			// Read the three values;
-			inStream >> OutVolumeInfo.Dimensions.X;
-			inStream >> OutVolumeInfo.Dimensions.Y;
-			inStream >> OutVolumeInfo.Dimensions.Z;
-		}
-		else
-		{
-			return OutVolumeInfo;
-		}
-
-		// Go back to beginning
-		inStream = std::istringstream(MyStdString);
-		// Skip until we get to spacing.
-		while (inStream.good() && ReadWord != "ElementSpacing" && ReadWord != "ElementSize")
-		{
-			inStream >> ReadWord;
-		}
-		// Should be at the "=" after ElementSpacing/ElementSize now.
-		if (inStream.good())
-		{
-			// Get rid of equal sign.
-			inStream >> ReadWord;
-			// Read the three values;
-			inStream >> OutVolumeInfo.Spacing.X;
-			inStream >> OutVolumeInfo.Spacing.Y;
-			inStream >> OutVolumeInfo.Spacing.Z;
-
-			OutVolumeInfo.WorldDimensions = OutVolumeInfo.Spacing * FVector(OutVolumeInfo.Dimensions);
-		}
-		else
-		{
-			return OutVolumeInfo;
-		}
-
-		// Go back to beginning
-		inStream = std::istringstream(MyStdString);
-		// Skip until we get to ElementType
-		while (inStream.good() && ReadWord != "ElementType")
-		{
-			inStream >> ReadWord;
-		}
-		// Should be at the "=" after ElementType now.
-		if (inStream.good())
-		{
-			// Get rid of equal sign.
-			inStream >> ReadWord;
-
-			inStream >> ReadWord;
-			if (ReadWord == "MET_UCHAR")
-			{
-				OutVolumeInfo.VoxelFormat = EVolumeVoxelFormat::UnsignedChar;
-			}
-			else if (ReadWord == "MET_CHAR")
-			{
-				OutVolumeInfo.VoxelFormat = EVolumeVoxelFormat::SignedChar;
-			}
-
-			else if (ReadWord == "MET_USHORT")
-			{
-				OutVolumeInfo.VoxelFormat = EVolumeVoxelFormat::UnsignedShort;
-			}
-			else if (ReadWord == "MET_SHORT")
-			{
-				OutVolumeInfo.VoxelFormat = EVolumeVoxelFormat::SignedShort;
-			}
-			else if (ReadWord == "MET_UINT")
-			{
-				OutVolumeInfo.VoxelFormat = EVolumeVoxelFormat::UnsignedInt;
-			}
-			else if (ReadWord == "MET_INT")
-			{
-				OutVolumeInfo.VoxelFormat = EVolumeVoxelFormat::SignedInt;
-			}
-			else if (ReadWord == "MET_FLOAT")
-			{
-				OutVolumeInfo.VoxelFormat = EVolumeVoxelFormat::Float;
-			}
-			else
-			{
-				return OutVolumeInfo;
-			}
-		}
-		else
-		{
-			return OutVolumeInfo;
-		}
-
-		OutVolumeInfo.BytesPerVoxel = FVolumeInfo::VoxelFormatByteSize(OutVolumeInfo.VoxelFormat);
-		OutVolumeInfo.bIsSigned = FVolumeInfo::IsVoxelFormatSigned(OutVolumeInfo.VoxelFormat);
-
-		// Check for compressed data size tag.
-
-		// Go back to beginning
-		inStream = std::istringstream(MyStdString);
-		// Skip until we get to ElementType
-		while (inStream.good() && ReadWord != "CompressedDataSize")
-		{
-			inStream >> ReadWord;
-		}
-		// Should be at the "=" after ElementType now.
-		if (inStream.good())
-		{
-			OutVolumeInfo.bIsCompressed = true;
-
-			// Get rid of equal sign.
-			inStream >> ReadWord;
-
-			inStream >> OutVolumeInfo.CompressedBytes;
-		}
-
-		// Go back to beginning
-		inStream = std::istringstream(MyStdString);
-		// Skip until we get to ElementType
-		while (inStream.good() && ReadWord != "ElementDataFile")
-		{
-			inStream >> ReadWord;
-		}
-		// Should be at the "=" after ElementType now.
-		if (inStream.good())
-		{
-			// Get rid of equal sign.
-			inStream >> ReadWord;
-
-			inStream >> ReadWord;
-		}
-		else
-		{
-			return OutVolumeInfo;
-		}
-		OutVolumeInfo.DataFileName = FString(ReadWord.c_str());
-		OutVolumeInfo.bParseWasSuccessful = true;
-		// Return with constructor that sets success to true.
-		return OutVolumeInfo;
-	}
 }

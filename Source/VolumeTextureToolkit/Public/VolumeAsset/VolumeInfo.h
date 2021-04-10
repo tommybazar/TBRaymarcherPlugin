@@ -68,7 +68,11 @@ public:
 	/// Format of voxels loaded from the volume. Does NOT have to match the actual PixelFormat that the VolumeTexture is stored in!
 	/// e.g. this could be UChar and VolumeTexture is saved as a EPixelFormat::Float - so don't use for calculating sizes!
 	UPROPERTY(VisibleAnywhere)
-	EVolumeVoxelFormat VoxelFormat;
+	EVolumeVoxelFormat OriginalFormat;
+
+	/// The format we're using after load has been finished. Takes into account being normalized or converted to float.
+	UPROPERTY(VisibleAnywhere)
+	EVolumeVoxelFormat ActualFormat;
 
 	// Size of volume in voxels.
 	UPROPERTY(VisibleAnywhere)
@@ -99,16 +103,20 @@ public:
 	float MaxValue = 3000;
 
 	bool bIsCompressed = false;
-	int32 CompressedBytes = 0;
+
+	int32 CompressedByteSize = 0;
 
 	// Returns the number of bytes needed to store this Volume.
-	int64 GetTotalBytes();
+	int64 GetByteSize() const;
 
 	// Returns the number of voxels in this volume.
-	int64 GetTotalVoxels();
+	int64 GetTotalVoxels() const;
 
 	// Properties not visible to blueprints (used only when loading)
+	// Will reflect the ActualFormat rather than OriginalFormat.
 	bool bIsSigned;
+
+	// Will reflect the ActualFormat rather than OriginalFormat.
 	size_t BytesPerVoxel;
 
 	// Normalizes an input value from the range [MinValue, MaxValue] to [0,1]. Note that values can be outside of the range,
@@ -128,7 +136,7 @@ public:
 
 	static bool IsVoxelFormatSigned(EVolumeVoxelFormat InFormat);
 
-	FString ToString() const;
+	static EPixelFormat VoxelFormatToPixelFormat(EVolumeVoxelFormat InFormat);
 
-	static FVolumeInfo ParseFromString(const FString InString);
+	FString ToString() const;
 };

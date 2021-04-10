@@ -1,6 +1,7 @@
 // Copyright 2021 Tomas Bartipan and Technical University of Munich.
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks (original raymarching code).
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
+// (original raymarching code).
 
 // Contains functions for creating and updating volume texture assets.
 // Also contains helper functions for reading RAW files.
@@ -65,10 +66,13 @@ public:
 		uint8* BulkData = nullptr, bool ShouldUpdateResource = true);
 
 	/** Loads a RAW file into a newly allocated uint8* array. Loads the given number
-	 * of bytes.*/
-	static uint8* LoadRawFileIntoArray(const FString FileName, const int64 BytesToLoad);
+	 * of bytes. Don't forget to delete[] after storing the data somewhere.*/
+	static uint8* LoadRawFileIntoArray(const FString FileName, const int64 ByteSize);
 
-	static uint8* LoadZLibCompressedRawFileIntoArray(const FString FileName, const int64 BytesToLoad, const int64 CompressedBytes);
+	/** Loads a zlib compressed RAW file into a newly allocated uint8* array. The array will be BytesToLoad long, while we read
+	 * CompressedBytes amount of bytes. Don't forget to delete[] after storing the data somewhere.*/
+	static uint8* LoadZLibCompressedFileIntoArray(
+		const FString FileName, const int64 UncompressedByteSize, const int64 CompressedByteSize);
 
 	/** Normalizes an array InArray to maximum G16 type. If the InType is 8bit, normalizes to G8. Creates a new array, user is
 	   responsible for deleting that. The type of data going in is determined by a Format name used in .mhd files - e.g.

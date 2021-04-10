@@ -47,9 +47,9 @@ public:
 	/** Delegate that is fired whenever a new volume is loaded. Useful if you have any UI showing info about this volume.*/
 	FOnVolumeLoaded OnVolumeLoaded;
 
-	/** Sets a new MHDAsset and reinitializes the raymarching resources.*/
+	/** Sets a new VolumeAsset and reinitializes the raymarching resources.*/
 	UFUNCTION(BlueprintCallable)
-	bool SetMHDAsset(UVolumeAsset* InMHDAsset);
+	bool SetVolumeAsset(UVolumeAsset* InVolumeAsset);
 
 	/** Use faster shader for light calculation. Leads to instability with more lights.*/
 	UPROPERTY(EditAnywhere)
@@ -81,23 +81,23 @@ public:
 	/** Fired when curve gradient is updated.*/
 	FDelegateHandle CurveGradientUpdateDelegateHandle;
 
-	/** Fired when curve in the associated MHD file is changed.*/
-	FDelegateHandle CurveChangedInMHDDelegateHandle;
+	/** Fired when curve in the associated Volume file is changed.*/
+	FDelegateHandle CurveChangedInVolumeDelegateHandle;
 
-	/** Fired when data in the MHD asset is changed.*/
-	FDelegateHandle MHDAssetUpdatedDelegateHandle;
+	/** Fired when data in the Volume asset is changed.*/
+	FDelegateHandle VolumeAssetUpdatedDelegateHandle;
 
-	/** Function that is bound to the current MHDAssets OnCurveChanged delegate (in-editor only). Gets fired when the asset's curve
+	/** Function that is bound to the current VolumeAssets OnCurveChanged delegate (in-editor only). Gets fired when the asset's curve
 	 * changes.*/
-	void OnMHDAssetChangedTF(UCurveLinearColor* Curve);
+	void OnVolumeAssetChangedTF(UCurveLinearColor* Curve);
 
 	/** Function that is bound to the current transfer function color curve and gets fired when that gets changed (e.g. when the
 	 * user edits the curve in curve editor. */
 	void OnTFColorCurveUpdated(UCurveBase* Curve, EPropertyChangeType::Type ChangeType);
 
-	/** Called when the MHD asset is modified in-editor.*/
+	/** Called when the Volume asset is modified in-editor.*/
 	UFUNCTION()
-	void OnImageInfoChangedInEditro();
+	void OnImageInfoChangedInEditor();
 
 	/** Handles in-editor changes to exposed properties.*/
 	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
@@ -110,12 +110,12 @@ public:
 	/** Called every frame */
 	virtual void Tick(float DeltaTime) override;
 
-	/** The loaded MHD asset belonging to this volume*/
+	/** The loaded Volume asset belonging to this volume*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	UVolumeAsset* MHDAsset = nullptr;
+	UVolumeAsset* VolumeAsset = nullptr;
 
-	/** Only kept so that we can compare to it when a user changes the MHDAsset. See SetMHDAsset().*/
-	UVolumeAsset* OldMHDAsset = nullptr;
+	/** Only kept so that we can compare to it when a user changes the VolumeAsset. See SetVolumeAsset().*/
+	UVolumeAsset* OldVolumeAsset = nullptr;
 
 	/** The base material for volumetric rendering.*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -178,22 +178,19 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetTFCurve(UCurveLinearColor* InTFCurve);
 
-	/** Saves the current windowing parameters as default in the MHD Asset.*/
-	void SaveCurrentParamsToMHDAsset();
+	/** Saves the current windowing parameters as default in the Volume Asset.*/
+	void SaveCurrentParamsToVolumeAsset();
 
 	/** Loads the specified MHD file into the volume. Will also create a transient Float32 MHD file and VolumeTexture that will be
 	 * used.**/
 	UFUNCTION(BlueprintCallable)
-	bool LoadNewFileIntoVolumeTransientR32F(FString FileName);
+	bool LoadMHDFileIntoVolumeTransientR32F(FString FileName);
 
 	/** Loads the specified MHD file into the volume. Will also create a persistent G8/G16 MHD file and VolumeTexture that will be
 	used. If the volume is to be persistent, add OutFolder relative to content directory (with a forward slash at the end!).
 	**/
 	UFUNCTION(BlueprintCallable)
-	bool LoadNewFileIntoVolumeNormalized(FString FileName, bool bPersistent, FString OutFolder);
-
-	// 	UFUNCTION(BlueprintCallable)
-	// 	void TestReadDICOM(FString FileName);
+	bool LoadMHDFileIntoVolumeNormalized(FString FileName, bool bPersistent, FString OutFolder);
 
 	/** Sets all material parameters to the raymarching materials. Usually called only after loading a new volume.**/
 	void SetAllMaterialParameters();
@@ -208,7 +205,7 @@ public:
 	 * provided in Volume-Local space. **/
 	void SetMaterialClippingParameters();
 
-	/** API function to get the Min and Max values of the current MHD file.**/
+	/** API function to get the Min and Max values of the current VolumeAsset file.**/
 	UFUNCTION(BlueprintPure)
 	void GetMinMaxValues(float& Min, float& Max);
 

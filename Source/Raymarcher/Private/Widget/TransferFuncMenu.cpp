@@ -56,7 +56,7 @@ void UTransferFuncMenu::OnSaveClicked()
 {
 	for (ARaymarchVolume* ListenerVolume : ListenerVolumes)
 	{
-		ListenerVolume->SaveCurrentParamsToMHDAsset();
+		ListenerVolume->SaveCurrentParamsToVolumeAsset();
 	}
 }
 
@@ -65,7 +65,7 @@ void UTransferFuncMenu::OnCenterChanged(float Value)
 	// Set Center in Raymarch volume
 	for (ARaymarchVolume* ListenerVolume : ListenerVolumes)
 	{
-		ListenerVolume->SetWindowCenter(ListenerVolume->MHDAsset->ImageInfo.NormalizeValue(Value));
+		ListenerVolume->SetWindowCenter(ListenerVolume->VolumeAsset->ImageInfo.NormalizeValue(Value));
 	}
 }
 
@@ -73,7 +73,7 @@ void UTransferFuncMenu::OnWidthChanged(float Value)
 {
 	for (ARaymarchVolume* ListenerVolume : ListenerVolumes)
 	{
-		ListenerVolume->SetWindowWidth(ListenerVolume->MHDAsset->ImageInfo.NormalizeRange(Value));
+		ListenerVolume->SetWindowWidth(ListenerVolume->VolumeAsset->ImageInfo.NormalizeRange(Value));
 	}
 }
 
@@ -122,12 +122,12 @@ void UTransferFuncMenu::OnNewVolumeLoaded()
 {
 	if (RangeProviderVolume)
 	{
-		FWindowingParameters DefaultParameters = RangeProviderVolume->MHDAsset->ImageInfo.DefaultWindowingParameters;
+		FWindowingParameters DefaultParameters = RangeProviderVolume->VolumeAsset->ImageInfo.DefaultWindowingParameters;
 		if (WindowCenterBox)
 		{
 			WindowCenterBox->MinMax =
-				FVector2D(RangeProviderVolume->MHDAsset->ImageInfo.MinValue, RangeProviderVolume->MHDAsset->ImageInfo.MaxValue);
-			WindowCenterBox->SetValue(RangeProviderVolume->MHDAsset->ImageInfo.DenormalizeValue(DefaultParameters.Center));
+				FVector2D(RangeProviderVolume->VolumeAsset->ImageInfo.MinValue, RangeProviderVolume->VolumeAsset->ImageInfo.MaxValue);
+			WindowCenterBox->SetValue(RangeProviderVolume->VolumeAsset->ImageInfo.DenormalizeValue(DefaultParameters.Center));
 
 			WindowCenterBox->SetAllLabelsFromSlider();
 		}
@@ -135,7 +135,7 @@ void UTransferFuncMenu::OnNewVolumeLoaded()
 		if (WindowWidthBox)
 		{
 			WindowWidthBox->MinMax = FVector2D(0, 4000);
-			WindowWidthBox->SetValue(RangeProviderVolume->MHDAsset->ImageInfo.DenormalizeRange(DefaultParameters.Width));
+			WindowWidthBox->SetValue(RangeProviderVolume->VolumeAsset->ImageInfo.DenormalizeRange(DefaultParameters.Width));
 			WindowWidthBox->SetAllLabelsFromSlider();
 		}
 
