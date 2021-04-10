@@ -278,11 +278,7 @@ UVolumeAsset* UMHDLoader::CreateVolumeFromFileInExistingPackage(
 	// Create the transient volume asset.
 	UVolumeAsset* OutAsset =
 		NewObject<UVolumeAsset>(ParentPackage, FName("VA_" + VolumeName), RF_Standalone | RF_Public);
-	if (OutAsset)
-	{
-//		FAssetRegistryModule::AssetCreated(OutAsset);
-	}
-	else
+	if (!OutAsset)
 	{
 		return nullptr;
 	}
