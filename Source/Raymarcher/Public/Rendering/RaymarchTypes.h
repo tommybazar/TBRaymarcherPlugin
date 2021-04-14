@@ -127,6 +127,10 @@ struct FBasicRaymarchRenderingResources
 
 	// Following is not visible in BPs, it's too low level to be useful in BP.
 
+	/// A volume texture that is used for fast lighting shaders.
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
+	UTextureRenderTargetVolume* AlignedVolume;
+
 	// Unordered access view to the Light Volume. Used in our compute shaders as a RWTexture.
 	FUnorderedAccessViewRHIRef LightVolumeUAVRef;
 	// Read-write buffers for all 3 major axes. Used in compute shaders.

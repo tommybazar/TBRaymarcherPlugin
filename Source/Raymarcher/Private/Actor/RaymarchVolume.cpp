@@ -9,11 +9,11 @@
 #include "Rendering/RaymarchMaterialParameters.h"
 #include "TextureUtilities.h"
 #include "Util/RaymarchUtils.h"
+#include "VolumeAsset/Loaders/MHDLoader.h"
 #include "VolumeAsset/VolumeAsset.h"
 
 #include <Curves/CurveLinearColor.h>
 #include <Engine/TextureRenderTargetVolume.h>
-#include "VolumeAsset/Loaders/MHDLoader.h"
 
 DEFINE_LOG_CATEGORY(LogRaymarchVolume)
 
@@ -36,6 +36,7 @@ ARaymarchVolume::ARaymarchVolume() : AActor()
 		TEXT("/TBRaymarcherPlugin/Meshes/Unit_Cube_Inside_Out"));
 
 	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Raymarch Cube Static Mesh"));
+	ShadowMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Shadow Raymarch Cube Static Mesh"));
 	/// Set basic unit cube properties.
 	if (UnitCubeInsideOut.Succeeded())
 	{
@@ -44,6 +45,12 @@ ARaymarchVolume::ARaymarchVolume() : AActor()
 		StaticMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 		StaticMeshComponent->SetRelativeScale3D(FVector(100.0f));
 		StaticMeshComponent->SetupAttachment(RootComponent);
+
+		ShadowMeshComponent->SetStaticMesh(UnitCubeInsideOut.Object);
+		ShadowMeshComponent->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
+		ShadowMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+		ShadowMeshComponent->SetupAttachment(RootComponent);
+		ShadowMeshComponent->SetRelativeScale3D(FVector(100.0f));
 	}
 
 	// Create CubeBorderMeshComponent and find and assign cube border mesh (that's a cube with only edges visible).
@@ -95,14 +102,15 @@ void ARaymarchVolume::PostRegisterAllComponents()
 		// Do not perform this on default class objects or archetype objects
 		return;
 	}
-
-	if (RaymarchResources.bIsInitialized)
-	{
-		// Do not perform this if this object already is initialized
-		// PostRegisterAllComponents also gets called in every OnPropertyChanged call, so
-		// we want to ignore every call to this except the first one.
-		return;
-	}
+	//
+	// 	if (RaymarchResources.bIsInitialized)
+	// 	{
+	// 		// Do not perform this if this object already is initialized
+	// 		// PostRegisterAllComponents also gets called in every OnPropertyChanged call, so
+	// 		// we want to ignore every call to this except the first one.
+	// 		bRequestedRecompute = true;
+	// 		return;
+	// 	}
 
 	if (LitRaymarchMaterialBase)
 	{
@@ -117,6 +125,15 @@ void ARaymarchVolume::PostRegisterAllComponents()
 			UMaterialInstanceDynamic::Create(IntensityRaymarchMaterialBase, this, "Intensity Raymarch Mat Dynamic Inst");
 
 		IntensityRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
+	}
+
+	if (ShadowRaymarchMaterialBase)
+	{
+		ShadowRaymarchMaterial =
+			UMaterialInstanceDynamic::Create(ShadowRaymarchMaterialBase, this, "Shadow Raymarch Mat Dynamic Inst");
+
+		ShadowRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
+		ShadowMeshComponent->SetMaterial(0, ShadowRaymarchMaterial);
 	}
 
 	if (StaticMeshComponent)
@@ -179,8 +196,8 @@ void ARaymarchVolume::OnTFColorCurveUpdated(UCurveBase* Curve, EPropertyChangeTy
 
 void ARaymarchVolume::OnImageInfoChangedInEditor()
 {
-	// Just update parameters from default VolumeAsset values, that's the only thing that can change that's interesting in the Image Info
-	// we're initialized.
+	// Just update parameters from default VolumeAsset values, that's the only thing that can change that's interesting in the Image
+	// Info we're initialized.
 	RaymarchResources.WindowingParameters = VolumeAsset->ImageInfo.DefaultWindowingParameters;
 	SetMaterialWindowingParameters();
 
@@ -330,8 +347,8 @@ void ARaymarchVolume::Tick(float DeltaTime)
 	{
 		// For testing light calculation shader speed - comment out when not testing! (otherwise lights get recalculated every tick
 		// for no reason).
-		// 		ResetAllLights();
-		// 		return;
+		ResetAllLights();
+		return;
 
 		if (bRequestedRecompute)
 		{
@@ -393,6 +410,9 @@ void ARaymarchVolume::ResetAllLights()
 		}
 		bool bLightAddWasSuccessful = false;
 
+		FQuat LightRotate = Light->GetCurrentParameters().LightDirection.ToOrientationQuat();
+		ShadowMeshComponent->SetWorldRotation(LightRotate);
+
 		URaymarchUtils::AddDirLightToSingleVolume(
 			RaymarchResources, Light->GetCurrentParameters(), true, WorldParameters, bResetWasSuccessful, bFastShader);
 
@@ -422,6 +442,19 @@ void ARaymarchVolume::UpdateSingleLight(ARaymarchLight* UpdatedLight)
 	}
 }
 
+void ARaymarchVolume::SetShowShadowVolume(bool InbShowShadowVolume)
+{
+	bShowShadowVolume = InbShowShadowVolume;
+	if (bShowShadowVolume)
+	{
+		ShadowMeshComponent->SetVisibility(true, true);
+	}
+	else
+	{
+		ShadowMeshComponent->SetVisibility(false, true);
+	}
+}
+
 bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 {
 	if (!InVolumeAsset)
@@ -432,15 +465,15 @@ bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 #if WITH_EDITOR
 	if (!GetWorld() || !GetWorld()->IsGameWorld())
 	{
-		if (InVolumeAsset != OldVolumeAsset)
+		if (InVolumeAsset != PreviousVolumeAsset)
 		{
 			// If we're in editor and we already have an asset loaded before, unbind the delegate
 			// from it's color curve change broadcast and also the OnCurve and OnVolumeInfo changed broadcasts.
-			if (OldVolumeAsset)
+			if (PreviousVolumeAsset)
 			{
-				OldVolumeAsset->TransferFuncCurve->OnUpdateCurve.Remove(CurveGradientUpdateDelegateHandle);
-				OldVolumeAsset->OnCurveChanged.Remove(CurveChangedInVolumeDelegateHandle);
-				OldVolumeAsset->OnImageInfoChanged.Remove(VolumeAssetUpdatedDelegateHandle);
+				PreviousVolumeAsset->TransferFuncCurve->OnUpdateCurve.Remove(CurveGradientUpdateDelegateHandle);
+				PreviousVolumeAsset->OnCurveChanged.Remove(CurveChangedInVolumeDelegateHandle);
+				PreviousVolumeAsset->OnImageInfoChanged.Remove(VolumeAssetUpdatedDelegateHandle);
 			}
 			if (InVolumeAsset)
 			{
@@ -464,7 +497,7 @@ bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 
 #if WITH_EDITOR
 		// Bind a listener to the delegate notifying about color curve changes
-		if ((!GetWorld() || !GetWorld()->IsGameWorld()) && InVolumeAsset != OldVolumeAsset)
+		if ((!GetWorld() || !GetWorld()->IsGameWorld()) && InVolumeAsset != PreviousVolumeAsset)
 		{
 			CurveGradientUpdateDelegateHandle =
 				CurrentTFCurve->OnUpdateCurve.AddUObject(this, &ARaymarchVolume::OnTFColorCurveUpdated);
@@ -478,7 +511,7 @@ bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 	}
 
 	VolumeAsset = InVolumeAsset;
-	OldVolumeAsset = InVolumeAsset;
+	PreviousVolumeAsset = InVolumeAsset;
 
 	InitializeRaymarchResources(VolumeAsset->DataTexture);
 
@@ -498,6 +531,11 @@ bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 
 	// Unreal units = cm, MHD and Dicoms both have sizes in mm -> divide by 10.
 	StaticMeshComponent->SetRelativeScale3D(InVolumeAsset->ImageInfo.WorldDimensions / 10);
+
+	FVector RaymarchCubeSize = StaticMeshComponent->GetRelativeScale3D();
+	float Diagonal = RaymarchCubeSize.Size();
+
+	ShadowMeshComponent->SetRelativeScale3D(FVector(Diagonal));
 
 	// Update world, set all parameters and request recompute.
 	UpdateWorldParameters();
@@ -625,6 +663,10 @@ void ARaymarchVolume::SetMaterialVolumeParameters()
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::DataVolume, RaymarchResources.DataVolumeTextureRef);
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::LightVolume, RaymarchResources.LightVolumeRenderTarget);
 	}
+	if (ShadowRaymarchMaterial)
+	{
+		ShadowRaymarchMaterial->SetTextureParameterValue(RaymarchParams::LightVolume, RaymarchResources.LightVolumeRenderTarget);
+	}
 }
 
 void ARaymarchVolume::SetMaterialWindowingParameters()
@@ -655,6 +697,12 @@ void ARaymarchVolume::SetMaterialClippingParameters()
 	{
 		IntensityRaymarchMaterial->SetVectorParameterValue(RaymarchParams::ClippingCenter, LocalClippingparameters.Center);
 		IntensityRaymarchMaterial->SetVectorParameterValue(RaymarchParams::ClippingDirection, LocalClippingparameters.Direction);
+	}
+
+	if (ShadowRaymarchMaterial)
+	{
+		ShadowRaymarchMaterial->SetVectorParameterValue(RaymarchParams::ClippingCenter, LocalClippingparameters.Center);
+		ShadowRaymarchMaterial->SetVectorParameterValue(RaymarchParams::ClippingDirection, LocalClippingparameters.Direction);
 	}
 }
 
@@ -784,6 +832,12 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 
 	RaymarchResources.LightVolumeUAVRef =
 		RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->Resource->TextureRHI);
+
+	RaymarchResources.AlignedVolume = NewObject<UTextureRenderTargetVolume>(this, "Aligned Light Intermediate Render Target");
+	RaymarchResources.AlignedVolume->bCanCreateUAV = true;
+	float AlignedVolumeSize = sqrt(sqrt((X * X) + (Y * Y)) + (Z * Z));
+	int AlignedVolumeInt = AlignedVolumeSize;
+	RaymarchResources.AlignedVolume->Init(AlignedVolumeSize, AlignedVolumeSize, AlignedVolumeSize, PixelFormat);
 
 	RaymarchResources.bIsInitialized = true;
 }

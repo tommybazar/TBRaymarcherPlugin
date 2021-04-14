@@ -28,6 +28,13 @@ public:
 	//
 	//
 
+	/** Adds a light to light volume. Uses aligned volume to get around the need to synchronize on GPU. Also works for removing a light by setting bLightAdded to false.*/
+	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
+	static RAYMARCHER_API void AddDirLightToSingleVolume_Aligned(const FBasicRaymarchRenderingResources& Resources,
+		const FDirLightParameters& LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters,
+		bool& LightAdded);
+
+
 	/** Adds a light to light volume. Also works for removing a light by setting bLightAdded to false.*/
 	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
 	static RAYMARCHER_API void AddDirLightToSingleVolume(const FBasicRaymarchRenderingResources& Resources,

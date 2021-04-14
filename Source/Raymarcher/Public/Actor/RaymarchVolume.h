@@ -41,8 +41,32 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* StaticMeshComponent;
 
+	//////////////////////////////////////////////////////////////////////////
+	// Debug stuff follows
+
+	/** MeshComponent for debugging the aligned cube illumination calculation. */
+	UPROPERTY(EditAnywhere)
+	UStaticMeshComponent* ShadowMeshComponent;
+	
+	/** The base material for shadow visualization.*/
+	UPROPERTY(EditAnywhere)
+	UMaterial* ShadowRaymarchMaterialBase;
+
+	/** The dynamic material for shadow visualization.*/
+	UPROPERTY(EditAnywhere)
+	UMaterialInstanceDynamic* ShadowRaymarchMaterial;
+
+	UPROPERTY(EditAnywhere)
+	bool bShowShadowVolume = true;
+
+	void SetShowShadowVolume(bool InbShowShadowVolume);
+
+	// End of debug stuff
+	//////////////////////////////////////////////////////////////////////////
+
+
 	/** Pointer to the currently used Transfer Function curve.*/
-	UCurveLinearColor* CurrentTFCurve = nullptr;
+	UCurveLinearColor* CurrentTFCurve;
 
 	/** Delegate that is fired whenever a new volume is loaded. Useful if you have any UI showing info about this volume.*/
 	FOnVolumeLoaded OnVolumeLoaded;
@@ -112,10 +136,10 @@ public:
 
 	/** The loaded Volume asset belonging to this volume*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	UVolumeAsset* VolumeAsset = nullptr;
+	UVolumeAsset* VolumeAsset;
 
-	/** Only kept so that we can compare to it when a user changes the VolumeAsset. See SetVolumeAsset().*/
-	UVolumeAsset* OldVolumeAsset = nullptr;
+	/** Only kept so that we can compare loaded VolumeAsset with it when a user changes the VolumeAsset. See SetVolumeAsset().*/
+	UVolumeAsset* PreviousVolumeAsset;
 
 	/** The base material for volumetric rendering.*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -127,19 +151,19 @@ public:
 
 	/** Dynamic material instance for Lit rendering **/
 	UPROPERTY(BlueprintReadOnly, Transient)
-	UMaterialInstanceDynamic* LitRaymarchMaterial = nullptr;
+	UMaterialInstanceDynamic* LitRaymarchMaterial;
 
 	/** Dynamic material instance for Intensity rendering**/
 	UPROPERTY(BlueprintReadOnly, Transient)
-	UMaterialInstanceDynamic* IntensityRaymarchMaterial = nullptr;
+	UMaterialInstanceDynamic* IntensityRaymarchMaterial;
 
 	/** Cube border mesh - this is just a cube with wireframe borders.**/
 	UPROPERTY(VisibleAnywhere)
-	UStaticMeshComponent* CubeBorderMeshComponent = nullptr;
+	UStaticMeshComponent* CubeBorderMeshComponent;
 
 	/** The clipping plane affecting this volume.**/
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	ARaymarchClipPlane* ClippingPlane = nullptr;
+	ARaymarchClipPlane* ClippingPlane;
 
 	/** An array of lights affecting this volume.**/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -232,4 +256,5 @@ public:
 	/** Switches between Lit and Intensity raymarching.**/
 	UFUNCTION(BlueprintCallable)
 	void SetRaymarchSteps(float InRaymarchingSteps);
+
 };

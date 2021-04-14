@@ -406,6 +406,18 @@ void AddDirLightToSingleLightVolume_GPUSync_RenderThread(FRHICommandListImmediat
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }
 
+void AddDirLightToSingleLightVolume_Aligned_RenderThread(FRHICommandListImmediate& RHICmdList,
+	FBasicRaymarchRenderingResources Resources, const FDirLightParameters LightParameters, const bool Added,
+	const FRaymarchWorldParameters WorldParameters)
+{
+	// 1) Get rotation so that +X on the aligned volume is facing the light.
+	// 2) Get Data2Aligned and Aligned2Data transforms
+	// 3) Clear Aligned volume
+	// 4) Do fast light propagation in the aligned volume (Sample with Aligned2Data(curpos))
+	// 5) Copy added illumination to the regular LightVolume (Sample aligned with Data2Aligned(curpos))
+	// 6) Profit!
+}
+
 void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICmdList, FBasicRaymarchRenderingResources Resources,
 	const FDirLightParameters LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters)
 {

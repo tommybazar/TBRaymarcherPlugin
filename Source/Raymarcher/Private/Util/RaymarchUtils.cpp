@@ -26,6 +26,30 @@
 
 #define LOCTEXT_NAMESPACE "RaymarchPlugin"
 
+RAYMARCHER_API void URaymarchUtils::AddDirLightToSingleVolume_Aligned(const FBasicRaymarchRenderingResources& Resources,
+	const FDirLightParameters& LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters, bool& LightAdded)
+{	 // Robust checking that all resources exist.
+	if ((!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->Resource ||
+			!Resources.DataVolumeTextureRef->Resource->TextureRHI) ||
+		(!Resources.LightVolumeRenderTarget || !Resources.LightVolumeRenderTarget->Resource ||
+			!Resources.LightVolumeRenderTarget->Resource->TextureRHI) ||
+		(!Resources.TFTextureRef || !Resources.TFTextureRef->Resource || !Resources.TFTextureRef->Resource->TextureRHI))
+	{
+		LightAdded = false;
+		return;
+	}
+	else
+	{
+		LightAdded = true;
+	}
+
+	// Call the actual rendering code on RenderThread.
+	ENQUEUE_RENDER_COMMAND(CaptureCommand)
+	([=](FRHICommandListImmediate& RHICmdList) {
+		AddDirLightToSingleLightVolume_RenderThread(RHICmdList, Resources, LightParameters, Added, WorldParameters);
+	});
+}
+
 // void URaymarchUtils::InitLightVolume(UVolumeTexture*& LightVolume, FIntVector Dimensions)
 // {
 // 	// FMemory::Memset(InitMemory, 1, TotalSize);
@@ -36,9 +60,12 @@ void URaymarchUtils::AddDirLightToSingleVolume(const FBasicRaymarchRenderingReso
 	const FDirLightParameters& LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters, bool& LightAdded,
 	bool bGPUSync)
 {
-	if (!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->Resource || !Resources.TFTextureRef->Resource ||
-		!Resources.LightVolumeRenderTarget->Resource || !Resources.DataVolumeTextureRef->Resource->TextureRHI ||
-		!Resources.TFTextureRef->Resource->TextureRHI || !Resources.LightVolumeRenderTarget->Resource->TextureRHI)
+	// Robust checking that all resources exist.
+	if ((!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->Resource ||
+			!Resources.DataVolumeTextureRef->Resource->TextureRHI) ||
+		(!Resources.LightVolumeRenderTarget || !Resources.LightVolumeRenderTarget->Resource ||
+			!Resources.LightVolumeRenderTarget->Resource->TextureRHI) ||
+		(!Resources.TFTextureRef || !Resources.TFTextureRef->Resource || !Resources.TFTextureRef->Resource->TextureRHI))
 	{
 		LightAdded = false;
 		return;
@@ -70,9 +97,12 @@ void URaymarchUtils::ChangeDirLightInSingleVolume(FBasicRaymarchRenderingResourc
 	const FDirLightParameters OldLightParameters, const FDirLightParameters NewLightParameters,
 	const FRaymarchWorldParameters WorldParameters, bool& LightAdded, bool bGpuSync)
 {
-	if (!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->Resource || !Resources.TFTextureRef->Resource ||
-		!Resources.LightVolumeRenderTarget->Resource || !Resources.DataVolumeTextureRef->Resource->TextureRHI ||
-		!Resources.TFTextureRef->Resource->TextureRHI || !Resources.LightVolumeRenderTarget->Resource->TextureRHI)
+	// Robust checking that all resources exist.
+	if ((!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->Resource ||
+			!Resources.DataVolumeTextureRef->Resource->TextureRHI) ||
+		(!Resources.LightVolumeRenderTarget || !Resources.LightVolumeRenderTarget->Resource ||
+			!Resources.LightVolumeRenderTarget->Resource->TextureRHI) ||
+		(!Resources.TFTextureRef || !Resources.TFTextureRef->Resource || !Resources.TFTextureRef->Resource->TextureRHI))
 	{
 		LightAdded = false;
 		return;

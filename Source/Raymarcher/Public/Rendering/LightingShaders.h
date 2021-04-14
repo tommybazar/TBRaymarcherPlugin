@@ -22,6 +22,9 @@
 #include "ShaderParameters.h"
 #include "VolumeAsset/WindowingParameters.h"
 
+void GetLocalLightParamsAndAxes(const FDirLightParameters& LightParameters, const FTransform& VolumeTransform,
+	FDirLightParameters& OutLocalLightParameters, FMajorAxes& OutLocalMajorAxes);
+
 /// Creates a SamplerState RHI with "Border" handling of outside-of-UV reads.
 /// The color read from outside the buffer is specified by the BorderColorInt.
 FSamplerStateRHIRef GetBufferSamplerRef(uint32 BorderColorInt);
@@ -38,6 +41,9 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 void AddDirLightToSingleLightVolume_GPUSync_RenderThread(FRHICommandListImmediate& RHICmdList,
 	FBasicRaymarchRenderingResources Resources, const FDirLightParameters LightParameters, const bool Added,
 	const FRaymarchWorldParameters WorldParameters);
+
+void AddDirLightToSingleLightVolume_Aligned_RenderThread(FRHICommandListImmediate& RHICmdList, FBasicRaymarchRenderingResources Resources,
+	const FDirLightParameters LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters);
 
 void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICmdList,
 	FBasicRaymarchRenderingResources Resources, const FDirLightParameters OldLightParameters,
