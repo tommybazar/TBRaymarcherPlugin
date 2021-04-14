@@ -6,47 +6,20 @@
 #pragma once
 
 #include "Actor/VR/VRMenu/TFMenuPanel.h"
-#include "Widget/TransferFuncMenu.h"
+
 #include "Actor/RaymarchVolume.h"
+#include "Widget/TransferFuncMenu.h"
 
 void ATFMenuPanel::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	if (TransferFuncMenuClass && WidgetComponent)
-	{
-		// Force initialization of widget on WidgetComponent.
-		WidgetComponent->SetWidgetClass(TransferFuncMenuClass);
-		TransferFuncMenu = Cast<UTransferFuncMenu>(WidgetComponent->GetUserWidgetObject());
-		if (!TransferFuncMenu)
-		{
-			WidgetComponent->InitWidget();
-			TransferFuncMenu = Cast<UTransferFuncMenu>(WidgetComponent->GetUserWidgetObject());
-			if (!TransferFuncMenu)
-			{
-				return;
-			}
-		}
-	}
+	EnsureWidgetIsSpawned();
 }
 
 void ATFMenuPanel::BeginPlay()
 {
 	Super::BeginPlay();
-	if (TransferFuncMenuClass && WidgetComponent)
-	{
-		// Force initialization of widget on WidgetComponent.
-		WidgetComponent->SetWidgetClass(TransferFuncMenuClass);
-		TransferFuncMenu = Cast<UTransferFuncMenu>(WidgetComponent->GetUserWidgetObject());
-		if (!TransferFuncMenu)
-		{
-			WidgetComponent->InitWidget();
-			TransferFuncMenu = Cast<UTransferFuncMenu>(WidgetComponent->GetUserWidgetObject());
-			if (!TransferFuncMenu)
-			{
-				return;
-			}
-		}
-	}
+	EnsureWidgetIsSpawned();
 
 	if (!TransferFuncMenu)
 	{
@@ -59,5 +32,20 @@ void ATFMenuPanel::BeginPlay()
 	for (ARaymarchVolume* Volume : ListenerVolumes)
 	{
 		TransferFuncMenu->AddListenerVolume(Volume);
+	}
+}
+
+void ATFMenuPanel::EnsureWidgetIsSpawned()
+{
+	if (TransferFuncMenuClass && WidgetComponent)
+	{
+		// Force initialization of widget on WidgetComponent.
+		WidgetComponent->SetWidgetClass(TransferFuncMenuClass);
+		TransferFuncMenu = Cast<UTransferFuncMenu>(WidgetComponent->GetUserWidgetObject());
+		if (!TransferFuncMenu)
+		{
+			WidgetComponent->InitWidget();
+			TransferFuncMenu = Cast<UTransferFuncMenu>(WidgetComponent->GetUserWidgetObject());
+		}
 	}
 }

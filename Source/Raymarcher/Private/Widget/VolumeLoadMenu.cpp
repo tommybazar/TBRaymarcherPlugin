@@ -29,12 +29,13 @@ bool UVolumeLoadMenu::Initialize()
 	{
 		// Add existing MHD files into box.
 		AssetSelectionComboBox->ClearOptions();
+		AssetSelectionComboBox->OnSelectionChanged.Clear();
+
 		for (UVolumeAsset* MHDAsset : AssetArray)
 		{
 			AssetSelectionComboBox->AddOption(GetNameSafe(MHDAsset));
 		}
 
-		AssetSelectionComboBox->OnSelectionChanged.Clear();
 		AssetSelectionComboBox->OnSelectionChanged.AddDynamic(this, &UVolumeLoadMenu::OnAssetSelected);
 	}
 

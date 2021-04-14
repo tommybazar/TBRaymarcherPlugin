@@ -31,4 +31,7 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	TArray<ARaymarchVolume*> ListenerVolumes;
+
+protected:
+	virtual void EnsureWidgetIsSpawned() override;
 };

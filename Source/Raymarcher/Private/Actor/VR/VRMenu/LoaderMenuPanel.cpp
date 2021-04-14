@@ -13,26 +13,14 @@
 void ALoaderMenuPanel::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-
-	if (LoaderMenuClass && WidgetComponent)
-	{
-		WidgetComponent->SetWidgetClass(LoaderMenuClass);
-		LoaderMenu = Cast<UVolumeLoadMenu>(WidgetComponent->GetUserWidgetObject());
-		if (!LoaderMenu)
-		{
-			WidgetComponent->InitWidget();
-			LoaderMenu = Cast<UVolumeLoadMenu>(WidgetComponent->GetUserWidgetObject());
-			if (!LoaderMenu)
-			{
-				return;
-			}
-		}
-	}
+	EnsureWidgetIsSpawned();
 }
 
 void ALoaderMenuPanel::BeginPlay()
 {
 	Super::BeginPlay();
+	EnsureWidgetIsSpawned();
+
 	if (!LoaderMenu)
 	{
 		return;
@@ -42,5 +30,19 @@ void ALoaderMenuPanel::BeginPlay()
 	for (ARaymarchVolume* Volume : ListenerVolumes)
 	{
 		LoaderMenu->AddListenerVolume(Volume);
+	}
+}
+
+void ALoaderMenuPanel::EnsureWidgetIsSpawned()
+{
+	if (LoaderMenuClass && WidgetComponent)
+	{
+		WidgetComponent->SetWidgetClass(LoaderMenuClass);
+		LoaderMenu = Cast<UVolumeLoadMenu>(WidgetComponent->GetUserWidgetObject());
+		if (!LoaderMenu)
+		{
+			WidgetComponent->InitWidget();
+			LoaderMenu = Cast<UVolumeLoadMenu>(WidgetComponent->GetUserWidgetObject());
+		}
 	}
 }

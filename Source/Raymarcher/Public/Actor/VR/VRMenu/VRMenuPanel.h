@@ -12,7 +12,7 @@
 #include "VRMenuPanel.generated.h"
 
 /**
- * Base class for motion controllers.
+ * Base class for VR Menus. Has a mesh and a widget.
  */
 UCLASS(Abstract)
 class AVRMenuPanel : public AActor
@@ -29,4 +29,7 @@ public:
 	/// Actual menu.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UWidgetComponent* WidgetComponent;
+
+protected:
+	virtual void EnsureWidgetIsSpawned();
 };

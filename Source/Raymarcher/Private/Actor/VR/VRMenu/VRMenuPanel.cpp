@@ -7,9 +7,16 @@
 
 AVRMenuPanel::AVRMenuPanel()
 {
-	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("Static Mesh");
-	SetRootComponent(StaticMeshComponent);
+	USceneComponent* Root = CreateDefaultSubobject<USceneComponent>("Root");
+	SetRootComponent(Root);
+
+	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("Menu Panel Mesh");
+	StaticMeshComponent->SetupAttachment(RootComponent);
 
 	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>("Menu Widget");
 	WidgetComponent->SetupAttachment(RootComponent);
+}
+
+void AVRMenuPanel::EnsureWidgetIsSpawned()
+{
 }

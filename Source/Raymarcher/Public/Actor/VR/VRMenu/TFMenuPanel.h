@@ -13,7 +13,7 @@ class UTransferFuncMenu;
 class ARaymarchVolume;
 
 /**
- * Base class for motion controllers.
+ * Class for a Transfer Function VR menu. Exposes the widget properties on the actor.
  */
 UCLASS(Abstract)
 class ATFMenuPanel : public AVRMenuPanel
@@ -34,4 +34,7 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	TArray<ARaymarchVolume*> ListenerVolumes;
+
+protected:
+	virtual void EnsureWidgetIsSpawned();
 };
