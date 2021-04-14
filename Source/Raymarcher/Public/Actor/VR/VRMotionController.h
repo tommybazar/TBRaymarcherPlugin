@@ -68,6 +68,8 @@ public:
 
 	virtual void OnTriggerAxis(float Axis);
 
+	virtual void OnJoystickYAxis(float Axis);
+
 	virtual void OnTriggerPressed();
 
 	virtual void OnTriggerReleased();

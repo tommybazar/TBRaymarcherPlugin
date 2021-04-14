@@ -58,6 +58,11 @@ void AVRMotionController::SetupInput(UInputComponent* InInputComponent)
 
 		InInputComponent->BindAxis("Right_Grip_Axis", this, &AVRMotionController::OnGripAxis);
 		InInputComponent->BindAxis("Right_Trigger_Axis", this, &AVRMotionController::OnTriggerAxis);
+
+		InInputComponent->BindAxis("Right_Joystick_Y", this, &AVRMotionController::OnJoystickYAxis);
+
+
+
 	}
 	else
 	{
@@ -70,6 +75,7 @@ void AVRMotionController::SetupInput(UInputComponent* InInputComponent)
 
 		InInputComponent->BindAxis("Left_Grip_Axis", this, &AVRMotionController::OnGripAxis);
 		InInputComponent->BindAxis("Left_Trigger_Axis", this, &AVRMotionController::OnTriggerAxis);
+		InInputComponent->BindAxis("Left_Joystick_Y", this, &AVRMotionController::OnJoystickYAxis);
 	}
 }
 
@@ -96,6 +102,14 @@ void AVRMotionController::OnGripReleased()
 void AVRMotionController::OnTriggerAxis(float Axis)
 {
 	// Update animation
+}
+
+void AVRMotionController::OnJoystickYAxis(float Axis)
+{
+	if (WidgetInteractor)
+	{
+		WidgetInteractor->ScrollWheel(Axis * 50);
+	}
 }
 
 void AVRMotionController::OnTriggerPressed()
