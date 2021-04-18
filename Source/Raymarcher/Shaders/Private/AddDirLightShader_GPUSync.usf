@@ -161,7 +161,7 @@ void MainComputeShader(uint2 PixelLoc : SV_DispatchThreadID)
     // Only sample if previous sampling spot isn't completely cut-away by the cutting plane.
         if (AlphaWeight > 0.0 && all(SampleUVW == saturate(SampleUVW)))
         {
-            CurrentSample = SampleWindowedVolumeStep(SampleUVW, StepSize, Volume, VolumeSampler, TransferFunc, TransferFuncSampler, WindowingParameters).a;
+            CurrentSample = SampleWindowedVolumeStep(SampleUVW, StepSize * VOLUME_DENSITY, Volume, VolumeSampler, TransferFunc, TransferFuncSampler, WindowingParameters).a;
             CurrentSample *= AlphaWeight;
         }
     

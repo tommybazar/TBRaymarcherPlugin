@@ -22,10 +22,10 @@ float4 PerformLitRaymarch(Texture3D DataVolume, // Data Volume
                           float3 ClippingCenter, float3 ClippingDirection, // Clipping plane position and direction of clipped away region
                           FMaterialPixelParameters MaterialParameters)                      // Material Parameters
 {
-// Get camera vector in local space and multiply it by step size.
+    // Get camera vector in local space and multiply it by step size.
     float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)) * StepSize;
-    // Get step size in world units to be consistent with compute shaders' opacity calculations.
-    float StepSizeWorld = length(mul(LocalCamVec, GetPrimitiveData(MaterialParameters.PrimitiveId).LocalToWorld));
+    // Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
+    float StepSizeWorld = VOLUME_DENSITY * StepSize;
     // Initialize accumulated light energy.
     float4 LightEnergy = 0;
     // Jitter Entry position to avoid artifacts.
@@ -118,8 +118,8 @@ float4 PerformLitRaymarchLabeled(Texture3D DataVolume, // Data Volume
 {
     // Get camera vector in local space and multiply it by step size.
     float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)) * StepSize;
-    // Get step size in world units to be consistent with compute shaders' opacity calculations.
-    float StepSizeWorld = length(mul(LocalCamVec, GetPrimitiveData(MaterialParameters.PrimitiveId).LocalToWorld));
+    // Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
+    float StepSizeWorld = VOLUME_DENSITY * StepSize;
     // Initialize accumulated light energy.
     float4 LightEnergy = 0;
     // Jitter Entry position to avoid artifacts.
@@ -172,8 +172,8 @@ float4 PerformIntensityRaymarchLabeled(Texture3D DataVolume, Texture3D LabelVolu
 {
     // Get camera vector in local space and multiply it by step size.
     float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)) * StepSize;
-    // Get step size in world units to be consistent with compute shaders' opacity calculations.
-    float StepSizeWorld = length(mul(LocalCamVec, GetPrimitiveData(MaterialParameters.PrimitiveId).LocalToWorld));
+    // Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
+    float StepSizeWorld = VOLUME_DENSITY * StepSize;
     // Initialize accumulated light energy.
     float4 LightEnergy = 0;
     // Jitter Entry position to avoid artifacts.

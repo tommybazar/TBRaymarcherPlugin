@@ -18,6 +18,11 @@
 // The multiplier to use with the SQRT_3_HALF to get values fitting to a range of 0-1.
 #define ONE_OVER_SQRT_3 0.57735026919f
 
+// The fixed volume density. Used to multiply all StepSizes (when raymarching or calculating illumination).
+// Increasing this will lead to more opaque volumes, all other things being equal.
+// #TODO Find out what's the standard in e.g. Slicer or ITK and use that.
+#define VOLUME_DENSITY 100.0f
+
 // Returns true if CurPos is clipped by the clipping plane defined by the center and direction.
 // (Volume is clipped away in the clipping direction)
 bool IsCurPosClipped(float3 CurPos, float3 ClippingCenter, float3 ClippingDirection)

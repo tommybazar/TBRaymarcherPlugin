@@ -129,13 +129,13 @@ void MainComputeShader(uint2 PixelLoc : SV_DispatchThreadID)
     // Only sample data volumes if they're not cut away completely. And weight them by the cut-away weight.
     if (RemovedAlphaWeight > 0.0)
     {
-        RemovedCurrentSample = SampleWindowedVolumeStep(RemovedSampleUVW, RemovedStepSize, Volume, VolumeSampler, TransferFunc, TransferFuncSampler, WindowingParameters).a;
+        RemovedCurrentSample = SampleWindowedVolumeStep(RemovedSampleUVW, RemovedStepSize * VOLUME_DENSITY, Volume, VolumeSampler, TransferFunc, TransferFuncSampler, WindowingParameters).a;
         RemovedCurrentSample *= RemovedAlphaWeight;
     }
     
     if (AlphaWeight > 0.0)
     {
-        CurrentSample = SampleWindowedVolumeStep(SampleUVW, StepSize, Volume, VolumeSampler, TransferFunc, TransferFuncSampler, WindowingParameters).a;
+        CurrentSample = SampleWindowedVolumeStep(SampleUVW, StepSize * VOLUME_DENSITY, Volume, VolumeSampler, TransferFunc, TransferFuncSampler, WindowingParameters).a;
         CurrentSample *= AlphaWeight;
     }
     

@@ -154,9 +154,8 @@ void GetStepSizeAndUVWOffset(FCubeFace Axis, FVector LightPosition, FIntVector T
 			;
 	}
 
-	// Transform local vector to world space.
-	FVector WorldVec = WorldParameters.VolumeTransform.TransformVector(OutUVWOffset);
-	OutStepSize = WorldVec.Size();
+	// Multiply StepSize by fixed volume density.
+	OutStepSize = OutUVWOffset.Size();
 }
 
 void GetLocalLightParamsAndAxes(const FDirLightParameters& LightParameters, const FTransform& VolumeTransform,
