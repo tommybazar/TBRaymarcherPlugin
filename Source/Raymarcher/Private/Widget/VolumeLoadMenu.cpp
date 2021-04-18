@@ -7,6 +7,7 @@
 
 #include <DesktopPlatform/Public/DesktopPlatformModule.h>
 #include <DesktopPlatform/Public/IDesktopPlatform.h>
+#include "VolumeAsset/Loaders/DICOMLoader.h"
 
 DEFINE_LOG_CATEGORY(VolumeLoadMenu)
 
@@ -27,13 +28,13 @@ bool UVolumeLoadMenu::Initialize()
 
 	if (AssetSelectionComboBox)
 	{
-		// Add existing MHD files into box.
+		// Add existing Volume files into box.
 		AssetSelectionComboBox->ClearOptions();
 		AssetSelectionComboBox->OnSelectionChanged.Clear();
 
-		for (UVolumeAsset* MHDAsset : AssetArray)
+		for (UVolumeAsset* VolumeAsset : AssetArray)
 		{
-			AssetSelectionComboBox->AddOption(GetNameSafe(MHDAsset));
+			AssetSelectionComboBox->AddOption(GetNameSafe(VolumeAsset));
 		}
 
 		AssetSelectionComboBox->OnSelectionChanged.AddDynamic(this, &UVolumeLoadMenu::OnAssetSelected);
@@ -53,19 +54,28 @@ void UVolumeLoadMenu::OnLoadNormalizedClicked()
 											 : nullptr;
 
 		TArray<FString> FileNames;
-		// Open the file picker for mhd files.
+		// Open the file picker for Volume files.
 		bool Success =
-			FDesktopPlatformModule::Get()->OpenFileDialog(ParentWindowHandle, "Select MHD file", "", "", ".mhd", 0, FileNames);
+			FDesktopPlatformModule::Get()->OpenFileDialog(ParentWindowHandle, "Select volumetric file", "", "", ".Volume;.dcm", 0, FileNames);
 		if (FileNames.Num() > 0)
 		{
 			FString FileName = FileNames[0];
-			UMHDLoader* Loader = UMHDLoader::Get();
+			IVolumeLoader* Loader = nullptr;
+			if (FileName.EndsWith(".Volume"))
+			{
+				Loader = UMHDLoader::Get();
+			}
+			else
+			{
+				Loader = UDICOMLoader::Get();
+			}
+
 			UVolumeAsset* OutAsset = Loader->CreateVolumeFromFile(FileName, true, false);
 
 			if (OutAsset)
 			{
 				UE_LOG(VolumeLoadMenu, Display,
-					TEXT("Creating MHD asset from filename %s succeeded, seting MHD asset into associated listener volumes."),
+					TEXT("Creating Volume asset from filename %s succeeded, seting Volume asset into associated listener volumes."),
 					*FileName);
 
 				// Add the asset to list of already loaded assets and select it through the combobox. This will call
@@ -76,18 +86,18 @@ void UVolumeLoadMenu::OnLoadNormalizedClicked()
 			}
 			else
 			{
-				UE_LOG(VolumeLoadMenu, Warning, TEXT("Creating MHD asset from filename %s failed."), *FileName);
+				UE_LOG(VolumeLoadMenu, Warning, TEXT("Creating Volume asset from filename %s failed."), *FileName);
 			}
 		}
 		else
 		{
-			UE_LOG(VolumeLoadMenu, Warning, TEXT("Loading of MHD file cancelled. Dialog creation failed or no file was selected."));
+			UE_LOG(VolumeLoadMenu, Warning, TEXT("Loading of Volume file cancelled. Dialog creation failed or no file was selected."));
 		}
 	}
 	else
 	{
 		UE_LOG(
-			VolumeLoadMenu, Warning, TEXT("Attempted to load MHD file with no Raymarched Volume associated with menu, exiting."));
+			VolumeLoadMenu, Warning, TEXT("Attempted to load Volume file with no Raymarched Volume associated with menu, exiting."));
 	}
 }
 
@@ -102,19 +112,27 @@ void UVolumeLoadMenu::OnLoadF32Clicked()
 											 : nullptr;
 
 		TArray<FString> FileNames;
-		// Open the file picker for mhd files.
+		// Open the file picker for Volume files.
 		bool Success =
-			FDesktopPlatformModule::Get()->OpenFileDialog(ParentWindowHandle, "Select MHD file", "", "", ".mhd", 0, FileNames);
+			FDesktopPlatformModule::Get()->OpenFileDialog(ParentWindowHandle, "Select Volume file", "", "", ".Volume", 0, FileNames);
 		if (FileNames.Num() > 0)
 		{
 			FString FileName = FileNames[0];
-			UMHDLoader* Loader = UMHDLoader::Get();
+			IVolumeLoader* Loader = nullptr;
+			if (FileName.EndsWith(".Volume"))
+			{
+				Loader = UMHDLoader::Get();
+			}
+			else
+			{
+				Loader = UDICOMLoader::Get();
+			}
 			UVolumeAsset* OutAsset = Loader->CreateVolumeFromFile(FileName, false, true);
 
 			if (OutAsset)
 			{
 				UE_LOG(VolumeLoadMenu, Display,
-					TEXT("Creating MHD asset from filename %s succeeded, seting MHD asset into associated listener volumes."),
+					TEXT("Creating Volume asset from filename %s succeeded, seting Volume asset into associated listener volumes."),
 					*FileName);
 
 				// Add the asset to list of already loaded assets and select it through the combobox. This will call
@@ -125,18 +143,18 @@ void UVolumeLoadMenu::OnLoadF32Clicked()
 			}
 			else
 			{
-				UE_LOG(VolumeLoadMenu, Warning, TEXT("Creating MHD asset from filename %s failed."), *FileName);
+				UE_LOG(VolumeLoadMenu, Warning, TEXT("Creating Volume asset from filename %s failed."), *FileName);
 			}
 		}
 		else
 		{
-			UE_LOG(VolumeLoadMenu, Warning, TEXT("Loading of MHD file cancelled. Dialog creation failed or no file was selected."));
+			UE_LOG(VolumeLoadMenu, Warning, TEXT("Loading of Volume file cancelled. Dialog creation failed or no file was selected."));
 		}
 	}
 	else
 	{
 		UE_LOG(
-			VolumeLoadMenu, Warning, TEXT("Attempted to load MHD file with no Raymarched Volume associated with menu, exiting."));
+			VolumeLoadMenu, Warning, TEXT("Attempted to load Volume file with no Raymarched Volume associated with menu, exiting."));
 	}
 }
 

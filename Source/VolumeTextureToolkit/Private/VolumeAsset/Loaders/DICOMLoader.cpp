@@ -102,7 +102,6 @@ FVolumeInfo UDICOMLoader::ParseVolumeInfoFromHeader(FString FileName)
 	Info.bParseWasSuccessful = true;
 	Info.bIsCompressed = false;
 
-
 	ParserHelper.Clear();
 	Parser.CloseFile();
 
@@ -111,46 +110,126 @@ FVolumeInfo UDICOMLoader::ParseVolumeInfoFromHeader(FString FileName)
 
 UVolumeAsset* UDICOMLoader::CreateVolumeFromFile(FString FileName, bool bNormalize /*= true*/, bool bConvertToFloat /*= true*/)
 {
-	return nullptr;
-}
-
-UVolumeAsset* UDICOMLoader::CreatePersistentVolumeFromFile(
-	const FString& FileName, const FString& OutFolder, bool bNormalize /*= true*/)
-{
-	return nullptr;
-}
-
-UVolumeAsset* UDICOMLoader::CreateVolumeFromFileInExistingPackage(
-	FString FileName, UObject* ParentPackage, bool bNormalize /*= true*/, bool bConvertToFloat /*= true*/)
-{
-	FVolumeInfo Info = ParseVolumeInfoFromHeader(FileName);
+	FVolumeInfo VolumeInfo = ParseVolumeInfoFromHeader(FileName);
+	if (!VolumeInfo.bParseWasSuccessful)
+	{
+		return nullptr;
+	}
 
 	// Get a nice name from the folder we're in to name the asset.
 	FString VolumeName;
 	GetValidPackageNameFromFolderName(FileName, VolumeName);
 
-	uint8* TotalArray = LoadAndConvertData(FileName, Info, bNormalize, bConvertToFloat);
-
-	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(Info.ActualFormat);
-
-	// Create the VolumeAsset and underlying volume texture.
-	UVolumeAsset* OutAsset = NewObject<UVolumeAsset>(ParentPackage, FName("VA_" + VolumeName), RF_Standalone | RF_Public);
-	OutAsset->DataTexture =
-		NewObject<UVolumeTexture>(ParentPackage, FName("VA_" + VolumeName + "_Data"), RF_Public | RF_Standalone);
-	
-	UVolumeTextureToolkit::SetupVolumeTexture(OutAsset->DataTexture, PixelFormat, Info.Dimensions, TotalArray, !bConvertToFloat);
-
-	delete[] TotalArray;
-
-	if (!OutAsset || !OutAsset->DataTexture)
+	// Create the transient volume asset.
+	UVolumeAsset* OutAsset = UVolumeAsset::CreateTransient(VolumeName);
+	if (!OutAsset)
 	{
 		return nullptr;
 	}
+
+	// Perform complete load and conversion of data.
+	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, bConvertToFloat);
+
+	// Get proper pixel format depending on what got saved into the MHDInfo during conversion.
+	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
+
+	// Create the transient Volume texture.
+	UVolumeTextureToolkit::CreateVolumeTextureTransient(OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray);
+
+	delete[] LoadedArray;
+
+	// Check that the texture got created properly.
+	if (OutAsset->DataTexture)
+	{
+		OutAsset->ImageInfo = VolumeInfo;
+		return OutAsset;
+	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Loading of DICOM file succeeded. Output Dims = %s."), *(Info.Dimensions.ToString()));
-		OutAsset->ImageInfo = Info;
+		return nullptr;
+	}
+}
+
+UVolumeAsset* UDICOMLoader::CreatePersistentVolumeFromFile(
+	const FString& FileName, const FString& OutFolder, bool bNormalize /*= true*/)
+{
+	FVolumeInfo VolumeInfo = ParseVolumeInfoFromHeader(FileName);
+	if (!VolumeInfo.bParseWasSuccessful)
+	{
+		return nullptr;
+	}
+
+	// Get a nice name from the folder we're in to name the asset.
+	FString VolumeName;
+	GetValidPackageNameFromFolderName(FileName, VolumeName);
+	// Create the persistent volume asset.
+	UVolumeAsset* OutAsset = UVolumeAsset::CreatePersistent(OutFolder, VolumeName);
+	if (!OutAsset)
+	{
+		return nullptr;
+	}
+
+	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, false);
+	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
+	// Create the persistent volume texture.
+	FString VolumeTextureName = "VA_" + VolumeName + "_Data";
+	UVolumeTextureToolkit::CreateVolumeTextureAsset(
+		OutAsset->DataTexture, VolumeTextureName, OutFolder, PixelFormat, VolumeInfo.Dimensions, LoadedArray, true);
+	OutAsset->ImageInfo = VolumeInfo;
+
+	delete[] LoadedArray;
+	// Check that the texture got created properly.
+	if (OutAsset->DataTexture)
+	{
+		OutAsset->ImageInfo = VolumeInfo;
 		return OutAsset;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+UVolumeAsset* UDICOMLoader::CreateVolumeFromFileInExistingPackage(
+	FString FileName, UObject* ParentPackage, bool bNormalize /*= true*/, bool bConvertToFloat /*= true*/)
+{
+	FVolumeInfo VolumeInfo = ParseVolumeInfoFromHeader(FileName);
+	if (!VolumeInfo.bParseWasSuccessful)
+	{
+		return nullptr;
+	}
+
+	// Get a nice name from the folder we're in to name the asset.
+	FString VolumeName;
+	GetValidPackageNameFromFolderName(FileName, VolumeName);
+
+	// Create the transient volume asset.
+	UVolumeAsset* OutAsset = NewObject<UVolumeAsset>(ParentPackage, FName("VA_" + VolumeName), RF_Standalone | RF_Public);
+	if (!OutAsset)
+	{
+		return nullptr;
+	}
+
+	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, bConvertToFloat);
+	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
+
+	OutAsset->DataTexture =
+		NewObject<UVolumeTexture>(ParentPackage, FName("VA_" + VolumeName + "_Data"), RF_Public | RF_Standalone);
+
+	UVolumeTextureToolkit::SetupVolumeTexture(
+		OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray, !bConvertToFloat);
+
+	delete[] LoadedArray;
+
+	// Check that the texture got created properly.
+	if (OutAsset->DataTexture)
+	{
+		OutAsset->ImageInfo = VolumeInfo;
+		return OutAsset;
+	}
+	else
+	{
+		return nullptr;
 	}
 }
 
