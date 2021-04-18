@@ -23,9 +23,12 @@ public:
 	virtual UVolumeAsset* CreateVolumeFromFile(FString FileName, bool bNormalize = true, bool bConvertToFloat = true);
 
 	// Creates a full persistent volume asset from the provided data file.
-	virtual UVolumeAsset* CreatePersistentVolumeFromFile(
-		const FString& FileName, const FString& OutFolder, bool bNormalize = true);
+	virtual UVolumeAsset* CreatePersistentVolumeFromFile(const FString& FileName, const FString& OutFolder, bool bNormalize = true);
 
-			virtual UVolumeAsset* CreateVolumeFromFileInExistingPackage(
+	virtual UVolumeAsset* CreateVolumeFromFileInExistingPackage(
 		FString FileName, UObject* ParentPackage, bool bNormalize = true, bool bConvertToFloat = true);
+
+	virtual uint8* LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat);
 };
+
+void AMofoCallback();

@@ -8,14 +8,13 @@
 #include "Factories/Factory.h"
 #include "UObject/ObjectMacros.h"
 
-#include "MHDVolumeTextureFactory.generated.h"
-
+#include "VolumeAssetFactory.generated.h"
 
 /**
- * Implements a factory for creating volume texture assets by drag'n'dropping .mhd files into the content browser.
+ * Implements a factory for creating volume texture assets by drag'n'dropping .mhd and .dcm files into the content browser.
  */
 UCLASS(hidecategories = Object)
-class UMHDVolumeTextureFactory
+class UVolumeAssetFactory
 	: public UFactory
 {
 	GENERATED_UCLASS_BODY()

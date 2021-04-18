@@ -59,7 +59,7 @@ struct VOLUMETEXTURETOOLKIT_API FVolumeInfo
 	GENERATED_BODY()
 public:
 	/// If true, parsing succeeded. If false, this Volume Info is unusable.
-	bool bParseWasSuccessful;
+	bool bParseWasSuccessful = false;
 
 	/// Name of the volume file that was loaded, including extension.
 	UPROPERTY(VisibleAnywhere)

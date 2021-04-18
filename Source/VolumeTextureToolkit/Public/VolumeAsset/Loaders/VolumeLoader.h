@@ -49,10 +49,18 @@ public:
 	// Tries to read the provided FileName as a file either in absolute path or relative to game folder.
 	static FString ReadFileAsString(const FString& FileName);
 
+	// Gets all files in the specified directory. Extension is optional, if provided, will only return files with the extension.
+	static TArray<FString> GetFilesInFolder(FString Directory, FString Extension);
+	
 	// Takes a filename or a path and returns a valid package name.
 	// Eg. "/user/somebody/img0.0.1.mhd" 
 	// OutPackageName = "img0_0_1" and OutFilePath = "/user/somebody/"
 	static void GetValidPackageNameFromFileName(const FString& FullPath, FString& OutFilePath, FString& OutPackageName);
+
+	// Takes a full path and returns a valid package name that's equivalent to the lowest level folder.
+	// Eg. "/user/somebody.big/00000.dcm"
+	// OutPackageName = "somebody_big"
+	void GetValidPackageNameFromFolderName(const FString& FullPath, FString& OutPackageName);
 
 	// Loads the raw data specified in the VolumeInfo and converts it so that it's useable with our raymarching materials.
 	// This means either converting it to U8 or U16 and normalizing or a conversion to Float.

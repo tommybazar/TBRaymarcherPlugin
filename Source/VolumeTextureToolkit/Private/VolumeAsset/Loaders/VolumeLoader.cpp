@@ -45,6 +45,18 @@ FString IVolumeLoader::ReadFileAsString(const FString& FileName)
 	return "";
 }
 
+
+TArray<FString> IVolumeLoader::GetFilesInFolder(FString Directory, FString Extension)
+{
+	TArray<FString> OutPut;
+	OutPut.Empty();
+	if (FPaths::DirectoryExists(Directory))
+	{
+		FFileManagerGeneric::Get().FindFiles(OutPut, *Directory, *Extension);
+	}
+	return OutPut;
+}
+
 void IVolumeLoader::GetValidPackageNameFromFileName(const FString& FullPath, FString& OutFilePath, FString& OutPackageName)
 {
 	FString ExtensionPart;
@@ -53,6 +65,21 @@ void IVolumeLoader::GetValidPackageNameFromFileName(const FString& FullPath, FSt
 	OutPackageName = FPaths::MakeValidFileName(OutPackageName);
 	// Periods are not cool in package names -> replace with underscores.
 	OutPackageName.ReplaceCharInline('.', '_');
+}
+
+void IVolumeLoader::GetValidPackageNameFromFolderName(const FString& FullPath, FString& OutPackageName)
+{
+	FString NamePart, ExtensionPart;
+
+	FPaths::Split(FullPath, OutPackageName, NamePart, ExtensionPart);
+
+	// Get the name of the folder we're in.
+	int32 LastSlash = OutPackageName.Find("/", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	OutPackageName.RightChopInline(LastSlash);
+	OutPackageName = FPaths::MakeValidFileName(OutPackageName);
+	// Periods are not cool in package names -> replace with underscores.
+	OutPackageName.ReplaceCharInline('.', '_');
+
 }
 
 uint8* IVolumeLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)

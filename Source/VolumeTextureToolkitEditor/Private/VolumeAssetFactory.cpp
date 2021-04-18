@@ -3,20 +3,22 @@
 // Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
 // (original raymarching code).
 
-#include "MHDVolumeTextureFactory.h"
+#include "VolumeAssetFactory.h"
 
 #include "Containers/UnrealString.h"
 #include "Engine/VolumeTexture.h"
 #include "Misc/MessageDialog.h"
 #include "VolumeAsset/Loaders/MHDLoader.h"
 #include "VolumeAsset/VolumeAsset.h"
+#include "VolumeAsset/Loaders/DICOMLoader.h"
 
 /* UMHDVolumeTextureFactory structors
  *****************************************************************************/
 
-UMHDVolumeTextureFactory::UMHDVolumeTextureFactory(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+UVolumeAssetFactory::UVolumeAssetFactory(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	Formats.Add(FString(TEXT("mhd;")) + NSLOCTEXT("UMHDVolumeTextureFactory", "FormatMhd", ".mhd File").ToString());
+	Formats.Add(FString(TEXT("dcm;")) + NSLOCTEXT("UMHDVolumeTextureFactory", "FormatDicom", ".dcm File").ToString());
 
 	SupportedClass = UVolumeAsset::StaticClass();
 	bCreateNew = false;
@@ -25,11 +27,27 @@ UMHDVolumeTextureFactory::UMHDVolumeTextureFactory(const FObjectInitializer& Obj
 }
 
 #pragma optimize("", off)
-UObject* UMHDVolumeTextureFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags,
+UObject* UVolumeAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags,
 	const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
-	UMHDLoader* MHDLoader = UMHDLoader::Get();
-	FVolumeInfo MHDInfo = MHDLoader->ParseVolumeInfoFromHeader(Filename);
+	IVolumeLoader* Loader = nullptr;
+
+	FString FileNamePart, FolderPart, ExtensionPart;
+	FPaths::Split(Filename, FolderPart, FileNamePart, ExtensionPart);
+	if (ExtensionPart.Equals(TEXT("mhd")))
+	{
+		Loader = UMHDLoader::Get();
+	}
+	else
+	{
+		Loader = UDICOMLoader::Get();
+	}
+
+	FVolumeInfo Info = Loader->ParseVolumeInfoFromHeader(Filename);
+	if (!Info.bParseWasSuccessful)
+	{
+		return nullptr;
+	}
 
 	bool bNormalize = false;
 	bool bConvertToFloat = false;
@@ -45,7 +63,7 @@ UObject* UMHDVolumeTextureFactory::FactoryCreateFile(UClass* InClass, UObject* I
 	{
 		bNormalize = true;
 	}
-	else if (MHDInfo.OriginalFormat != EVolumeVoxelFormat::Float)
+	else if (Info.OriginalFormat != EVolumeVoxelFormat::Float)
 	{
 		EAppReturnType::Type DialogAnswer2 = FMessageDialog::Open(EAppMsgType::YesNo, EAppReturnType::Yes,
 			NSLOCTEXT("Volumetrics", "Convert to R32?",
@@ -57,7 +75,7 @@ UObject* UMHDVolumeTextureFactory::FactoryCreateFile(UClass* InClass, UObject* I
 		}
 	}
 
-	UVolumeAsset* OutVolume = MHDLoader->CreateVolumeFromFileInExistingPackage(Filename, InParent, bNormalize, bConvertToFloat);
+	UVolumeAsset* OutVolume = Loader->CreateVolumeFromFileInExistingPackage(Filename, InParent, bNormalize, bConvertToFloat);
 	bOutOperationCanceled = false;
 
 	// Add created MHD file to AdditionalImportedObjects so it also gets saved in-editor.
