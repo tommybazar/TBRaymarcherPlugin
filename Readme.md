@@ -26,7 +26,7 @@ If you want to ask me anything or (potentially) talk to other people using this 
 # Features
  * Works out of the box with binary UE 4.26 (there is also a branch for 4.25)
  * Volume raymarching for arbitrary `UVolumeTexture` textures
- * .mhd and .raw file import into volume textures.
+ * .dcm (DICOM), .mhd and .raw file import into volume textures.
  * Volume illumination implemented in compute shaders using concepts from [Efficient Volume Illumination with Multiple Light Sources through Selective Light Updates](https://ieeexplore.ieee.org/document/7156382) (2015) by Sundén and Ropinski
  * Uses color curves for transfer function definition
  * Fully integrated and functional within UE editor viewport.
@@ -39,14 +39,6 @@ If you want to ask me anything or (potentially) talk to other people using this 
  * We use a very simple (but fast) raymarching and illumination algorithm with no specular, refraction or scattering
  * Algorithm is already a bit dated and implementation leaves a lot to be desired as for efficiency. It is however, good enough for real-time applications with several lights and large (256^3 or more) volumes.
  * Currently do not support persistent 32bit grayscale textures, but plan on investigating that possibility soon(ish).
- * My NDA with my current employer doesn't allow me to publish the DICOM loading part (as I wrote that code under contract), which would truly make this a one-stop-shop for medical visualization in Unreal. 
- All I can say is, it's not that complicated to implement a DICOM parser using ITK or Imebra SDKs (took me about 2 days, if I remember correctly) and If you drop me a message on the forums, I can give you some hints. 
- Once you parse the DICOM tags out of the file and read the raw binary data, the rest is exactly the same as working with .MHD files. 
-
-If you're a student, ask your supervisor and do this as a part of your semestral project or thesis and then we can integrate it together :)
-Or if someone already has a working, UE-friendly license-free DICOM reader, let me know on the forums and I'll happily integrate it and give full credit :).'
-
- * I'm also considering just hacking together a UE wrapper around the `pydicom` python package and calling it a day. That actually seems like the most prudent solution (might actually be cleaner than what I wrote for my company).
 
 # Example
  * The project works out-of-the-box with everything being included in the TBRaymarcherPlugin. There is an example map for Mouse and Keyboard and
@@ -286,3 +278,6 @@ See LICENSE file for full license text.
 ## Example MHDAsset files
 In `TBRaymarcherPlugin/Content/DefaultResources/` are MHDAssets and volume textures created by importing data from Subset0 of [LUNA2016 grand challenge](https://luna16.grand-challenge.org/download/).
 The data is taken from publicly available LIDC/IDRI database and uses [CC Attribution 3.0 Unported License](https://creativecommons.org/licenses/by/3.0/).
+
+## DICOM loading
+DICOM loading is utilizing a modified version of VTK DicomParser, made by Matt Turek. See  License.txt in /Source/VolumeTextureToolkit/Public/VolumeAsset/DICOMParser/License.txt for full license text.
