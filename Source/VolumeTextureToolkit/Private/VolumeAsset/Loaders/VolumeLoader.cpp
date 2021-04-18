@@ -74,7 +74,7 @@ void IVolumeLoader::GetValidPackageNameFromFolderName(const FString& FullPath, F
 	FPaths::Split(FullPath, OutPackageName, NamePart, ExtensionPart);
 
 	// Get the name of the folder we're in.
-	int32 LastSlash = OutPackageName.Find("/", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	int32 LastSlash = OutPackageName.Find("\\", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
 	OutPackageName.RightChopInline(LastSlash);
 	OutPackageName = FPaths::MakeValidFileName(OutPackageName);
 	// Periods are not cool in package names -> replace with underscores.

@@ -89,11 +89,9 @@ FVolumeInfo UDICOMLoader::ParseVolumeInfoFromHeader(FString FileName)
 			break;
 		case DICOMParser::VR_Double:
 			UE_LOG(LogTemp, Error, TEXT("Loading of DICOM file failed. Double format is not supported!"));
-			delete[] DataArray;
 			return Info;
 		default:
 			UE_LOG(LogTemp, Error, TEXT("Loading of DICOM file failed. Unknown pixel format!"));
-			delete[] DataArray;
 			return Info;
 	}
 
@@ -104,7 +102,6 @@ FVolumeInfo UDICOMLoader::ParseVolumeInfoFromHeader(FString FileName)
 	Info.bParseWasSuccessful = true;
 	Info.bIsCompressed = false;
 
-	delete[] DataArray;
 
 	ParserHelper.Clear();
 	Parser.CloseFile();
@@ -187,11 +184,21 @@ uint8* UDICOMLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 
 		ParserHelper.GetImageData(DataArray, DataType, DataLength);
 		int SliceNumber = ParserHelper.GetSliceNumber();
+
+		// Copy to our giant array at the right spot for this slice.
+		// Increase TotalArray ptr by DataLength * SliceNumber to get to the start of the curren't slices memory.
 		memcpy(TotalArray + (DataLength * SliceNumber), DataArray, DataLength);
-		delete[] DataArray;
 
 		Parser.CloseFile();
-		ParserHelper.Clear();
+	}
+
+	// Make sure slice thickness is correct.
+	std::vector<std::pair<float, std::string>> SliceLocations;
+	ParserHelper.GetSliceLocationFilenamePairs(SliceLocations, true);
+	if (SliceLocations.size() > 1)
+	{
+		VolumeInfo.Spacing.Z = abs(SliceLocations[1].first - SliceLocations[0].first);
+		VolumeInfo.WorldDimensions = VolumeInfo.Spacing * FVector(VolumeInfo.Dimensions);
 	}
 
 	TotalArray = IVolumeLoader::ConvertData(TotalArray, VolumeInfo, bNormalize, bConvertToFloat);

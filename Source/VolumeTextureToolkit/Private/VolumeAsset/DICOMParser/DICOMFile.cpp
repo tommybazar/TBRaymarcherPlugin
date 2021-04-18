@@ -230,7 +230,7 @@ float DICOMFile::ReadAsciiFloat(int len)
   data >> ret;
   delete [] val2;
 #else
-	sscanf(val, "%e", &ret);
+	sscanf_s(val, "%e", &ret);
 #endif
 
 	std::cout << "Read ASCII float: " << ret << std::endl;
@@ -259,7 +259,7 @@ int DICOMFile::ReadAsciiInt(int len)
   data >> ret;
   delete [] val2;
 #else
-	sscanf(val, "%d", &ret);
+	sscanf_s(val, "%d", &ret);
 #endif
 
 	std::cout << "Read ASCII int: " << ret << std::endl;
