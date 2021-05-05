@@ -55,6 +55,10 @@ public:
 	UFUNCTION()
 	void OnLoadF32Clicked();
 
+	/// Unified function for loading F32 or normalized.
+	UFUNCTION()
+	void PerformLoad(bool bNormalized);
+
 	/// Called when AssetSelectionComboBox has a new value selected.
 	UFUNCTION()
 	void OnAssetSelected(FString AssetName, ESelectInfo::Type SelectType);
