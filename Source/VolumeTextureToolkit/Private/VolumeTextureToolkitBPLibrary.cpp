@@ -8,6 +8,7 @@
 #include "TextureUtilities.h"
 
 #include "VolumeAsset/Loaders/DICOMLoader.h"
+#include "VolumeAsset/Loaders/MHDLoader.h"
 
 #include <DesktopPlatform/Public/DesktopPlatformModule.h>
 #include <DesktopPlatform/Public/IDesktopPlatform.h>
