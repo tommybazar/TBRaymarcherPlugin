@@ -134,7 +134,7 @@ void UTransferFuncMenu::OnNewVolumeLoaded()
 
 		if (WindowWidthBox)
 		{
-			WindowWidthBox->MinMax = FVector2D(0, 4000);
+			WindowWidthBox->MinMax = FVector2D(-1000, 4000);
 			WindowWidthBox->SetValue(RangeProviderVolume->VolumeAsset->ImageInfo.DenormalizeRange(DefaultParameters.Width));
 			WindowWidthBox->SetAllLabelsFromSlider();
 		}

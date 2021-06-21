@@ -1,7 +1,7 @@
 
 
 # Volume Rendering (Raymarching) Plugin for Unreal Engine
-Allows volume rendering of .MHD data with Unreal Engine.
+Allows volume rendering of volumetric data with Unreal Engine.
 
 ## Updated for UE 4.26 - for 4.25 version, checkout the "4.25" branch.
 
@@ -48,14 +48,13 @@ If you want to ask me anything or (potentially) talk to other people using this 
 If you want to use this functionality in your own project, you will need to
  * Copy/clone this repo
  * Copy the TBRaymarcherPlugin from the Plugins directory into your project.
- * Edit your Build configuration of your project to reference the module by adapting your `Module.Build.cs` similar to the following:
-```CSharp
+ * Enable it in your  ProjectName.uproject file
+ ```CSharp
     PublicDependencyModuleNames.AddRange(new string[] { 
         "Core", "CoreUObject", "Engine", "InputCore", // These are default ones you probably already have
-        "TBRaymarcherPlugin" // <-- This is the important one ;)
+        "Raymarcher" // <-- This is the important one ;)
         // ... other dependencies you might have
     });
-
 ```
  * Regenerate Visual Studio file, compile and run.
 
@@ -71,7 +70,7 @@ Most of the functionality is implemented in C++ with the most high-level functio
 If you want to tinker with any low-level stuff, you will need C++ (and also probably HLSL) experience.
 
 Logically, the project can be separated into:
- - Texture toolkit, wrapping the commonly used functionality for creating/working with VolumeTextures and MHD loading utilities
+ - Texture toolkit, wrapping the commonly used functionality for creating/working with VolumeTextures and DICOM/MHD loading utilities
  - Actual raymarching materials (shaders)
  - Illumination computation compute shaders (and C++ code wrapping them)
  - C++ classes putting these together to form a useable RaymarchedVolume
@@ -79,7 +78,7 @@ Logically, the project can be separated into:
  
  We will now describe these individually.
  
-## Texture Toolkit & MHD loading
+## Texture Toolkit & DICOM/MHD loading
 Located in the `/VolumeTextureToolkit` and `/VolumeTextureToolkitEditor` plugin modules, these contain various low-level utilities
 for loading .raw files into volumes, convenience functions for creating VolumeTextures from said .raw files, conversion functions
 to process data when it is imported etc.
@@ -91,25 +90,25 @@ In 4.26, Epic introduced RenderTargetVolume, which removes the need for our cust
 Check out the 4.25 branch for the old way (which might give you ideas on how to extend the UTexture class in general, if you wanted to create your own 
 exotic texture classes).
 
-### MHD loading
-All functionality discussed in this section can be found in `VolumeTextureToolkit/Public/MHD/MHDAsset.h`
+### Volume loading
+All functionality discussed in this section can be found in `VolumeTextureToolkit/Public/VolumeAsset/VolumeAsset.h` and `VolumeTextureToolkit/Public/VolumeAsset/Loaders/VolumeLoader.h` 
+and it's inherited classes (MHD and DICOM loaders).
 
-We support loading MHD files into a `UMHDAsset` data asset. 
+We support loading MHD and DICOM files into a `UVolumeAsset` data asset. 
 
-When loading MHD files, the user must choose if they want them normalized and converted to G8/G16 (grayscale 8bit or 16bit) format.
+When loading volumetric files, the user must choose if they want them normalized and converted to G8/G16 (grayscale 8bit or 16bit) format.
 This allows the textures to be persistently saved in Unreal, but comes at the cost of being forced to normalize the file to 0-1 range.
 To conserve the original values, we keep the minimum and maximum value encountered in the volume when it was loaded, so after normalization,
-value of 0 in the texture corresponds to `ImageInfo.MinValue` within the UMHDAsset and value of 1 in the texture corresponds to `ImageInfo.MaxValue` in the asset.
+value of 0 in the texture corresponds to `ImageInfo.MinValue` within the UVolumeAsset and value of 1 in the texture corresponds to `ImageInfo.MaxValue` in the asset.
 
-This is not necessary if you don't mind your loaded assets not being persistent, then you can load the MHD as a R32Float and keep the original values.
+This is not necessary if you don't mind your loaded assets not being persistent, then you can load the file as a R32Float and keep the original values.
 I'm currently investigating how to get around this limitation by making my own `UVolumeTexture`-like asset instead of using the `UVolumeTexture` assets directly.
 
-See `CreateAssetFromMhdFileNormalized` and `CreateAssetFromMhdFileR32F` functions respectively for both of these loading types. There is also a `CreateTextureFromMhdFileNoConversion`
-which will not convert the raw data at all, so there is no guarantee the loaded texture will work with our materials.
+See `CreateVolumeFromFile` and `CreatePersistentVolumeFromFile` functions respectively for both of these loading types.
 
-We also support drag'n'drop MHD asset import. If you drag a file with .mhd extension into the content browser, a `UMHDAsset` and a corresponding `UVolumeTexture` will
+We also support drag'n'drop asset import. If you drag a file with a .dcm or .mhd extension into the content browser, a `UVolumeAsset` and a corresponding `UVolumeTexture` will
 be created in the current folder. User will be prompted if they want the data to be normalized or converted into float, which results in same behaviour as described previously. 
-See `VolumeTextureEditor/Public/MHDVolumeTextureFactory.h` and associated .cpp file for implementation details.
+See `VolumeTextureEditor/Public/VolumeTextureFactory.h` and associated .cpp file for implementation details.
 
 
 ## Actual raymarching materials
@@ -202,7 +201,7 @@ These functions are wrapped in blueprints in `TBRaymarcherPlugin/Content/Bluepri
 All properties that are exposed to blueprints are under `Raymarch Volume` category in the ARaymarchVolume actor. All are editable in the Actor properties, but unless otherwise specified, they can not be directly 
 set from blueprints (`BlueprintReadOnly`). Many can be set by blueprints during runtime indirectly by calling the functions described in the next sub-section.
 
-`MHDAsset` - change this to make the volume display a completely different MHD Asset.
+`VolumeAsset` - change this to make the volume display a completely different Volume Asset.
 
 `Lit Raymarch Material Base` - Change this to assign a different base material for lit raymarching
 
@@ -223,9 +222,9 @@ set from blueprints (`BlueprintReadOnly`). Many can be set by blueprints during 
 ### Functions exposed to blueprints
 All BP functions use the same `Raymarch Volume` category as above.
 
-`LoadNewFileIntoVolumeTransientR32F()` - Loads an MHD file from the given file as a R32F (not-normalized, float32, transient) and assigns it to the volume.
+`LoadNewFileIntoVolumeTransientR32F()` - Loads a volume file from the given file as a R32F (not-normalized, float32, transient) and assigns it to the volume.
 
-`LoadNewFileIntoVolumeNormalized()` - Loads an MHD file from the given file as a G8/G16 normalized volume (transient) and assigns it to the volume.
+`LoadNewFileIntoVolumeNormalized()` - Loads a volume file from the given file as a G8/G16 normalized volume (transient) and assigns it to the volume.
 
 `SetTFCurve()` - Sets the specified `UCurveLinearColor` as the currently used Transfer Function.
 
@@ -234,13 +233,13 @@ All BP functions use the same `Raymarch Volume` category as above.
 `SetWindowCenter() / SetWindowWidth() / SetLowCutoff() / SetHighCutoff()` - Sets the given windowing parameter.
 
 ### In-editor volume editing
-When you have a volume set-up with an assigned MHD asset, we took great care that it would behave very well and be very responsive in-editor.
+When you have a volume set-up with an assigned Volume Asset, we took great care that it would behave very well and be very responsive in-editor.
 
-Firstly, the volume ticks even in-editor, so it can react to changes made while editing it's or it's MHDAsset's properties.
+Firstly, the volume ticks even in-editor, so it can react to changes made while editing it's or it's VolumeAsset's properties.
 
-Also, modifying anything in the assigned MHDAsset's ImageInfo structure (most notably default windowing parameters) will be immediately visible in all volumes that are currently displaying that MHDAsset. 
+Also, modifying anything in the assigned VolumeAsset's ImageInfo structure (most notably default windowing parameters) will be immediately visible in all volumes that are currently displaying that MHDAsset. 
 
-Furthermore, changes to the MHDAsset's Transfer Function `UCurveLinearColor` will be immediately visible on all volumes using the MHDAsset. This is achieved by hooking onto the `OnGradientChanged` delegate that `UCurveLinearColor` exposes in-editor.
+Furthermore, changes to the VolumeAsset's Transfer Function `UCurveLinearColor` will be immediately visible on all volumes using the VolumeAsset. This is achieved by hooking onto the `OnGradientChanged` delegate that `UCurveLinearColor` exposes in-editor.
 
 Lastly, lights and clipping planes assigned to the `URaymarchedVolume` will update in-editor just as they would in-game.
 
@@ -275,8 +274,8 @@ Both me and Technical University of Munich are copyright holders, as major parts
 
 See LICENSE file for full license text.
 
-## Example MHDAsset files
-In `TBRaymarcherPlugin/Content/DefaultResources/` are MHDAssets and volume textures created by importing data from Subset0 of [LUNA2016 grand challenge](https://luna16.grand-challenge.org/download/).
+## Example VolumeAsset files
+In `TBRaymarcherPlugin/Content/DefaultResources/` are VolumeAsset and volume textures created by importing data from Subset0 of [LUNA2016 grand challenge](https://luna16.grand-challenge.org/download/).
 The data is taken from publicly available LIDC/IDRI database and uses [CC Attribution 3.0 Unported License](https://creativecommons.org/licenses/by/3.0/).
 
 ## DICOM loading
