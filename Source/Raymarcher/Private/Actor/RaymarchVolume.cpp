@@ -666,6 +666,9 @@ void ARaymarchVolume::GetMinMaxValues(float& Min, float& Max)
 
 void ARaymarchVolume::SetWindowCenter(const float& Center)
 {
+	if (Center == RaymarchResources.WindowingParameters.Center)
+		return;
+
 	RaymarchResources.WindowingParameters.Center = Center;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
@@ -673,6 +676,9 @@ void ARaymarchVolume::SetWindowCenter(const float& Center)
 
 void ARaymarchVolume::SetWindowWidth(const float& Width)
 {
+	if (Width == RaymarchResources.WindowingParameters.Width)
+		return;
+
 	RaymarchResources.WindowingParameters.Width = Width;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
@@ -680,6 +686,9 @@ void ARaymarchVolume::SetWindowWidth(const float& Width)
 
 void ARaymarchVolume::SetLowCutoff(const bool& LowCutoff)
 {
+	if (LowCutoff == RaymarchResources.WindowingParameters.LowCutoff)
+		return;
+
 	RaymarchResources.WindowingParameters.LowCutoff = LowCutoff;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
@@ -687,6 +696,9 @@ void ARaymarchVolume::SetLowCutoff(const bool& LowCutoff)
 
 void ARaymarchVolume::SetHighCutoff(const bool& HighCutoff)
 {
+	if (HighCutoff == RaymarchResources.WindowingParameters.HighCutoff)
+		return;
+
 	RaymarchResources.WindowingParameters.HighCutoff = HighCutoff;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
