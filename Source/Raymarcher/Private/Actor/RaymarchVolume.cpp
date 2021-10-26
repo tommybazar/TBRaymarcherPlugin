@@ -356,7 +356,7 @@ void ARaymarchVolume::Tick(float DeltaTime)
 			}
 
 			// More than half lights need update -> full reset is quicker
-			if (LightsToUpdate.Num() >= (LightsArray.Num() / 2) && (LightsToUpdate.Num() > 1))
+			if ((LightsToUpdate.Num() > 1) && LightsToUpdate.Num() >= (LightsArray.Num() / 2))
 			{
 				ResetAllLights();
 			}
