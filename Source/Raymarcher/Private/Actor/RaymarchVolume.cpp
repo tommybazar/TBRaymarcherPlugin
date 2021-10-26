@@ -587,7 +587,7 @@ FRaymarchWorldParameters ARaymarchVolume::GetWorldParameters()
 		retVal.ClippingPlaneParameters.Direction = FVector(0, 0, -1);
 	}
 
-	retVal.VolumeTransform = StaticMeshComponent->GetComponentToWorld();
+	retVal.VolumeTransform = StaticMeshComponent->GetComponentTransform();
 	return retVal;
 }
 
@@ -604,7 +604,7 @@ void ARaymarchVolume::UpdateWorldParameters()
 		WorldParameters.ClippingPlaneParameters.Direction = FVector(0, 0, -1);
 	}
 
-	WorldParameters.VolumeTransform = StaticMeshComponent->GetComponentToWorld();
+	WorldParameters.VolumeTransform = StaticMeshComponent->GetComponentTransform();
 }
 
 void ARaymarchVolume::SetAllMaterialParameters()
