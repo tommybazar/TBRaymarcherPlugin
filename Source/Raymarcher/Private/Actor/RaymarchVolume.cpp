@@ -664,6 +664,16 @@ void ARaymarchVolume::GetMinMaxValues(float& Min, float& Max)
 	Max = VolumeAsset->ImageInfo.MaxValue;
 }
 
+float ARaymarchVolume::GetWindowCenter()
+{
+	return RaymarchResources.WindowingParameters.Center;
+}
+
+float ARaymarchVolume::GetWindowWidth()
+{
+	return RaymarchResources.WindowingParameters.Width;
+}
+
 void ARaymarchVolume::SetWindowCenter(const float& Center)
 {
 	if (Center == RaymarchResources.WindowingParameters.Center)
