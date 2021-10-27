@@ -96,7 +96,7 @@ void URaymarchUtils::ClearResourceLightVolumes(const FBasicRaymarchRenderingReso
 	{
 		return;
 	}
-	UVolumeTextureToolkit::ClearVolumeTexture(Resources.LightVolumeRenderTarget, 0.0f);
+	UVolumeTextureToolkit::ClearVolumeTexture(Resources.LightVolumeRenderTarget, ClearValue);
 }
 
 RAYMARCHER_API void URaymarchUtils::MakeDefaultTFTexture(UTexture2D*& OutTexture)

@@ -356,7 +356,7 @@ void ARaymarchVolume::Tick(float DeltaTime)
 			}
 
 			// More than half lights need update -> full reset is quicker
-			if (LightsToUpdate.Num() >= (LightsArray.Num() / 2) && (LightsToUpdate.Num() > 1))
+			if ((LightsToUpdate.Num() > 1) && LightsToUpdate.Num() >= (LightsArray.Num() / 2))
 			{
 				ResetAllLights();
 			}
@@ -587,7 +587,7 @@ FRaymarchWorldParameters ARaymarchVolume::GetWorldParameters()
 		retVal.ClippingPlaneParameters.Direction = FVector(0, 0, -1);
 	}
 
-	retVal.VolumeTransform = StaticMeshComponent->GetComponentToWorld();
+	retVal.VolumeTransform = StaticMeshComponent->GetComponentTransform();
 	return retVal;
 }
 
@@ -604,7 +604,7 @@ void ARaymarchVolume::UpdateWorldParameters()
 		WorldParameters.ClippingPlaneParameters.Direction = FVector(0, 0, -1);
 	}
 
-	WorldParameters.VolumeTransform = StaticMeshComponent->GetComponentToWorld();
+	WorldParameters.VolumeTransform = StaticMeshComponent->GetComponentTransform();
 }
 
 void ARaymarchVolume::SetAllMaterialParameters()
@@ -664,8 +664,21 @@ void ARaymarchVolume::GetMinMaxValues(float& Min, float& Max)
 	Max = VolumeAsset->ImageInfo.MaxValue;
 }
 
+float ARaymarchVolume::GetWindowCenter()
+{
+	return RaymarchResources.WindowingParameters.Center;
+}
+
+float ARaymarchVolume::GetWindowWidth()
+{
+	return RaymarchResources.WindowingParameters.Width;
+}
+
 void ARaymarchVolume::SetWindowCenter(const float& Center)
 {
+	if (Center == RaymarchResources.WindowingParameters.Center)
+		return;
+
 	RaymarchResources.WindowingParameters.Center = Center;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
@@ -673,6 +686,9 @@ void ARaymarchVolume::SetWindowCenter(const float& Center)
 
 void ARaymarchVolume::SetWindowWidth(const float& Width)
 {
+	if (Width == RaymarchResources.WindowingParameters.Width)
+		return;
+
 	RaymarchResources.WindowingParameters.Width = Width;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
@@ -680,6 +696,9 @@ void ARaymarchVolume::SetWindowWidth(const float& Width)
 
 void ARaymarchVolume::SetLowCutoff(const bool& LowCutoff)
 {
+	if (LowCutoff == RaymarchResources.WindowingParameters.LowCutoff)
+		return;
+
 	RaymarchResources.WindowingParameters.LowCutoff = LowCutoff;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
@@ -687,6 +706,9 @@ void ARaymarchVolume::SetLowCutoff(const bool& LowCutoff)
 
 void ARaymarchVolume::SetHighCutoff(const bool& HighCutoff)
 {
+	if (HighCutoff == RaymarchResources.WindowingParameters.HighCutoff)
+		return;
+
 	RaymarchResources.WindowingParameters.HighCutoff = HighCutoff;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
@@ -730,7 +752,7 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 		UE_LOG(LogRaymarchVolume, Error, TEXT("Tried to initialize Raymarch resources with no data volume!"));
 		return;
 	}
-	else if (!Volume->PlatformData || Volume->GetSizeX() == 0 || Volume->GetSizeY() == 0 || Volume->GetSizeY() == 0)
+	else if (!Volume->PlatformData || Volume->GetSizeX() == 0 || Volume->GetSizeY() == 0 || Volume->GetSizeZ() == 0)
 	{
 		// Happens in cooking stage where per-platform data isn't initalized. Return.
 		UE_LOG(LogRaymarchVolume, Warning,

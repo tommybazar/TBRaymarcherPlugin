@@ -190,6 +190,6 @@ public:
 		UVolumeTexture*& OutVolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* InSourceArray, bool Persistent);
 
 	/** Clears a Volume Texture. */
-	UFUNCTION(BlueprintCallable, Category = " Volume Texture Utilities")
+	UFUNCTION(BlueprintCallable, Category = "Volume Texture Utilities")
 	static void ClearVolumeTexture(UTextureRenderTargetVolume* RTVolume, float ClearValue);
 };

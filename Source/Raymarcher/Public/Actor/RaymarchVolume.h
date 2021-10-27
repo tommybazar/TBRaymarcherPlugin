@@ -209,6 +209,14 @@ public:
 	UFUNCTION(BlueprintPure)
 	void GetMinMaxValues(float& Min, float& Max);
 
+	/** Gets window center in the Lit Raymarch Material. **/
+	UFUNCTION(BlueprintCallable)
+	float GetWindowCenter();
+
+	/** Gets window width in the Lit Raymarch Material. **/
+	UFUNCTION(BlueprintCallable)
+	float GetWindowWidth();
+
 	/** Sets window center in the Lit Raymarch Material. **/
 	UFUNCTION(BlueprintCallable)
 	void SetWindowCenter(const float& Center);
