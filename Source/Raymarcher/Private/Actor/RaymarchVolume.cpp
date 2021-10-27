@@ -346,7 +346,7 @@ void ARaymarchVolume::Tick(float DeltaTime)
 			{
 				if (!LightParametersMap.Contains(Light))
 				{
-					LightParametersMap.Add(Light, FDirLightParameters());
+					LightParametersMap.Add(Light, Light->GetCurrentParameters());
 				}
 
 				if (Light && Light->GetCurrentParameters() != LightParametersMap[Light])
