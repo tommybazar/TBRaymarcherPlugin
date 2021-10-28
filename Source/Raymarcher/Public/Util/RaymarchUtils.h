@@ -87,15 +87,4 @@ public:
 		FIntPoint Size, EPixelFormat PixelFormat, OneAxisReadWriteBufferResources& RWBuffers);
 
 	static RAYMARCHER_API void ReleaseOneAxisReadWriteBufferResources(OneAxisReadWriteBufferResources& Buffer);
-
-	// UFUNCTION(BlueprintCallable, Category = "Raymarcher")
-	// static RAYMARCHER_API void UpdateVolumeTextureSource(UVolumeTexture* Texture);
-
-	/**
-	 Given a volume texture, this will copy the current texture content into the texture source.
-	 This causes the current contents of the texture to be saved when you hit the save button,
-	 instead of the source content this texture was created with.
-	*/
-	// UFUNCTION(BlueprintCallable, Category = "Raymarcher")
-	// static RAYMARCHER_API void UpdateVolumeTextureSource(UVolumeTexture* VolumeTexture);
 };

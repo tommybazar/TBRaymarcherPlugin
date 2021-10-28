@@ -6,38 +6,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine.h"
-#include "Engine/TextureRenderTarget2D.h"
-#include "Engine/VolumeTexture.h"
-#include "Engine/World.h"
 #include "GlobalShader.h"
-#include "Logging/MessageLog.h"
-#include "PipelineStateCache.h"
-#include "RHIStaticStates.h"
 #include "Rendering/RaymarchTypes.h"
-#include "SceneInterface.h"
-#include "SceneUtils.h"
-#include "Shader.h"
 #include "ShaderParameterUtils.h"
 #include "ShaderParameters.h"
 #include "VolumeAsset/WindowingParameters.h"
-
-/// Creates a SamplerState RHI with "Border" handling of outside-of-UV reads.
-/// The color read from outside the buffer is specified by the BorderColorInt.
-FSamplerStateRHIRef GetBufferSamplerRef(uint32 BorderColorInt);
-
-/// Returns the integer specifying the color needed for the border sampler.
-uint32 GetBorderColorIntSingle(FDirLightParameters LightParams, FMajorAxes MajorAxes, unsigned index);
-
-/// Returns clipping parameters from global world parameters.
-FClippingPlaneParameters RAYMARCHER_API GetLocalClippingParameters(const FRaymarchWorldParameters WorldParameters);
+#include "Rendering/LightingShaderUtils.h"
+#include "RHICommandList.h"
 
 void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICmdList, FBasicRaymarchRenderingResources Resources,
 	const FDirLightParameters LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters);
-
-void AddDirLightToSingleLightVolume_GPUSync_RenderThread(FRHICommandListImmediate& RHICmdList,
-	FBasicRaymarchRenderingResources Resources, const FDirLightParameters LightParameters, const bool Added,
-	const FRaymarchWorldParameters WorldParameters);
 
 void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICmdList,
 	FBasicRaymarchRenderingResources Resources, const FDirLightParameters OldLightParameters,
@@ -59,7 +37,8 @@ public:
 	FRaymarchVolumeShader() : FGlobalShader()
 	{
 	}
-	virtual ~FRaymarchVolumeShader();
+
+	virtual ~FRaymarchVolumeShader(){};
 
 	FRaymarchVolumeShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FGlobalShader(Initializer)
 	{
@@ -147,8 +126,7 @@ public:
 	FLightPropagationShader() : FRaymarchVolumeShader()
 	{
 	}
-
-	~FLightPropagationShader(){};
+	virtual ~FLightPropagationShader(){};
 
 	FLightPropagationShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FRaymarchVolumeShader(Initializer)
 	{
@@ -222,6 +200,7 @@ public:
 	FDirLightPropagationShader() : FLightPropagationShader()
 	{
 	}
+	virtual ~FDirLightPropagationShader(){};
 
 	FDirLightPropagationShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
 		: FLightPropagationShader(Initializer)
@@ -248,30 +227,25 @@ protected:
 	LAYOUT_FIELD(FShaderParameter, UVWOffset);
 };
 
+
 // A shader implementing adding or removing a single directional light.
 // (As opposed to changing [e.g. add and remove at the same time] a directional light)
 // Only adds the bAdded boolean for toggling adding/removing a light.
-// Notice the UE macro DECLARE_SHADER_TYPE, unlike the shaders above (which are abstract)
-// this one actually gets implemented.
-class FAddDirLightShaderCS : public FDirLightPropagationShader
+class FAddDirLightShader : public FDirLightPropagationShader
 {
-	INTERNAL_DECLARE_SHADER_TYPE_COMMON(FAddDirLightShaderCS, Global, RAYMARCHER_API);
-	DECLARE_EXPORTED_TYPE_LAYOUT(FAddDirLightShaderCS, RAYMARCHER_API, Virtual);
+	DECLARE_EXPORTED_TYPE_LAYOUT(FAddDirLightShader, RAYMARCHER_API, Virtual);
 
 public:
-	FAddDirLightShaderCS() : FDirLightPropagationShader()
+	FAddDirLightShader() : FDirLightPropagationShader()
 	{
 	}
 
-	FAddDirLightShaderCS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FDirLightPropagationShader(Initializer)
+	virtual ~FAddDirLightShader(){};
+
+	FAddDirLightShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FDirLightPropagationShader(Initializer)
 	{
-		// Volume texture + Transfer function uniforms
+		// Multiplier for adding or removing light.
 		bAdded.Bind(Initializer.ParameterMap, TEXT("bAdded"), SPF_Mandatory);
-	}
-
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 
 	void SetLightAdded(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, bool bLightAdded)
@@ -285,65 +259,51 @@ protected:
 	LAYOUT_FIELD(FShaderParameter, bAdded);
 };
 
-class FAddDirLightShader_GPUSync_CS : public FAddDirLightShaderCS
+
+// A shader implementing adding or removing a single directional light.
+// (As opposed to changing [e.g. add and remove at the same time] a directional light)
+// Notice the UE macro DECLARE_SHADER_TYPE, unlike the shaders above (which are abstract)
+// this one actually gets implemented.
+// A non-inheritable, implemented shader. Only here to avoid calling IMPLEMENT_SHADER on the virtual parent.
+
+class FAddDirLightShaderCS : public FAddDirLightShader
 {
-	INTERNAL_DECLARE_SHADER_TYPE_COMMON(FAddDirLightShader_GPUSync_CS, Global, RAYMARCHER_API);
-	DECLARE_EXPORTED_TYPE_LAYOUT(FAddDirLightShader_GPUSync_CS, RAYMARCHER_API, Virtual);
+	INTERNAL_DECLARE_SHADER_TYPE_COMMON(FAddDirLightShaderCS, Global, RAYMARCHER_API);
+	DECLARE_EXPORTED_TYPE_LAYOUT(FAddDirLightShaderCS, RAYMARCHER_API, Virtual);
 
 public:
-	FAddDirLightShader_GPUSync_CS() : FAddDirLightShaderCS()
+	FAddDirLightShaderCS() : FAddDirLightShader()
 	{
 	}
 
-	FAddDirLightShader_GPUSync_CS(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	virtual ~FAddDirLightShaderCS(){};
+
+	FAddDirLightShaderCS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FAddDirLightShader(Initializer)
+	{
+	}
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
-
-	void SetReadWriteBuffer(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FTexture2DRHIRef pTexture,
-		FRHIUnorderedAccessView* pRWBuffer)
-	{
-		LightBuffer.SetTexture(RHICmdList, ShaderRHI, pTexture, pRWBuffer);
-	}
-
-	void SetLoopParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int pStart, const int pStop,
-		const int pAxisDirection)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, Start, pStart);
-		SetShaderValue(RHICmdList, ShaderRHI, Stop, pStop);
-		SetShaderValue(RHICmdList, ShaderRHI, AxisDirection, pAxisDirection);
-	};
-
-	void SetOutsideLight(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, float OutsideLightIntensity)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, BufferBorderValue, OutsideLightIntensity);
-	};
-
-protected:
-	LAYOUT_FIELD(FShaderParameter, Start);
-	LAYOUT_FIELD(FShaderParameter, Stop);
-	LAYOUT_FIELD(FShaderParameter, AxisDirection);
-	LAYOUT_FIELD(FShaderParameter, BufferBorderValue);
-	LAYOUT_FIELD(FRWShaderParameter, LightBuffer);
 };
 
 // A shader implementing changing a light in one pass.
 // Works by subtracting the old light and adding the new one.
 // Notice the UE macro DECLARE_SHADER_TYPE, unlike the shaders above (which are abstract)
 // this one actually gets implemented.
-class FChangeDirLightShader : public FDirLightPropagationShader
+class FChangeDirLightShaderCS : public FDirLightPropagationShader
 {
-	INTERNAL_DECLARE_SHADER_TYPE_COMMON(FChangeDirLightShader, Global, RAYMARCHER_API);
-	DECLARE_EXPORTED_TYPE_LAYOUT(FChangeDirLightShader, RAYMARCHER_API, Virtual);
+	INTERNAL_DECLARE_SHADER_TYPE_COMMON(FChangeDirLightShaderCS, Global, RAYMARCHER_API);
+	DECLARE_EXPORTED_TYPE_LAYOUT(FChangeDirLightShaderCS, RAYMARCHER_API, Virtual);
 
 public:
-	FChangeDirLightShader() : FDirLightPropagationShader()
+	FChangeDirLightShaderCS() : FDirLightPropagationShader()
 	{
 	}
+	virtual ~FChangeDirLightShaderCS(){};
 
-	FChangeDirLightShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+	FChangeDirLightShaderCS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
 		: FDirLightPropagationShader(Initializer)
 	{
 		// Volume texture + Transfer function uniforms

@@ -6,23 +6,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine.h"
-#include "Engine/TextureRenderTarget2D.h"
 #include "Engine/VolumeTexture.h"
-#include "Engine/World.h"
-#include "Kismet/BlueprintFunctionLibrary.h"
-#include "Logging/MessageLog.h"
-#include "PipelineStateCache.h"
-#include "RHIStaticStates.h"
+#include "RHIResources.h"
 #include "RaymarchMaterialParameters.h"
-#include "SceneInterface.h"
-#include "SceneUtils.h"
-#include "UObject/ObjectMacros.h"
 #include "VolumeAsset/VolumeInfo.h"
-
-#include <algorithm>	// std::sort
-#include <utility>		// std::pair, std::make_pair
-#include <vector>		// std::pair, std::make_pair
 
 #include "RaymarchTypes.generated.h"
 
@@ -156,47 +143,3 @@ struct FRaymarchWorldParameters
 		return !(lhs == rhs);
 	}
 };
-
-// Enum for indexes for cube faces - used to discern axes for light propagation shader.
-// Also used for deciding vectors provided into cutting plane material.
-// The axis convention is - you are looking at the cube along positive Y axis in UE.
-UENUM(BlueprintType)
-enum class FCubeFace : uint8
-{
-	XPositive = 0,	  // +X
-	XNegative = 1,	  // -X
-	YPositive = 2,	  // +Y
-	YNegative = 3,	  // -Y
-	ZPositive = 4,	  // +Z
-	ZNegative = 5	  // -Z
-};
-
-// Utility function to get sensible names from FCubeFace
-static FString GetDirectionName(FCubeFace Face);
-
-// Normals of corresponding cube faces in object-space.
-const FVector FCubeFaceNormals[6] = {
-	{1.0, 0.0, 0.0},	 // +x
-	{-1.0, 0.0, 0.0},	 // -x
-	{0.0, 1.0, 0.0},	 // +y
-	{0.0, -1.0, 0.0},	 // -y
-	{0.0, 0.0, 1.0},	 // +z
-	{0.0, 0.0, -1.0}	 // -z
-};
-
-/** Structure corresponding to the 3 major axes to propagate a light-source along with their
-   respective weights. */
-struct FMajorAxes
-{
-	// The 3 major axes indexes
-
-	std::vector<std::pair<FCubeFace, float>> FaceWeight;
-
-	/* Returns the weighted major axes to propagate along to add/remove a light to/from a lightvolume
-	(LightPos must be converted to object-space). */
-	static FMajorAxes GetMajorAxes(FVector LightPos);
-};
-
-// Comparison function for a Face-weight pair, to sort in Descending order.
-static bool SortDescendingWeights(const std::pair<FCubeFace, float>& a, const std::pair<FCubeFace, float>& b);
-;
