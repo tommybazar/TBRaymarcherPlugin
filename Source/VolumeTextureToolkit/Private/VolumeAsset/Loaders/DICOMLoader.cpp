@@ -266,7 +266,14 @@ uint8* UDICOMLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 
 		// Copy to our giant array at the right spot for this slice.
 		// Increase TotalArray ptr by DataLength * SliceNumber to get to the start of the curren't slices memory.
-		memcpy(TotalArray + (DataLength * SliceNumber), DataArray, DataLength);
+		if ((DataLength * SliceNumber) < TotalDataSize)
+		{
+			memcpy(TotalArray + (DataLength * SliceNumber), DataArray, DataLength);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("DICOM Loader error during memcpy, some data might be missing"));
+		}
 
 		Parser.CloseFile();
 	}
