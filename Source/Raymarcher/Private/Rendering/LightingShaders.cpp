@@ -17,14 +17,9 @@
 
 #define LOCTEXT_NAMESPACE "RaymarchPlugin"
 
-IMPLEMENT_UNREGISTERED_TEMPLATE_TYPE_LAYOUT(, FRaymarchVolumeShader);
-IMPLEMENT_UNREGISTERED_TEMPLATE_TYPE_LAYOUT(, FLightPropagationShader);
-IMPLEMENT_UNREGISTERED_TEMPLATE_TYPE_LAYOUT(, FDirLightPropagationShader);
-IMPLEMENT_UNREGISTERED_TEMPLATE_TYPE_LAYOUT(, FAddDirLightShader);
+IMPLEMENT_GLOBAL_SHADER(FAddDirLightShader, "/Raymarcher/Private/AddDirLightShader.usf", "MainComputeShader", SF_Compute);
 
-IMPLEMENT_GLOBAL_SHADER(FAddDirLightShaderCS, "/Raymarcher/Private/AddDirLightShader.usf", "MainComputeShader", SF_Compute);
-
-IMPLEMENT_GLOBAL_SHADER(FChangeDirLightShaderCS, "/Raymarcher/Private/ChangeDirLightShader.usf", "MainComputeShader", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FChangeDirLightShader, "/Raymarcher/Private/ChangeDirLightShader.usf", "MainComputeShader", SF_Compute);
 
 // For making statistics about GPU use - Adding Lights.
 DECLARE_FLOAT_COUNTER_STAT(TEXT("AddingLights"), STAT_GPU_AddingLights, STATGROUP_GPU);
@@ -85,7 +80,7 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 	}
 
 	// Find and set compute shader
-	TShaderMapRef<FAddDirLightShaderCS> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+	TShaderMapRef<FAddDirLightShader> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
 	RHICmdList.SetComputeShader(ShaderRHI);
 
@@ -163,7 +158,7 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 	}
 
 	// Unbind UAVs.
-	ComputeShader->UnbindResources(RHICmdList, ShaderRHI);
+	ComputeShader->UnbindResourcesLightPropagation(RHICmdList, ShaderRHI);
 
 	// Transition resources back to the renderer.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
@@ -230,7 +225,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 	SCOPED_DRAW_EVENTF(RHICmdList, ChangeDirLightInSingleLightVolume_RenderThread, TEXT("Changing Lights"));
 	SCOPED_GPU_STAT(RHICmdList, GPUChangingLights);
 
-	TShaderMapRef<FChangeDirLightShaderCS> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+	TShaderMapRef<FChangeDirLightShader> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
 	RHICmdList.SetComputeShader(ShaderRHI);
 
@@ -323,7 +318,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 	}
 
 	// Unbind Resources.
-	ComputeShader->UnbindResources(RHICmdList, ShaderRHI);
+	ComputeShader->UnbindResourcesChangeDirLight(RHICmdList, ShaderRHI);
 
 	// Transition resources back to the renderer.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));

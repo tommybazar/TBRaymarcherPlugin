@@ -51,10 +51,11 @@ void URaymarchUtils::AddDirLightToSingleVolume(const FBasicRaymarchRenderingReso
 	if (bGPUSync)
 	{
 		// Call the actual rendering code on RenderThread.
-		ENQUEUE_RENDER_COMMAND(CaptureCommand)
-		([=](FRHICommandListImmediate& RHICmdList) {
-			AddDirLightToSingleLightVolume_GPUSync_RenderThread(RHICmdList, Resources, LightParameters, Added, WorldParameters);
-		});
+		// #todo fix GPUSync'd version of shader.
+		//ENQUEUE_RENDER_COMMAND(CaptureCommand)
+		//([=](FRHICommandListImmediate& RHICmdList) {
+		//	AddDirLightToSingleLightVolume_GPUSync_RenderThread(RHICmdList, Resources, LightParameters, Added, WorldParameters);
+		//});
 	}
 	else
 	{
