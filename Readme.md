@@ -18,13 +18,13 @@ Both of these renders are using the same CT scan, only difference is windowing a
 
 
 # Video showcase / deep-dive tutorials
-Part1 - Showcase & Intro : https://youtu.be/-HDVXehPolM
+Showcase & Intro (now mostly outdated): https://youtu.be/-HDVXehPolM
 
 # Discord
 If you want to ask me anything or (potentially) talk to other people using this plugin, here's a discord server for it : https://discord.gg/zKutZpmFXh
 
 # Features
- * Works out of the box with binary UE 4.26 (there is also a branch for 4.25)
+ * Works out of the box with binary UE 4.27 (there is also a branch for 4.25)
  * Volume raymarching for arbitrary `UVolumeTexture` textures
  * .dcm (DICOM), .mhd and .raw file import into volume textures.
  * Volume illumination implemented in compute shaders using concepts from [Efficient Volume Illumination with Multiple Light Sources through Selective Light Updates](https://ieeexplore.ieee.org/document/7156382) (2015) by Sundén and Ropinski
@@ -41,8 +41,7 @@ If you want to ask me anything or (potentially) talk to other people using this 
  * Currently do not support persistent 32bit grayscale textures, but plan on investigating that possibility soon(ish).
 
 # Example
- * The project works out-of-the-box with everything being included in the TBRaymarcherPlugin. There is an example map for Mouse and Keyboard and
- an example map for VR (mid-November 2020).
+ * The project works out-of-the-box with everything being included in the TBRaymarcherPlugin. There is an example map for Mouse and Keyboard and an example map for VR.
 
 # Using this plugin in your own project
 If you want to use this functionality in your own project, you will need to
@@ -254,7 +253,7 @@ a volume assigned, otherwise they won't do anything.
 Currently only Windows DX11 is supported and tested. DX12 has some synchronization issues that can result in textures being corrupted after startup.
 Vulkan crashes on startup immediately and since UE support for it isn't mature yet, I'm not fixing it. If you're an expert who really wants to use Vulkan, feel free to submit a pull-request after you find the reason for crashes.
 
-**Because we started using features introduced in 4.26, older versions of UE will not support this plugin. There is, however a 4.25 branch in this repo which works with that version. This branch won't be updated into the future.' 
+**Only the master branch is updated with new features, branches dedicated to older UE versions are legacy and won't be updated into the future.' 
 
 # Credits
 Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks (original raymarching code).
