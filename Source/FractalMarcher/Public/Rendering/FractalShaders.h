@@ -26,7 +26,7 @@ struct FMandelbulbSDFResources
 
 	/// Mandelbulb volume texture.
 	UPROPERTY();
-	UVolumeTexture* MandelbulbVolume;
+	UVolumeTexture* MandelbulbVolume = nullptr;
 
 	/// The compute shader UAV. Used for all the calculations.
 	FUnorderedAccessViewRHIRef MandelbulbVolumeUAVRef;

@@ -94,15 +94,15 @@ struct FBasicRaymarchRenderingResources
 
 	/// Pointer to the Data Volume texture.
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
-	UVolumeTexture* DataVolumeTextureRef;
+	UVolumeTexture* DataVolumeTextureRef = nullptr;
 
 	/// Pointer to the Transfer Function Volume texture.
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
-	UTexture2D* TFTextureRef;
+	UTexture2D* TFTextureRef = nullptr;
 
 	/// Pointer to the illumination volume texture render target.
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
-	UTextureRenderTargetVolume* LightVolumeRenderTarget;
+	UTextureRenderTargetVolume* LightVolumeRenderTarget = nullptr;
 
 	/// If true, Light Volume texture will be created with it's side scaled down by 1/2 (-> 1/8 total voxels!)
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Basic Raymarch Rendering Resources")
