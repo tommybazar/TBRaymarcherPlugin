@@ -24,7 +24,7 @@ Showcase & Intro (now mostly outdated): https://youtu.be/-HDVXehPolM
 If you want to ask me anything or (potentially) talk to other people using this plugin, here's a discord server for it : https://discord.gg/zKutZpmFXh
 
 # Features
- * Works out of the box with binary UE 4.27 (there is also a branch for 4.25)
+ * Works out of the box with binary UE 4.27 (there is also a branch for 4.26, 4.25)
  * Volume raymarching for arbitrary `UVolumeTexture` textures
  * .dcm (DICOM), .mhd and .raw file import into volume textures.
  * Volume illumination implemented in compute shaders using concepts from [Efficient Volume Illumination with Multiple Light Sources through Selective Light Updates](https://ieeexplore.ieee.org/document/7156382) (2015) by Sundén and Ropinski
