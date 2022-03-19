@@ -12,24 +12,15 @@
 
 #include "VolumeAsset.Generated.h"
 
-// Sample MHD header
-//
-// ObjectType = Image
-// NDims = 3
-// DimSize = 512 512 128
-// ElementSpacing = 0.00390625 0.0117188 0.046875
-// Position = 0 -4.19925 -4.19785
-// ElementType = MET_UCHAR
-// ElementNumberOfChannels = 1
-// ElementByteOrderMSB = False
-// ElementDataFile = preprocessed.raw
-
 /// Delegate that is broadcast when the color curve is changed.
 DECLARE_MULTICAST_DELEGATE_OneParam(FCurveAssetChangedDelegate, UCurveLinearColor*);
 
 /// Delegate that is broadcast when the inner volume info is changed.
 DECLARE_MULTICAST_DELEGATE(FVolumeInfoChangedDelegate);
 
+///
+/// Class wrapping most of the functionality in this plugin. Contains a FVolumeInfo containing loaded data and a transfer function to get color from scalar values depending on windowing settings.
+///
 UCLASS()
 class VOLUMETEXTURETOOLKIT_API UVolumeAsset : public UDataAsset
 {
@@ -60,9 +51,9 @@ public:
 	FVolumeInfoChangedDelegate OnImageInfoChanged;
 
 	/// Called when inner structs get changed. Used to notify active volumes about stuff changing inside the ImageInfo struct.
-	void PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent) override;
 
 	/// Called when a property is changed.
-	void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 };
