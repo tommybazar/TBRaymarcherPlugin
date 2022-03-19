@@ -36,6 +36,11 @@
       "Name": "VolumeTextureToolkitEditor",
       "Type": "Editor",
       "LoadingPhase": "Default"
+    },
+    {
+      "Name": "RayUtils",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
     }
   ]
 }
