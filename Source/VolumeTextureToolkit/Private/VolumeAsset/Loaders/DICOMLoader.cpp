@@ -283,7 +283,10 @@ uint8* UDICOMLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 	ParserHelper.GetSliceLocationFilenamePairs(SliceLocations, true);
 	if (SliceLocations.size() > 1)
 	{
-		VolumeInfo.Spacing.Z = abs(SliceLocations[1].first - SliceLocations[0].first);
+		if (abs(SliceLocations[1].first - SliceLocations[0].first) > 0)
+		{
+			VolumeInfo.Spacing.Z = abs(SliceLocations[1].first - SliceLocations[0].first);
+		}
 		VolumeInfo.WorldDimensions = VolumeInfo.Spacing * FVector(VolumeInfo.Dimensions);
 	}
 
