@@ -1,14 +1,15 @@
 ﻿#pragma once
 
-class FPerfTimer
+class RAYUTILS_API FPerfTimer
 {
-	FCriticalSection MapMutex;
-	TMap<FString, double> StartTimes;
-	
 public:
-	void StartTimer(FString Key);
+	static FCriticalSection MapMutex;
 
-	double GetTimeElapsed(FString Key);
+	static TMap<FString, double> StartTimes;
 
-	double StopTimer(FString Key);
+	static void StartTimer(FString Key);
+
+	static double GetTimeElapsed(FString Key);
+
+	static double StopTimer(FString Key);
 };

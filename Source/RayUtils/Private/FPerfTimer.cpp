@@ -1,5 +1,9 @@
 ﻿#include "FPerfTimer.h"
 
+
+TMap<FString, double> FPerfTimer::StartTimes = TMap<FString, double>();
+FCriticalSection FPerfTimer::MapMutex;
+
 void FPerfTimer::StartTimer(FString Key)
 {
 	FScopeLock Lock(&MapMutex);
