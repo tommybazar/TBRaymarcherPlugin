@@ -18,7 +18,10 @@ public class FractalMarcher : ModuleRules
 				"RHI",
 				"AssetRegistry",
 				"VolumeTextureToolkit",
-				"InputCore"
+				"InputCore",
+				"Media",
+				"MediaUtils",
+				"MediaAssets"
 			}
 		);
 
