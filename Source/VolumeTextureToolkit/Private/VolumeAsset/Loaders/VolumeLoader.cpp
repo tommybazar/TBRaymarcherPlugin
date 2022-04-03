@@ -5,6 +5,7 @@
 
 #include "VolumeAsset/Loaders/VolumeLoader.h"
 
+#include "TextureUtilities.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Logging/LogMacros.h"

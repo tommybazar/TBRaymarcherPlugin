@@ -4,12 +4,12 @@
 // (original raymarching code).
 #include "VolumeAsset/Loaders/DICOMLoader.h"
 
-#include "DesktopPlatform/Public/DesktopPlatformModule.h"
+#include "TextureUtilities.h"
 #include "HAL/FileManagerGeneric.h"
 #include "VolumeAsset/DICOMParser/DICOMAppHelper.h"
 #include "VolumeAsset/DICOMParser/DICOMParser.h"
 
-#pragma optimize("", off)
+// #pragma optimize("", off)
 
 UDICOMLoader* UDICOMLoader::Get()
 {
@@ -291,8 +291,4 @@ uint8* UDICOMLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 	return TotalArray;
 }
 
-void AMofoCallback()
-{
-}
-
-#pragma optimize("", on)
+// #pragma optimize("", off)

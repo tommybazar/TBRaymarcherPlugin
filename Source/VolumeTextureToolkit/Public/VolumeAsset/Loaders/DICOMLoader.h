@@ -30,5 +30,3 @@ public:
 
 	virtual uint8* LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat);
 };
-
-void AMofoCallback();
