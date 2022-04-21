@@ -144,7 +144,7 @@ void ARaymarchVolume::OnConstruction(const FTransform& Transform)
 	LightParametersMap.Empty();
 	for (ARaymarchLight* Light : LightsArray)
 	{
-		if (Light)
+		if (Light && Light->LightIntensity > 0.0f)
 		{
 			LightParametersMap.Add(Light, Light->GetCurrentParameters());
 		}
@@ -344,12 +344,16 @@ void ARaymarchVolume::Tick(float DeltaTime)
 			TArray<ARaymarchLight*> LightsToUpdate;
 			for (ARaymarchLight* Light : LightsArray)
 			{
+				if (!Light)
+				{
+					continue;
+				}
 				if (!LightParametersMap.Contains(Light))
 				{
 					LightParametersMap.Add(Light, Light->GetCurrentParameters());
+					LightsToUpdate.Add(Light);
 				}
-
-				if (Light && Light->GetCurrentParameters() != LightParametersMap[Light])
+				else if (Light->GetCurrentParameters() != LightParametersMap[Light])
 				{
 					LightsToUpdate.Add(Light);
 				}
