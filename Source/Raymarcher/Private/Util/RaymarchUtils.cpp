@@ -170,7 +170,7 @@ void URaymarchUtils::CreateBufferTextures(FIntPoint Size, EPixelFormat PixelForm
 		UE_LOG(LogTemp, Warning, TEXT("Warning: Creating Buffer Textures: Size is Zero!"), 3);
 		return;
 	}
-	FRHIResourceCreateInfo CreateInfo(FClearValueBinding::Transparent);
+	FRHIResourceCreateInfo CreateInfo(TEXT("DebugClearName"), FClearValueBinding::Transparent);
 	for (int i = 0; i < 4; i++)
 	{
 		RWBuffers.Buffers[i] =

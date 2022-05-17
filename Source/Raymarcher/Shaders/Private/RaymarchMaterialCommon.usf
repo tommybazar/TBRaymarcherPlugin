@@ -1,3 +1,4 @@
+
 // Copyright 2021 Tomas Bartipan and Technical University of Munich.
 // Licensed under MIT license - See License.txt for details.
 // Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
@@ -32,7 +33,7 @@ float4 PerformRaymarchCubeSetup(FMaterialPixelParameters MaterialParameters)
     float3 WorldDepthVec = normalize(MaterialParameters.CameraVector) * LocalSceneDepth;
 
     // Transform this vector into the box's local space
-    WorldDepthVec = mul(WorldDepthVec, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal);
+    WorldDepthVec = mul(WorldDepthVec, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal));
 
     // Get actual depth in local space, account for mesh bounds (by default, we use a centered 1x1x1 cube mesh, so this is unnecessary)
     LocalSceneDepth = length(WorldDepthVec);
@@ -44,8 +45,8 @@ float4 PerformRaymarchCubeSetup(FMaterialPixelParameters MaterialParameters)
     LocalSceneDepth /= abs(dot(CameraFWDVecWorld, MaterialParameters.CameraVector));
 
     // Get cam pos and vector into local space too.
-    float3 LocalCamPos = mul(float4(ResolvedView.WorldCameraOrigin, 1.00000000), (GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)).xyz;
-    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal));
+    float3 LocalCamPos = mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin), 1.00000000), LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)).xyz;
+    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)));
 
     // Transform camera pos from local to UVW coords (from +-0.5 to [0 - 1]).
     LocalCamPos += 0.5;
@@ -98,7 +99,7 @@ float4 PerformExperimentalRaymarchCubeSetup(FMaterialPixelParameters MaterialPar
     float3 WorldDepthVec = normalize(MaterialParameters.CameraVector) * LocalSceneDepth;
 
     // Transform this vector into the box's local space
-    WorldDepthVec = mul(WorldDepthVec, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal);
+    WorldDepthVec = mul(WorldDepthVec, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal));
 
     // Get actual depth in local space, account for mesh bounds (by default, we use a centered 1x1x1 cube mesh, so this is unnecessary)
     LocalSceneDepth = length(WorldDepthVec);
@@ -108,8 +109,8 @@ float4 PerformExperimentalRaymarchCubeSetup(FMaterialPixelParameters MaterialPar
     LocalSceneDepth /= abs(dot(CameraFWDVecWorld, MaterialParameters.CameraVector));
 
     // Get cam pos and vector into local space too.
-    float3 LocalCamPos = mul(float4(ResolvedView.WorldCameraOrigin, 1.00000000), (GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal) * Scaling).xyz;
-    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal));
+    float3 LocalCamPos = mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin), 1.00000000), LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal) * Scaling).xyz;
+    float3 LocalCamVec = -normalize(mul(LWCHackToFloat(MaterialParameters.CameraVector), LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)));
 
     // Transform camera pos from local to UVW coords (from +-0.5 to [0 - 1]). Again, The LocalObjectBoundsMax only have an effect if using a non-default cube mesh.
     LocalCamPos += 0.5; //  ((LocalCamPos / (GetPrimitiveData(MaterialParameters.PrimitiveId).LocalObjectBoundsMax * 2))) + 0.5;
@@ -159,7 +160,7 @@ float4 PerformOffsetRaymarchCubeSetup(float4x4 CubeTransformW2L, FMaterialPixelP
     float LocalSceneDepth = CalcSceneDepth(ScreenAlignedPosition(GetScreenPosition(MaterialParameters)));
 
     // Get camera forward vector in world space.
-    float3 CameraFWDVecWorld = mul(float3(0.00000000, 0.00000000, 1.00000000), ResolvedView.ViewToTranslatedWorld);
+    float3 CameraFWDVecWorld = mul(float3(0.00000000, 0.00000000, 1.00000000), LWCHackToFloat(ResolvedView.ViewToTranslatedWorld));
 
     // Get world space vector going from camera center to current scene depth.
     float3 WorldDepthVec = normalize(MaterialParameters.CameraVector) * LocalSceneDepth;
@@ -174,8 +175,8 @@ float4 PerformOffsetRaymarchCubeSetup(float4x4 CubeTransformW2L, FMaterialPixelP
     LocalSceneDepth /= abs(dot(CameraFWDVecWorld, MaterialParameters.CameraVector));
 
     // Get cam pos and vector into local space too.
-    float3 LocalCamPos = mul(float4(ResolvedView.WorldCameraOrigin, 1.00000000), CubeTransformW2L).xyz;
-    float3 LocalCamVec = -normalize(mul(float4(ResolvedView.WorldCameraOrigin + MaterialParameters.CameraVector, 1.00000000), CubeTransformW2L).xyz - LocalCamPos);
+    float3 LocalCamPos = mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin), 1.00000000), CubeTransformW2L).xyz;
+    float3 LocalCamVec = -normalize(mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin) + MaterialParameters.CameraVector, 1.00000000), CubeTransformW2L).xyz - LocalCamPos);
 
     // Transform camera pos from local to UVW coords (from +-0.5 to [0 - 1]). Again, The LocalObjectBoundsMax only have an effect if using a non-default cube mesh.
     LocalCamPos += 0.5;

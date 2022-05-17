@@ -75,7 +75,7 @@ void AFractalVisualizerScreen::OnConstruction(const FTransform& Transform)
 			ScreenTransform.SetScale3D(PanelScaling);
 
 			UStaticMeshComponent* NewMeshComponent = NewObject<UStaticMeshComponent>(this);
-			NewMeshComponent->AttachTo(RootComponent);
+			NewMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 			NewMeshComponent->SetRelativeTransform(ScreenTransform);
 			NewMeshComponent->RegisterComponent();
 

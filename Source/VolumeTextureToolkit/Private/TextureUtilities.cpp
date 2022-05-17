@@ -181,7 +181,7 @@ bool UVolumeTextureToolkit::Create2DTextureTransient(UTexture2D*& OutTexture, EP
 	TransientTexture->SRGB = false;
 	TransientTexture->NeverStream = true;
 
-	FTexture2DMipMap& Mip = TransientTexture->PlatformData->Mips[0];
+	FTexture2DMipMap& Mip = TransientTexture->GetPlatformData()->Mips[0];
 	void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
 
 	if (BulkData)
@@ -429,12 +429,12 @@ void UVolumeTextureToolkit::SetupVolumeTexture(
 
 void UVolumeTextureToolkit::ClearVolumeTexture(UTextureRenderTargetVolume* RTVolume, float ClearValue)
 {
-	if (!RTVolume || !RTVolume->Resource || !RTVolume->Resource->TextureRHI)
+	if (!RTVolume || !RTVolume->GetResource() || !RTVolume->GetResource()->TextureRHI)
 	{
 		return;
 	}
 
-	FRHITexture3D* VolumeTextureResource = RTVolume->Resource->TextureRHI->GetTexture3D();
+	FRHITexture3D* VolumeTextureResource = RTVolume->GetResource()->TextureRHI->GetTexture3D();
 
 	// Call the actual rendering code on RenderThread.
 	ENQUEUE_RENDER_COMMAND(CaptureCommand)
