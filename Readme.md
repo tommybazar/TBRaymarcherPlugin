@@ -5,6 +5,8 @@ Allows volume rendering of volumetric data with Unreal Engine.
 
 ## Updated for UE 4.27, for older engine versions, check out the appropriately named branch.
 
+There is also a branch called "ue5" that works with Unreal Engine 5.0 (after some cleanup of the code, this will be merged into master and work will continue only on UE5).
+
 For a project that works out of the box, see example project at https://github.com/tommybazar/TBRaymarchProject.
 
 ![
