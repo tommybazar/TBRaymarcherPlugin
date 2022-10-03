@@ -289,8 +289,8 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 		ComputeShader->SetPixelOffsets(RHICmdList, ShaderRHI, AddedPixOffset, RemovedPixOffset);
 		ComputeShader->SetUVWOffsets(RHICmdList, ShaderRHI, AddedUVWOffset, RemovedUVWOffset);
 
-		FMatrix perm = GetPermutationMatrix(RemovedLocalMajorAxes, AxisIndex);
-		ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, perm);
+		FMatrix PermMatrix = GetPermutationMatrix(RemovedLocalMajorAxes, AxisIndex);
+		ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermMatrix);
 
 		// Get group sizes for compute shader
 		uint32 GroupSizeX = FMath::DivideAndRoundUp(TransposedDimensions.X, NUM_THREADS_PER_GROUP_DIMENSION);

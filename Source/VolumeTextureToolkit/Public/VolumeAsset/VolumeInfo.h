@@ -82,7 +82,7 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	FVector Spacing;
 
-	// Size of the whole volume in mm (equals VoxelDimensions * Spacing)
+	// Size of the whole volume in mm (equals Dimensions * Spacing)
 	UPROPERTY(VisibleAnywhere)
 	FVector WorldDimensions;
 

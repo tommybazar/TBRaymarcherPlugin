@@ -237,7 +237,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SwitchRenderer(bool bInLitRaymarch);
 
-	/** Switches between Lit and Intensity raymarching.**/
+	/** Sets the maximum amount of steps to be taken when raymarching.**/
 	UFUNCTION(BlueprintCallable)
 	void SetRaymarchSteps(float InRaymarchingSteps);
 };

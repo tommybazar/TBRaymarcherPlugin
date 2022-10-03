@@ -36,9 +36,9 @@ void URaymarchUtils::AddDirLightToSingleVolume(const FBasicRaymarchRenderingReso
 	const FDirLightParameters& LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters, bool& LightAdded,
 	bool bGPUSync)
 {
-	if (!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->Resource || !Resources.TFTextureRef->Resource ||
-		!Resources.LightVolumeRenderTarget->Resource || !Resources.DataVolumeTextureRef->Resource->TextureRHI ||
-		!Resources.TFTextureRef->Resource->TextureRHI || !Resources.LightVolumeRenderTarget->Resource->TextureRHI)
+	if (!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->GetResource() || !Resources.TFTextureRef->GetResource() ||
+		!Resources.LightVolumeRenderTarget->GetResource() || !Resources.DataVolumeTextureRef->GetResource()->TextureRHI ||
+		!Resources.TFTextureRef->GetResource()->TextureRHI || !Resources.LightVolumeRenderTarget->GetResource()->TextureRHI)
 	{
 		LightAdded = false;
 		return;
@@ -71,9 +71,9 @@ void URaymarchUtils::ChangeDirLightInSingleVolume(FBasicRaymarchRenderingResourc
 	const FDirLightParameters OldLightParameters, const FDirLightParameters NewLightParameters,
 	const FRaymarchWorldParameters WorldParameters, bool& LightAdded, bool bGpuSync)
 {
-	if (!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->Resource || !Resources.TFTextureRef->Resource ||
-		!Resources.LightVolumeRenderTarget->Resource || !Resources.DataVolumeTextureRef->Resource->TextureRHI ||
-		!Resources.TFTextureRef->Resource->TextureRHI || !Resources.LightVolumeRenderTarget->Resource->TextureRHI)
+	if (!Resources.DataVolumeTextureRef || !Resources.DataVolumeTextureRef->GetResource() || !Resources.TFTextureRef->GetResource() ||
+		!Resources.LightVolumeRenderTarget->GetResource() || !Resources.DataVolumeTextureRef->GetResource()->TextureRHI ||
+		!Resources.TFTextureRef->GetResource()->TextureRHI || !Resources.LightVolumeRenderTarget->GetResource()->TextureRHI)
 	{
 		LightAdded = false;
 		return;
