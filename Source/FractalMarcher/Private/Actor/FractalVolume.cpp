@@ -180,15 +180,15 @@ void AFractalVolume::InitializeFractalMarchResources()
 	// Flush rendering commands so that all textures are definitely initialized with resources.
 	FlushRenderingCommands();
 
-	if (!MandelbulbResources.MandelbulbVolume->Resource)
+	if (!MandelbulbResources.MandelbulbVolume->GetResource())
 	{
 		return;
 	}
 
 	// Create UAV for light volume to be targettable in Compute Shader.
-	check(MandelbulbResources.MandelbulbVolume->Resource->TextureRHI);
+	check(MandelbulbResources.MandelbulbVolume->GetResource()->TextureRHI);
 	MandelbulbResources.MandelbulbVolumeUAVRef =
-		RHICreateUnorderedAccessView(MandelbulbResources.MandelbulbVolume->Resource->TextureRHI);
+		RHICreateUnorderedAccessView(MandelbulbResources.MandelbulbVolume->GetResource()->TextureRHI);
 	FlushRenderingCommands();
 }
 

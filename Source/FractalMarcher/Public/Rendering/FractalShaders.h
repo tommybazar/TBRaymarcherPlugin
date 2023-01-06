@@ -80,10 +80,10 @@ public:
 	{
 		// Set the multiplier to -1 if we're removing the light. Set to 1 if adding it.
 		SetUAVParameter(RHICmdList, ShaderRHI, MandelbulbVolumeUAV, Parameters.MandelbulbVolumeUAVRef);
-		SetShaderValue(RHICmdList, ShaderRHI, MandelbulbVolumeDimensions, FVector(Parameters.MandelbulbVolumeDimensions));
+		SetShaderValue(RHICmdList, ShaderRHI, MandelbulbVolumeDimensions, FVector3f(Parameters.MandelbulbVolumeDimensions));
 
-		SetShaderValue(RHICmdList, ShaderRHI, Center, Parameters.Center);
-		SetShaderValue(RHICmdList, ShaderRHI, Extent, Parameters.Extent);
+		SetShaderValue(RHICmdList, ShaderRHI, Center, FVector3f(Parameters.Center));
+		SetShaderValue(RHICmdList, ShaderRHI, Extent, FVector3f(Parameters.Extent));
 		SetShaderValue(RHICmdList, ShaderRHI, Power, Parameters.Power);
 	}
 

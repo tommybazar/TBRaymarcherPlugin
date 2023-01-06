@@ -9,6 +9,8 @@
 #include "RenderCore/Public/RenderUtils.h"
 #include "Renderer/Public/VolumeRendering.h"
 #include "Rendering/LightingShaders.h"
+
+#include "Engine/TextureRenderTargetVolume.h"
 #include "Util/UtilityShaders.h"
 
 #if !UE_BUILD_SHIPPING
@@ -68,7 +70,7 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 		}
 		// Get the X, Y and Z transposed into the current axis orientation.
 		FIntVector TransposedDimensions =
-			GetTransposedDimensions(LocalMajorAxes, Resources.LightVolumeRenderTarget->Resource->TextureRHI->GetTexture3D(), i);
+			GetTransposedDimensions(LocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), i);
 		OneAxisReadWriteBufferResources& Buffers = GetBuffers(LocalMajorAxes, i, Resources);
 
 		float LightAlpha = GetLightAlpha(LocalLightParams, LocalMajorAxes, i);
@@ -91,8 +93,8 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 	// Set parameters, resources, LightAdded and ALightVolume
 	ComputeShader->SetRaymarchParameters(
 		RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
-	ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->Resource->TextureRHI->GetTexture3D(),
-		Resources.TFTextureRef->Resource->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
+	ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+		Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
 	ComputeShader->SetLightAdded(RHICmdList, ShaderRHI, Added);
 	ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
 
@@ -110,7 +112,7 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 
 		// Get the X, Y and Z transposed into the current axis orientation.
 		FIntVector TransposedDimensions =
-			GetTransposedDimensions(LocalMajorAxes, Resources.LightVolumeRenderTarget->Resource->TextureRHI->GetTexture3D(), i);
+			GetTransposedDimensions(LocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), i);
 
 		FVector2D UVOffset =
 			GetUVOffset(LocalMajorAxes.FaceWeight[i].first, -LocalLightParams.LightDirection, TransposedDimensions);
@@ -203,7 +205,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 	{
 		// Get the X, Y and Z transposed into the current axis orientation.
 		FIntVector TransposedDimensions = GetTransposedDimensions(
-			RemovedLocalMajorAxes, Resources.LightVolumeRenderTarget->Resource->TextureRHI->GetTexture3D(), i);
+			RemovedLocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), i);
 		OneAxisReadWriteBufferResources& Buffers = GetBuffers(RemovedLocalMajorAxes, i, Resources);
 
 		float RemovedLightAlpha = GetLightAlpha(RemovedLocalLightParams, RemovedLocalMajorAxes, i);
@@ -236,8 +238,8 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 
 	ComputeShader->SetRaymarchParameters(
 		RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
-	ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->Resource->TextureRHI->GetTexture3D(),
-		Resources.TFTextureRef->Resource->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
+	ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+		Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
 	ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
 
 	for (unsigned AxisIndex = 0; AxisIndex < 2; AxisIndex++)
@@ -252,7 +254,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 		OneAxisReadWriteBufferResources& Buffers = GetBuffers(RemovedLocalMajorAxes, AxisIndex, Resources);
 		// TODO take these from buffers.
 		FIntVector TransposedDimensions = GetTransposedDimensions(
-			RemovedLocalMajorAxes, Resources.LightVolumeRenderTarget->Resource->TextureRHI->GetTexture3D(), AxisIndex);
+			RemovedLocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), AxisIndex);
 
 		FVector2D AddedPixOffset = GetUVOffset(
 			AddedLocalMajorAxes.FaceWeight[AxisIndex].first, -AddedLocalLightParams.LightDirection, TransposedDimensions);
@@ -287,8 +289,8 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 		ComputeShader->SetPixelOffsets(RHICmdList, ShaderRHI, AddedPixOffset, RemovedPixOffset);
 		ComputeShader->SetUVWOffsets(RHICmdList, ShaderRHI, AddedUVWOffset, RemovedUVWOffset);
 
-		FMatrix perm = GetPermutationMatrix(RemovedLocalMajorAxes, AxisIndex);
-		ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, perm);
+		FMatrix PermMatrix = GetPermutationMatrix(RemovedLocalMajorAxes, AxisIndex);
+		ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermMatrix);
 
 		// Get group sizes for compute shader
 		uint32 GroupSizeX = FMath::DivideAndRoundUp(TransposedDimensions.X, NUM_THREADS_PER_GROUP_DIMENSION);

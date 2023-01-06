@@ -52,7 +52,7 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
     float FinalStep = frac(FloatActualSteps);
     
     // Get camera vector in local space and multiply it by step size.
-    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)) * StepSize;
+    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
     // Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
     float StepSizeWorld = VOLUME_DENSITY * StepSize;
     // Initialize accumulated light energy.
@@ -113,7 +113,7 @@ float4 PerformWindowedIntensityRaymarch(Texture3D DataVolume, // Data Volume
     float FinalStep = frac(FloatActualSteps);
     
     // Get camera vector in local space and multiply it by step size.
-    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)) * StepSize;
+    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
     float4 LightEnergy = 0;
     // Jitter Entry position to avoid artifacts.
     JitterEntryPos(CurPos, LocalCamVec, MaterialParameters);

@@ -131,7 +131,7 @@ UVolumeAsset* UDICOMLoader::CreateVolumeFromFile(FString FileName, bool bNormali
 	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, bConvertToFloat);
 
 	// Get proper pixel format depending on what got saved into the MHDInfo during conversion.
-	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
+	const EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
 
 	// Create the transient Volume texture.
 	UVolumeTextureToolkit::CreateVolumeTextureTransient(OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray);
@@ -170,9 +170,9 @@ UVolumeAsset* UDICOMLoader::CreatePersistentVolumeFromFile(
 	}
 
 	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, false);
-	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
+	const EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
 	// Create the persistent volume texture.
-	FString VolumeTextureName = "VA_" + VolumeName + "_Data";
+	const FString VolumeTextureName = "VA_" + VolumeName + "_Data";
 	UVolumeTextureToolkit::CreateVolumeTextureAsset(
 		OutAsset->DataTexture, VolumeTextureName, OutFolder, PixelFormat, VolumeInfo.Dimensions, LoadedArray, true);
 	OutAsset->ImageInfo = VolumeInfo;

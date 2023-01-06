@@ -8,6 +8,7 @@
 #include "GenericPlatform/GenericPlatformTime.h"
 #include "Rendering/RaymarchMaterialParameters.h"
 #include "TextureUtilities.h"
+#include "UObject/SavePackage.h"
 #include "Util/RaymarchUtils.h"
 #include "VolumeAsset/VolumeAsset.h"
 
@@ -538,8 +539,11 @@ void ARaymarchVolume::SaveCurrentParamsToVolumeAsset()
 
 		UPackage* Package = VolumeAsset->GetOutermost();
 
-		UPackage::SavePackage(Package, VolumeAsset, EObjectFlags::RF_Public | EObjectFlags::RF_Standalone,
-			*(Package->FileName.ToString()), GError, nullptr, false, true, SAVE_NoError);
+		// #TODO This fails in UE5 because of trying to re-save the VolumeTexture bulk data and failing.
+		FSavePackageArgs PackageArgs;
+		PackageArgs.TopLevelFlags = EObjectFlags::RF_Public | EObjectFlags::RF_Standalone;
+		PackageArgs.SaveFlags = SAVE_NoError;
+		UPackage::SavePackage(Package, VolumeAsset, *(Package->GetLoadedPath().GetPackageName()), PackageArgs);
 	}
 }
 
@@ -801,15 +805,15 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	// Flush rendering commands so that all textures are definitely initialized with resources and we can create a UAV ref.
 	FlushRenderingCommands();
 
-	if (!RaymarchResources.LightVolumeRenderTarget || !RaymarchResources.LightVolumeRenderTarget->Resource ||
-		!RaymarchResources.LightVolumeRenderTarget->Resource->TextureRHI)
+	if (!RaymarchResources.LightVolumeRenderTarget || !RaymarchResources.LightVolumeRenderTarget->GetResource() ||
+		!RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI)
 	{
 		// Return if anything was not initialized.
 		return;
 	}
 
 	RaymarchResources.LightVolumeUAVRef =
-		RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->Resource->TextureRHI);
+		RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
 
 	RaymarchResources.bIsInitialized = true;
 }
@@ -819,7 +823,7 @@ void ARaymarchVolume::FreeRaymarchResources()
 	RaymarchResources.DataVolumeTextureRef = nullptr;
 	if (RaymarchResources.LightVolumeRenderTarget)
 	{
-		RaymarchResources.LightVolumeRenderTarget->MarkPendingKill();
+		RaymarchResources.LightVolumeRenderTarget->MarkAsGarbage();
 	}
 	RaymarchResources.LightVolumeRenderTarget = nullptr;
 

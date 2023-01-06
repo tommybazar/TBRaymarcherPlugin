@@ -98,8 +98,8 @@ public:
 	void SetRaymarchParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI,
 		FClippingPlaneParameters LocalClippingParams, FLinearColor pWindowingParameters)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingCenter, LocalClippingParams.Center);
-		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingDirection, LocalClippingParams.Direction);
+		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingCenter, FVector3f(LocalClippingParams.Center));
+		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingDirection, FVector3f(LocalClippingParams.Direction));
 		SetShaderValue(RHICmdList, ShaderRHI, WindowingParameters, pWindowingParameters);
 	}
 
@@ -131,7 +131,7 @@ public:
 
 	void SetPermutationMatrix(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FMatrix PermMatrix)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, PermutationMatrix, PermMatrix);
+		SetShaderValue(RHICmdList, ShaderRHI, PermutationMatrix, FMatrix44f(PermMatrix));
 	}
 
 	void UnbindResourcesRaymarch(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
@@ -151,12 +151,12 @@ public:
 
 	void SetUVOffset(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector2D PixelOffset)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, PrevPixelOffset, PixelOffset);
+		SetShaderValue(RHICmdList, ShaderRHI, PrevPixelOffset, FVector2f(PixelOffset));
 	}
 
 	void SetUVWOffset(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector pUVWOffset)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, UVWOffset, pUVWOffset);
+		SetShaderValue(RHICmdList, ShaderRHI, UVWOffset, FVector3f(pUVWOffset));
 	}
 
 protected:
@@ -299,21 +299,21 @@ public:
 
 	void SetPermutationMatrix(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FMatrix PermMatrix)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, PermutationMatrix, PermMatrix);
+		SetShaderValue(RHICmdList, ShaderRHI, PermutationMatrix,FMatrix44f(PermMatrix));
 	}
 
 	void SetPixelOffsets(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector2D AddedPixelOffset,
 		FVector2D RemovedPixelOffset)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, PrevPixelOffset, AddedPixelOffset);
-		SetShaderValue(RHICmdList, ShaderRHI, RemovedPrevPixelOffset, RemovedPixelOffset);
+		SetShaderValue(RHICmdList, ShaderRHI, PrevPixelOffset, FVector2f(AddedPixelOffset));
+		SetShaderValue(RHICmdList, ShaderRHI, RemovedPrevPixelOffset, FVector2f(RemovedPixelOffset));
 	}
 
 	void SetUVWOffsets(
 		FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector pAddedUVWOffset, FVector pRemovedUVWOffset)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, UVWOffset, pAddedUVWOffset);
-		SetShaderValue(RHICmdList, ShaderRHI, RemovedUVWOffset, pRemovedUVWOffset);
+		SetShaderValue(RHICmdList, ShaderRHI, UVWOffset, FVector3f(pAddedUVWOffset));
+		SetShaderValue(RHICmdList, ShaderRHI, RemovedUVWOffset, FVector3f(pRemovedUVWOffset));
 	}
 
 	void SetStepSizes(
@@ -370,8 +370,8 @@ public:
 	void SetRaymarchParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI,
 		FClippingPlaneParameters LocalClippingParams, FLinearColor pWindowingParameters)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingCenter, LocalClippingParams.Center);
-		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingDirection, LocalClippingParams.Direction);
+		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingCenter, FVector3f(LocalClippingParams.Center));
+		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingDirection, FVector3f(LocalClippingParams.Direction));
 		SetShaderValue(RHICmdList, ShaderRHI, WindowingParameters, pWindowingParameters);
 	}
 
