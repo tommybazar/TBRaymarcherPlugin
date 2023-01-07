@@ -27,7 +27,7 @@ ARaymarchVolume::ARaymarchVolume() : AActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
-
+	
 	SetActorEnableCollision(true);
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Default Scene Root"));

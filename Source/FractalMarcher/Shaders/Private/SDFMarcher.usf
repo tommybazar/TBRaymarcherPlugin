@@ -73,7 +73,7 @@ float2 PerformMandelbulbRaymarchReturnDistance(float3 VolumeCenter, // Center of
 {
     // Get camera vector in local space and divide by Extent to get step normalized for UVW coords.
     // Larger extent means we should take smaller steps in UVW space. We keep Current Position in UVW space (0 to 1 in all axes).
-    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)) / Extent;
+    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) / Extent;
     
     float DistanceToMandelbulb = 0;
     
@@ -130,8 +130,10 @@ float4 PerformMandelbulbRaymarchReturnNormal(float3 VolumeCenter, // Center of t
 {
     // Get camera vector in local space and divide by Extent to get step normalized for UVW coords.
     // Larger extent means we should take smaller steps in UVW space. We keep Current Position in UVW space (0 to 1 in all axes).
-    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)) / Extent;
-    // With larger extents, we want derivation distance to be smaller (again, because we keep offsets for derivations in UVW)
+    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) / Extent;
+	float3 LocalCamPos = mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin), 1.00000000), LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)).xyz;
+
+	// With larger extents, we want derivation distance to be smaller (again, because we keep offsets for derivations in UVW)
     DerivationDistance = DerivationDistance / Extent;
 
     float DistanceToMandelbulb = 0;
@@ -144,7 +146,6 @@ float4 PerformMandelbulbRaymarchReturnNormal(float3 VolumeCenter, // Center of t
         if (DistanceToMandelbulb < HighPrecisionEps)
         {
              // Get camera position in local coordinates.            
-            float3 LocalCamPos = mul(float4(ResolvedView.WorldCameraOrigin, 1.00000000), (GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)).xyz;
             // Get distance from camera to current position (need to convert CurPos from UVW to local space [from (0 to 1) to (-1 to 1)].
             float CameraDistance = distance(LocalCamPos, (CurPos - float3(0.5, 0.5, 0.5)) * 2);
             // The further away our camera is, the further away we do derivations -> less aliasing at a distance and more details when looking up-close.
