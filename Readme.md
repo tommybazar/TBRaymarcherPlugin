@@ -3,11 +3,13 @@
 # Volume Rendering (Raymarching) Plugin for Unreal Engine
 Allows volume rendering of volumetric data with Unreal Engine.
 
-## Updated for UE 4.27, for older engine versions, check out the appropriately named branch.
+# UE Version
+Plugin is updated for UE 5.1, for older engine versions, check out the appropriately named branch.
 
-There is also a branch called "ue5" that works with Unreal Engine 5.0 (after some cleanup of the code, this will be merged into master and work will continue only on UE5).
-
+# Working project
 For a project that works out of the box, see example project at https://github.com/tommybazar/TBRaymarchProject.
+
+If you want to use older UE versions, don't forget to update both the plugin and the project to the same version.
 
 ![
 ](https://github.com/tommybazar/TBRaymarchProject/blob/master/Documents/Render1.png)
