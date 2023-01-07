@@ -760,7 +760,7 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 		UE_LOG(LogRaymarchVolume, Error, TEXT("Tried to initialize Raymarch resources with no data volume!"));
 		return;
 	}
-	else if (!Volume->PlatformData || Volume->GetSizeX() == 0 || Volume->GetSizeY() == 0 || Volume->GetSizeZ() == 0)
+	else if (!Volume->GetPlatformData() || Volume->GetSizeX() == 0 || Volume->GetSizeY() == 0 || Volume->GetSizeZ() == 0)
 	{
 		// Happens in cooking stage where per-platform data isn't initalized. Return.
 		UE_LOG(LogRaymarchVolume, Warning,

@@ -25,7 +25,7 @@ void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHIT
 
 	TShaderMapRef<FClearVolumeTextureShaderCS> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
-	RHICmdList.SetComputeShader(ShaderRHI);
+	SetComputePipelineState(RHICmdList, ShaderRHI);
 
 	// RHICmdList.TransitionResource(EResourceTransitionAccess::ERWNoBarrier,
 	// LightVolumeResource);
@@ -51,8 +51,8 @@ void Clear2DTexture_RenderThread(
 	FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* TextureUAVRef, FIntPoint TextureSize, float Value)
 {
 	TShaderMapRef<FClearFloatRWTextureCS> ShaderRef(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-	FRHIComputeShader* ComputeShader = ShaderRef.GetComputeShader();
-	RHICmdList.SetComputeShader(ComputeShader);
+	FRHIComputeShader* ShaderRHI = ShaderRef.GetComputeShader();
+	SetComputePipelineState(RHICmdList, ShaderRHI);
 
 	RHICmdList.Transition(FRHITransitionInfo(TextureUAVRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute));
 

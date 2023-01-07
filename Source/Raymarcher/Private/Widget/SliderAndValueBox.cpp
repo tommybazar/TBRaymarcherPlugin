@@ -33,7 +33,7 @@ void USliderAndValueBox::SetValue(float Value)
 {
 	if (ValueSlider)
 	{
-		if (Value >= ValueSlider->MinValue && Value <= ValueSlider->MaxValue)	 // Value within current range
+		if (Value >= ValueSlider->GetMinValue() && Value <= ValueSlider->GetMaxValue())	 // Value within current range
 		{
 			ValueSlider->SetValue(Value);
 		}
@@ -60,7 +60,7 @@ void USliderAndValueBox::SetValue(float Value)
 	SetValueLabelFromSlider();
 }
 
-void USliderAndValueBox::SetMinMaxLabelsFromSlider()
+void USliderAndValueBox::SetMinMaxLabelsFromSlider() const
 {
 	if (ValueSlider)
 	{
@@ -69,12 +69,12 @@ void USliderAndValueBox::SetMinMaxLabelsFromSlider()
 
 		if (SliderMinLabel)
 		{
-			SliderMinLabel->SetText(FText::AsNumber(ValueSlider->MinValue, &NumberFormatOptions));
+			SliderMinLabel->SetText(FText::AsNumber(ValueSlider->GetMinValue(), &NumberFormatOptions));
 		}
 
 		if (SliderMaxLabel)
 		{
-			SliderMaxLabel->SetText(FText::AsNumber(ValueSlider->MaxValue, &NumberFormatOptions));
+			SliderMaxLabel->SetText(FText::AsNumber(ValueSlider->GetMaxValue(), &NumberFormatOptions));
 		}
 	}
 }
@@ -94,7 +94,7 @@ void USliderAndValueBox::SetValueLabelFromSlider()
 
 		if (SliderValueLabel)
 		{
-			SliderValueLabel->SetText(FText::AsNumber(ValueSlider->Value, &NumberFormatOptions));
+			SliderValueLabel->SetText(FText::AsNumber(ValueSlider->GetValue(), &NumberFormatOptions));
 		}
 	}
 }
@@ -107,8 +107,8 @@ void USliderAndValueBox::OnFineTuningChanged(bool bFineTuning)
 	{
 		if (bFineTuning)
 		{
-			ValueSlider->SetMinValue(FMath::Max(MinMax.X, ValueSlider->Value - FineTuneRange));
-			ValueSlider->SetMaxValue(FMath::Min(MinMax.Y, ValueSlider->Value + FineTuneRange));
+			ValueSlider->SetMinValue(FMath::Max(MinMax.X, ValueSlider->GetValue() - FineTuneRange));
+			ValueSlider->SetMaxValue(FMath::Min(MinMax.Y, ValueSlider->GetValue() + FineTuneRange));
 			ValueSlider->SetStepSize(FineTuneStepSize);
 		}
 		else
@@ -126,7 +126,7 @@ void USliderAndValueBox::OnFineTuningChanged(bool bFineTuning)
 
 void USliderAndValueBox::OnSliderValueChanged(float Value)
 {
-	ValueSlider->Value = Value;
+	ValueSlider->SetValue(Value);
 	SetValueLabelFromSlider();
 
 	// Notify owner that value changed.

@@ -170,11 +170,17 @@ void URaymarchUtils::CreateBufferTextures(FIntPoint Size, EPixelFormat PixelForm
 		UE_LOG(LogTemp, Warning, TEXT("Warning: Creating Buffer Textures: Size is Zero!"), 3);
 		return;
 	}
-	FRHIResourceCreateInfo CreateInfo(TEXT("DebugClearName"), FClearValueBinding::Transparent);
+
+	FRHITextureCreateDesc Desc =
+		FRHITextureCreateDesc::Create2D(TEXT("Illumination Buffer"), Size.X, Size.Y, PixelFormat);
+	Desc.Flags |= TexCreate_ShaderResource | TexCreate_UAV;
+	Desc.NumMips = 1;
+	Desc.NumSamples = 1;
+	
 	for (int i = 0; i < 4; i++)
 	{
 		RWBuffers.Buffers[i] =
-			RHICreateTexture2D(Size.X, Size.Y, PixelFormat, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
+			RHICreateTexture(Desc);
 		RWBuffers.UAVs[i] = RHICreateUnorderedAccessView(RWBuffers.Buffers[i]);
 	}
 }

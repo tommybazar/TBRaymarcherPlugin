@@ -69,7 +69,7 @@ public:
 	void SetValue(float Value);
 
 	/// Sets the min and max labels to the values matching the ones in the slider.
-	void SetMinMaxLabelsFromSlider();
+	void SetMinMaxLabelsFromSlider() const;
 
 	/// Makes all the FText labels (value, min, max) consistent with the value contained in slider.
 	void SetAllLabelsFromSlider();

@@ -84,8 +84,8 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 	// Find and set compute shader
 	TShaderMapRef<FAddDirLightShader> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
-	RHICmdList.SetComputeShader(ShaderRHI);
-
+	SetComputePipelineState(RHICmdList, ShaderRHI);
+	
 	// Transition the resource to Compute-shader.
 	// Otherwise the renderer might touch our textures while we're writing to them.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
@@ -229,7 +229,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 
 	TShaderMapRef<FChangeDirLightShader> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
-	RHICmdList.SetComputeShader(ShaderRHI);
+	SetComputePipelineState(RHICmdList, ShaderRHI);
 
 	// Don't need barriers on these - we only ever read/write to the same pixel from one thread ->
 	// no race conditions But we definitely need to transition the resource to Compute-shader

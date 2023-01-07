@@ -5,7 +5,7 @@
 
 #include "TextureUtilities.h"
 
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Util/UtilityShaders.h"
 #include "VolumeAsset/VolumeAsset.h"
 
@@ -26,15 +26,15 @@ FString UVolumeTextureToolkit::MakePackageName(FString AssetName, FString Folder
 void UVolumeTextureToolkit::SetVolumeTextureDetails(UVolumeTexture*& VolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions)
 {
 	// Newly created Volume textures have this null'd
-	if (!VolumeTexture->PlatformData)
+	if (!VolumeTexture->GetPlatformData())
 	{
-		VolumeTexture->PlatformData = new FTexturePlatformData();
+		VolumeTexture->SetPlatformData(new FTexturePlatformData());
 	}
 	// Set Dimensions and Pixel format.
-	VolumeTexture->PlatformData->SizeX = Dimensions.X;
-	VolumeTexture->PlatformData->SizeY = Dimensions.Y;
-	VolumeTexture->PlatformData->SetNumSlices(Dimensions.Z);
-	VolumeTexture->PlatformData->PixelFormat = PixelFormat;
+	VolumeTexture->GetPlatformData()->SizeX = Dimensions.X;
+	VolumeTexture->GetPlatformData()->SizeY = Dimensions.Y;
+	VolumeTexture->GetPlatformData()->SetNumSlices(Dimensions.Z);
+	VolumeTexture->GetPlatformData()->PixelFormat = PixelFormat;
 	// Set sRGB and streaming to false.
 	VolumeTexture->SRGB = false;
 	VolumeTexture->NeverStream = true;
@@ -69,12 +69,12 @@ void UVolumeTextureToolkit::CreateVolumeTextureMip(
 	mip->BulkData.Unlock();
 
 	// Newly created Volume textures have this null'd
-	if (!VolumeTexture->PlatformData)
+	if (!VolumeTexture->GetPlatformData())
 	{
-		VolumeTexture->PlatformData = new FTexturePlatformData();
+		VolumeTexture->SetPlatformData(new FTexturePlatformData());
 	}
 	// Add the new MIP to the list of mips.
-	VolumeTexture->PlatformData->Mips.Add(mip);
+	VolumeTexture->GetPlatformData()->Mips.Add(mip);
 }
 
 bool UVolumeTextureToolkit::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, FString AssetName, FString FolderName,

@@ -4,8 +4,6 @@
 // (original raymarching code).
 
 #include "Rendering/FractalShaders.h"
-
-#include "AssetRegistryModule.h"
 #include "TextureUtilities.h"
 
 IMPLEMENT_GLOBAL_SHADER(
@@ -50,7 +48,7 @@ void CalculateMandelbulbSDF_RenderThread(FRHICommandListImmediate& RHICmdList, F
 	// Find and set compute shader
 	TShaderMapRef<FCalculateMandelbulbSDFCS> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
-	RHICmdList.SetComputeShader(ShaderRHI);
+	SetComputePipelineState(RHICmdList, ShaderRHI);
 
 	// Don't need barriers on these - we only ever read/write to the same pixel from one thread ->
 	// no race conditions But we definitely need to transition the resource to Compute-shader

@@ -4,8 +4,7 @@
 // (original raymarching code).
 
 #include "VolumeAsset/VolumeAsset.h"
-#include "TextureUtilities.h"
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 
 UVolumeAsset* UVolumeAsset::CreateTransient(FString Name)
 {
