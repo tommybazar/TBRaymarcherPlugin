@@ -104,6 +104,10 @@ struct FBasicRaymarchRenderingResources
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
 	UTextureRenderTargetVolume* LightVolumeRenderTarget = nullptr;
 
+	/// Pointer to the illumination volume texture render target.
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
+	UTextureRenderTargetVolume* OctreeVolumeRenderTarget = nullptr;
+
 	/// If true, Light Volume texture will be created with it's side scaled down by 1/2 (-> 1/8 total voxels!)
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Basic Raymarch Rendering Resources")
 	bool LightVolumeHalfResolution = false;
@@ -114,8 +118,12 @@ struct FBasicRaymarchRenderingResources
 
 	// Following is not visible in BPs, it's too low level to be useful in BP.
 
+	// Unordered access view to Octree accelerator structure.
+	FUnorderedAccessViewRHIRef OctreeUAVRef;
+	
 	// Unordered access view to the Light Volume. Used in our compute shaders as a RWTexture.
 	FUnorderedAccessViewRHIRef LightVolumeUAVRef;
+	
 	// Read-write buffers for all 3 major axes. Used in compute shaders.
 	OneAxisReadWriteBufferResources XYZReadWriteBuffers[3];
 };
