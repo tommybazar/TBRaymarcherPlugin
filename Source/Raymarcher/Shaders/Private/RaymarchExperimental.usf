@@ -1,0 +1,340 @@
+﻿// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Licensed under MIT license - See License.txt for details.
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
+// (original raymarching code).
+
+// This file contains functions used for raymarching that might be useful one day, but are currently not used. 
+
+#pragma once
+
+#include "RaymarcherCommon.usf"
+
+// Performs raymarch cube setup for this pixel. Returns the position of entry to the cube in rgb channels 
+// and thickness of the cube in alpha. All values returned are in UVW space.
+// Can scale the cube to act as if it was smaller/larger than your actual mesh.
+float4 PerformExperimentalRaymarchCubeSetup(FMaterialPixelParameters MaterialParameters, out float4 EntryPos, out float3 ExitPos, in float Scaling)
+{
+    // Get scene depth at this pixel.
+    float LocalSceneDepth = CalcSceneDepth(ScreenAlignedPosition(GetScreenPosition(MaterialParameters)));
+
+    // Get camera forward vector in world space.
+    float3 CameraFWDVecWorld = mul(float3(0.00000000, 0.00000000, 1.00000000), ResolvedView.ViewToTranslatedWorld);
+
+    // Get world space vector going from camera center to current scene depth.
+    float3 WorldDepthVec = normalize(MaterialParameters.CameraVector) * LocalSceneDepth;
+
+    // Transform this vector into the box's local space
+    WorldDepthVec = mul(WorldDepthVec, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal));
+
+    // Get actual depth in local space, account for mesh bounds (by default, we use a centered 1x1x1 cube mesh, so this is unnecessary)
+    LocalSceneDepth = length(WorldDepthVec);
+    // LocalSceneDepth /= (GetPrimitiveData(MaterialParameters.PrimitiveId).LocalObjectBoundsMax.x * 2);
+
+    // Account for difference between camera center vector and camera-to-pixel depth
+    LocalSceneDepth /= abs(dot(CameraFWDVecWorld, MaterialParameters.CameraVector));
+
+    // Get cam pos and vector into local space too.
+    float3 LocalCamPos = mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin), 1.00000000), LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal) * Scaling).xyz;
+    float3 LocalCamVec = -normalize(mul(LWCHackToFloat(MaterialParameters.CameraVector), LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)));
+
+    // Transform camera pos from local to UVW coords (from +-0.5 to [0 - 1]). Again, The LocalObjectBoundsMax only have an effect if using a non-default cube mesh.
+    LocalCamPos += 0.5; //  ((LocalCamPos / (GetPrimitiveData(MaterialParameters.PrimitiveId).LocalObjectBoundsMax * 2))) + 0.5;
+    float3 InverseRayDirVec = 1 / LocalCamVec;
+
+    // Because now we're in texture space where our box is at [0, 1] in each axis, it's easy to get intersections.
+    // LowIntersections will have the distance of the ray in X,Y,Z before it hits the respective axis.
+    // HighIntersections will have the distance of the ray in X,Y,Z before it reaches 1 in the respective axis.
+    float3 LowIntersections = (0 - LocalCamPos) * InverseRayDirVec;
+    float3 HighIntersections = (1 - LocalCamPos) * InverseRayDirVec;
+
+    // Get closest and furthest intersections
+    float3 ClosestIntersections = min(LowIntersections, HighIntersections);
+    float3 FurthestIntersections = max(LowIntersections, HighIntersections);
+
+    // The actual intersections of the box are the 2 values in the middle of the pack.
+    // T0 (entry) = the farthest of the closest intersections
+    float t0 = max(ClosestIntersections.x, max(ClosestIntersections.y, ClosestIntersections.z));
+    // T1 (exit) = the closest of the furthest intersections
+    float t1 = min(FurthestIntersections.x, min(FurthestIntersections.y, FurthestIntersections.z));
+
+    // Make sure the entry point is not behind the camera
+    t0 = max(0, t0);
+
+    // Make sure the exit point is not behind other scene geometry.
+    t1 = min(t1, LocalSceneDepth * Scaling);
+
+    // Calculate box thickness at this pixel (in local space).
+    float BoxThickness = max(0, t1 - t0);
+
+    // Get entry position in UVW space.
+    EntryPos.xyz = LocalCamPos + (t0 * LocalCamVec);
+    EntryPos.a = BoxThickness;
+    ExitPos = LocalCamPos + (t1 * LocalCamVec);
+
+    return EntryPos;
+}
+
+// Performs raymarch cube setup for this pixel. Returns the position of entry to the cube in rgb channels 
+// and thickness of the cube in alpha. All values returned are in UVW space. 
+// This setup is for performing the setup from a shader that's NOT run on the cube itself, it takes the
+// cube's transform as a parameter. So you could theoretically just have a full-screen quad and give input an
+// arbitrary transform and this will make it appear that the cube is at that transform.
+float4 PerformOffsetRaymarchCubeSetup(float4x4 CubeTransformW2L, FMaterialPixelParameters MaterialParameters)
+{
+    // Get scene depth at this pixel.
+    float LocalSceneDepth = CalcSceneDepth(ScreenAlignedPosition(GetScreenPosition(MaterialParameters)));
+
+    // Get camera forward vector in world space.
+    float3 CameraFWDVecWorld = mul(float3(0.00000000, 0.00000000, 1.00000000), LWCHackToFloat(ResolvedView.ViewToTranslatedWorld));
+
+    // Get world space vector going from camera center to current scene depth.
+    float3 WorldDepthVec = normalize(MaterialParameters.CameraVector) * LocalSceneDepth;
+
+    // Transform this vector into the box's local space
+    WorldDepthVec = mul(WorldDepthVec, CubeTransformW2L);
+
+    // Get actual depth in local space, account for mesh bounds (by default, we use a centered 1x1x1 cube mesh, so this is unnecessary)
+    LocalSceneDepth = length(WorldDepthVec);
+
+    // Account for difference between camera center vector and camera-to-pixel depth
+    LocalSceneDepth /= abs(dot(CameraFWDVecWorld, MaterialParameters.CameraVector));
+
+    // Get cam pos and vector into local space too.
+    float3 LocalCamPos = mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin), 1.00000000), CubeTransformW2L).xyz;
+    float3 LocalCamVec = -normalize(mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin) + MaterialParameters.CameraVector, 1.00000000), CubeTransformW2L).xyz - LocalCamPos);
+
+    // Transform camera pos from local to UVW coords (from +-0.5 to [0 - 1]). Again, The LocalObjectBoundsMax only have an effect if using a non-default cube mesh.
+    LocalCamPos += 0.5;
+    float3 InverseRayDirVec = 1 / LocalCamVec;
+       
+    // Get intersections
+    float3 FirstIntersections = (0 - LocalCamPos) * InverseRayDirVec;
+    float3 SecondIntersections = (1 - LocalCamPos) * InverseRayDirVec;
+
+    // Find closest and furthest intersections
+    float3 ClosestIntersections = min(FirstIntersections, SecondIntersections);
+    float3 FurthestIntersections = max(FirstIntersections, SecondIntersections);
+
+    // T0 (entry) = the farthest of the closest intersections
+    float t0 = max(ClosestIntersections.x, max(ClosestIntersections.y, ClosestIntersections.z));
+    // T1 (exit) = the closest of the furthest intersections
+    float t1 = min(FurthestIntersections.x, min(FurthestIntersections.y, FurthestIntersections.z));
+
+    // Make sure the entry point is not behind the camera
+    t0 = max(0, t0);
+
+    // Make sure the exit point is not behind other scene geometry.
+    t1 = min(t1, LocalSceneDepth);
+
+    // Calculate box thickness at this pixel (in local space).
+    float BoxThickness = max(0, t1 - t0);
+
+    // Get entry position in local space.
+    float3 EntryPos = LocalCamPos + (t0 * LocalCamVec);
+    
+    return float4(EntryPos, BoxThickness);
+}
+
+// Gets color from a uint label value.
+// Switches on G8 will be faster than reading a full color volume. Also we need to export the labels eventually and color might not be the best way to do that.
+// So labels are kept as G8 format.
+float4 GetColorFromLabelValue(uint LabelValue)
+{
+    switch (LabelValue)
+    {
+        case 0: // Clear 
+            return float4(0.0f, 0.0f, 0.0f, 0.0f);
+        case 1: // Risk
+            return float4(1.0f, 0.0f, 0.0f, 0.5f);
+        case 2: // Target
+            return float4(0.0f, 1.0f, 0.0f, 0.5f);
+        default: // Unknown - return full black so bugs are obvious.
+            return float4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
+}
+
+// Gets color from a uint label value. Used in UI functions.
+// Switches on G8 will be faster than reading a full color volume. Also we need to export the labels eventually and color might not be the best way to do that.
+// So labels are kept as G8 format.
+
+float4 GetColorFromLabelValueUI(uint LabelValue)
+{
+    switch (LabelValue)
+    {
+        case 1: // Risk
+            return float4(1.0f, 0.0f, 0.0f, 0.5f);
+        case 2: // Target
+            return float4(0.0f, 1.0f, 0.0f, 0.5f);
+        case 0: // Clear 
+            return float4(0.0f, 0.0f, 0.0f, 0.0f);
+        case 255: // maybe?
+            return float4(0.0f, 0.0f, 1.0f, 1.0f);
+        default: // Unknown - return full black so bugs are visible.
+            return float4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
+}
+
+// Samples a Label volume, gets the corresponding color and corrects the opacity to account for StepSize.
+float4 SampleLabelVolume(float3 CurPos, float StepSize, Texture3D Volume)
+{
+    int x, y, z;
+    Volume.GetDimensions(x, y, z);
+    // Decrease dimensions by 1, because with any UVW coord being == 1, we would load one after the array length
+    // E.G - with X dimension == 2, U == 1, we want to sample x[1], not x[2] (as that doesn't exist)
+    int3 Dimensions = int3(x - 1, y - 1, z - 1);
+    // We don't want to interpolate here, use load instead of sample.
+    float LabelValue = Volume.Load(int4(round(Dimensions * saturate(CurPos)), 0)).r;
+    float4 Color = GetColorFromLabelValue(FloatToChar(LabelValue));
+    Color.a = 1.0 - pow(1.0 - Color.a, StepSize);
+    return Color;
+}
+
+
+// Samples a Label volume, gets the corresponding color for UI and returns it.
+float4 SampleLabelVolumeUI(float3 CurPos, float StepSize, Texture3D Volume)
+{
+    int x, y, z;
+    Volume.GetDimensions(x, y, z);
+    // Decrease dimensions by 1, because with any UVW coord being == 1, we would load one after the array length
+    // E.G - with X dimension == 2, U == 1, we want to sample x[1], not x[2] (as that doesn't exist)
+    int3 Dimensions = int3(x - 1, y - 1, z - 1);
+    // We don't want to interpolate here, use load instead of sample.
+    float LabelValue = Volume.Load(int4(round(Dimensions * saturate(CurPos)), 0)).r;
+    return GetColorFromLabelValueUI(FloatToChar(LabelValue));
+}
+
+
+// Performs one raymarch step in a label volume and accumulates the result to the existing Accumulated Light Energy.
+void AccumulateOneRaymarchLabelStep(inout float4 AccumulatedLightEnergy, float3 CurPos, Texture3D LabelVolume, float StepSize)
+{
+	// Sample intensity from the volume and get corresponding color-opacity from transfer function.
+	float4 ColorSample = SampleLabelVolume(CurPos, StepSize, LabelVolume);
+	// Accumulate colored label sample to the final values.
+	AccumulateLightEnergy(AccumulatedLightEnergy, ColorSample);
+}
+
+
+//// Gets the Distance Field light multiplier (even though it's named GetDFShadow, the return value is actualy the opposite - the amount of light preserved)
+//float GetDFShadow(float3 CurPos, int DFSteps, float LightTangent, float3 LightVectorWS, FMaterialPixelParameters MaterialParameters)
+//{
+//    float3 DFPos = (CurPos - 0.5);
+//    DFPos = TransformLocalPositionToWorld(MaterialParameters, DFPos).xyz;
+
+//    float dftracedist = 1;
+
+//    float dfshadow = 1;
+//    float curdist = 0;
+//    float DistanceAlongCone = 0;
+
+//    for (int d = 0; d < DFSteps; d++)
+//    {
+//        DistanceAlongCone += curdist;
+//        curdist = GetDistanceToNearestSurfaceGlobal(DFPos.xyz);
+
+//        float SphereSize = DistanceAlongCone * LightTangent;
+//        dfshadow = min(saturate(curdist / SphereSize), dfshadow);
+
+//        DFPos.xyz += LightVectorWS * dftracedist * curdist;
+//        dftracedist *= 1.0001;
+//    }
+//    return dfshadow;
+//}
+
+
+
+// BELOW is old code when I thought integer textures were the way to go.
+// Some of this is usable, if you want to use integer textures.
+// ESPECIALLY the asint() and asuint() functions. They are the key to reading anything from int textures.
+
+//// Returns the position (clamped to [0,1]) on the TransferFunction texture, depending on an input data float, byte size, signedness and window level and range 
+//// Note that window level and range should be normalized to a float corresponding to the appropriate pixel format
+
+//// Masks for extending I8 and I16 to I32
+//#define INT8_EXTENDING_MASK (1U << 7)
+//#define INT16_EXTENDING_MASK (1U << 15)
+
+
+//// THE FOLLOWING IS NOT TRUE! asint() actually works with i16 and i8. Keeping this here for potential future use!
+////
+//// Untrue statement follows:
+//// Because we load values from the texture with asint(), the sign bit needs to be extended for signed ints.
+//// see https://graphics.stanford.edu/~seander/bithacks.html, section "Sign extending from a variable bit-width"
+//// By XORing with the sign-bit and then subtracting it, we get the corresponding 2's complement in 32bits.
+//int GetIntFromI8(int I8Value)
+//{
+//    return (I8Value ^ INT8_EXTENDING_MASK) - INT8_EXTENDING_MASK;
+//}
+
+//int GetIntFromI16(int I16Value)
+//{
+//    return (I16Value ^ INT16_EXTENDING_MASK) - INT16_EXTENDING_MASK;
+//}
+
+//int GetSignedValue(int BytesPerVoxel, Texture3D Volume, float3 CurPos)
+//{
+    
+//    int x, y, z;
+//    Volume.GetDimensions(x, y, z);
+//    // Decrease dimensions by 1, because with any UVW coord being == 1, we would load one after the array length
+//    // E.G - with X dimension == 2, U == 1, we want to sample x[1], not x[2] (as that doesn't exist)
+//    int3 Dimensions = int3(x - 1, y - 1, z - 1);
+//    // We don't want to interpolate here, use load instead of sample.
+//    int LoadedInt = asint(Volume.Load(int4(round(Dimensions * saturate(CurPos)), 0)));
+
+//    int ConvertedInt;
+//    switch (BytesPerVoxel)
+//    {
+//        case 4:
+//            return LoadedInt;
+//        case 2: 
+//            return GetIntFromI16(LoadedInt);
+//        case 1: 
+//            return GetIntFromI8(LoadedInt);
+//        default:
+//            // return 0 on wrong amount of bytes set
+//            return 0;
+//    }
+//}
+
+//uint GetUnsignedValue(Texture3D Volume, float3 CurPos)
+//{
+//    int x, y, z;
+//    Volume.GetDimensions(x, y, z);
+//    // Decrease dimensions by 1, because with any UVW coord being == 1, we would load one after the array length
+//    // E.G - with X dimension == 2, U == 1, we want to sample x[1], not x[2] (as that doesn't exist)
+//    int3 Dimensions = int3(x - 1, y - 1, z - 1);
+//    // We don't want to interpolate here, use load instead of sample.
+//    return asuint(Volume.Load(int4(round(Dimensions * saturate(CurPos)), 0)));
+//}
+
+//// Samples a Data volume, transforms it to fit the TF Intensity domain and then transforms it by the TF. Corrects the opacity to account for StepSize (in World units).
+//float4 SampleWindowedVolumeOld(int3 CurPos, float StepSize, Texture3D Volume, Texture2D TF, SamplerState TFSampler, float4 WindowingParams, int IsSigned)
+//{
+//    float DataValue;
+//    if (IsSigned)
+//    {
+//        int LabelValue = asint(Volume.Load(int4(CurPos, 0)));
+//        // Put int into double as to not lose precision.
+//        DataValue = LabelValue;
+//    }
+//    else
+//    {
+//        uint LabelValue = asuint(Volume.Load(int4(CurPos, 0)));
+//        // Put int into double as to not lose precision.
+//        DataValue = LabelValue;
+//    }
+    
+//    // WindowingParams.x == Center, WindowingParams.y = Width
+//    float TFPos = GetTransferFuncPosition(DataValue, WindowingParams.x, WindowingParams.y);
+
+//    // If TF position is above 1 and high cutoff is enabled or 
+//    // it's below 0 and low cutoff is enabled, return transparent
+//    if ((TFPos < 0.0 && WindowingParams.z > 0) || (TFPos > 1.0 && WindowingParams.w > 0))
+//    {
+//        return float4(0, 0, 0, 0);
+//    }
+
+//    float4 ColorSample = TF.SampleLevel(TFSampler, float2(TFPos, 0.5), 0);
+//    ColorSample.a = 1.0 - pow(1.0 - ColorSample.a, StepSize);
+//    return ColorSample;
+//}

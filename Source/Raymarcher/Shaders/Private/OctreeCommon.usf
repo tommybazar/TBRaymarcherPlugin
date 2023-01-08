@@ -1,0 +1,25 @@
+// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Licensed under MIT license - See License.txt for details.
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
+// (original raymarching code).
+
+// This file contains functions needed for traversing octrees. All octrees here are assumed to be in 0-1 (UVW) space
+
+#pragma once
+
+// Given a position or a vector in (Box A - local) space, return the same position in (Box B - local) space.
+// The boxes are aligned at their respective (0,0,0) (i.e. Box A center is at BoxAExtent/2 and Box B center is at BoxBExtent/2)
+float3 ConvertVecFromBoxAtoB(float3 BoxAPos, float3 BoxAExtent, float3 BoxBExtent)
+{
+	return (BoxAPos / BoxBExtent) * BoxAExtent;
+}
+
+float3 GetBoxRatio(float3 BoxAExtent, float3 BoxBExtent)
+{
+	return BoxAExtent / BoxBExtent;
+}
+
+float3 ConvertPosWithRatio(float3 Pos, float3 Ratio)
+{
+	return Pos * Ratio;
+}

@@ -3,6 +3,7 @@
 // Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
 // (original raymarching code).
 
+#include "RaymarcherCommon.usf"
 #include "RaymarchMaterialCommon.usf"
 #include "WindowedSampling.usf"
 
@@ -87,7 +88,7 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
         if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
         {
             AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler,
-            TF, LightVolume, StepSizeWorld * FinalStep, WindowingParams);
+            TF, LightVolume, VOLUME_DENSITY * FinalStep, WindowingParams);
         }
     }
 
@@ -114,7 +115,6 @@ float4 PerformWindowedIntensityRaymarch(Texture3D DataVolume, // Data Volume
     
     // Get camera vector in local space and multiply it by step size.
     float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
-    float4 LightEnergy = 0;
     // Jitter Entry position to avoid artifacts.
     JitterEntryPos(CurPos, LocalCamVec, MaterialParameters);
    
@@ -131,19 +131,11 @@ float4 PerformWindowedIntensityRaymarch(Texture3D DataVolume, // Data Volume
             float TFPos = clamp(GetTransferFuncPosition(DataValue, WindowingParams.x, WindowingParams.y), 0, 1);
 
             return float4(TFPos, TFPos, TFPos, 1);
-            break;
         }
-
-        // Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
-        if (LightEnergy.a > 0.95f)
-        {
-            LightEnergy.a = 1.0f;
-            break;
-        };
     }
 
-    // Handle FinalStep (only if we went through all the previous steps and the final step size is above zero)
-    if (i == MaxSteps && FinalStep > 0.0f)
+    // Handle FinalStep (if the final step size is above zero).
+    if (FinalStep > 0.0f)
     {
         CurPos += LocalCamVec * (FinalStep);
         // If the final step is clipped, don't do anything.

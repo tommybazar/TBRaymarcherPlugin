@@ -28,24 +28,24 @@ Showcase & Intro (now mostly outdated): https://youtu.be/-HDVXehPolM
 If you want to ask me anything or (potentially) talk to other people using this plugin, here's a discord server for it : https://discord.gg/zKutZpmFXh
 
 # Features
- * Works out of the box with binary UE 4.27 (there is also a branch for 4.26, 4.25)
+ * Works out of the box with vanilla UE 5.1 (there is also a branch for 4.27, 4.26, 4.25)
  * Volume raymarching for arbitrary `UVolumeTexture` textures
  * .dcm (DICOM), .mhd and .raw file import into volume textures.
  * Volume illumination implemented in compute shaders using concepts from [Efficient Volume Illumination with Multiple Light Sources through Selective Light Updates](https://ieeexplore.ieee.org/document/7156382) (2015) by Sundén and Ropinski
- * Uses color curves for transfer function definition
+ * Uses color curves for transfer function definition.
  * Fully integrated and functional within UE editor viewport.
- * Windowing support (google DICOM Window center / Window Width or watch my youtube description for an explanation)
- * Basic menus for manipulating the volume
+ * Windowing support (google DICOM Window center / Window Width or watch my youtube description for an explanation).
+ * Basic menus for manipulating the volume.
  * Basic VR support and example map.
 
 # Limitations
- * Raymarched volume doesn't cast or receive shadows info to/from the scene, it only self-shadows
- * We use a very simple (but fast) raymarching and illumination algorithm with no specular, refraction or scattering
+ * Raymarched volume doesn't cast or receive shadows info to/from the scene, it only self-shadows.
+ * We use a very simple (but fast) raymarching and illumination algorithm with no specular, refraction or scattering.
  * Algorithm is already a bit dated and implementation leaves a lot to be desired as for efficiency. It is however, good enough for real-time applications with several lights and large (256^3 or more) volumes.
- * Currently do not support persistent 32bit grayscale textures, but plan on investigating that possibility soon(ish).
 
 # Example
- * The project works out-of-the-box with everything being included in the TBRaymarcherPlugin. There is an example map for Mouse and Keyboard and an example map for VR.
+ * The plugin works out-of-the-box with everything being included in the TBRaymarcherPlugin. There is an example map for Mouse and Keyboard and an example map for VR.
+ * You might need to copy the Input Bindings from the example project into your project if controls don't work.
 
 # Using this plugin in your own project
 If you want to use this functionality in your own project, you will need to
@@ -59,14 +59,15 @@ If you want to use this functionality in your own project, you will need to
         // ... other dependencies you might have
     });
 ```
- * Regenerate Visual Studio file, compile and run.
+ * Regenerate Visual Studio files (if using VS), compile and run.
 
 # Getting started
 1. Copy the plugin into your project or just compile and run the main project after cloning this repo.
-2. Open the TBRaymarcherPlugin/Maps/TBRaymarcherShowcase map, you should see a raymarched volume in front of you.
-3. By going into the `RaymarchVolume` category of settings on the RaymarchVolume, you can change various settings, I explain these in detail in my YT tutorial.
-4. When you "Play" the level, a basic UI will be spawned (check the level blueprint to see how it's spawned) and you can play with the transfer functions and load a different volume from disk.
-5. (mid-November 2020) If you have a VR headset, check out the TBRaymarcherVRShowcase, you can grab and move the volume, clipping plane and lights with the grip button. Right hand also has a widget interactor on it to work with VR menus. This is just quickly hacked together and should probably not be used as a basis for an actual VR app, unless you want to feel some pain down the road.
+2. Enable "Show Plugin Content" in your content browser.
+3. Open the TBRaymarcherPlugin/Maps/TBRaymarcherShowcase map, you should see a raymarched volume in front of you.
+4. By going into the `RaymarchVolume` category of settings on the RaymarchVolume, you can change various settings, I explain these in detail in my YT tutorial.
+5. When you "Play" the level, a basic UI will be spawned (check the level blueprint to see how it's spawned) and you can play with the transfer functions and load a different volume from disk.
+6. If you have a VR headset, check out the TBRaymarcherVRShowcase, you can grab and move the volume, clipping plane and lights with the grip button. Right hand also has a widget interactor on it to work with VR menus. This is just quickly hacked together and should probably not be used as a basis for an actual VR app, unless you want to feel some pain down the road.
 
 # Plugin Structure
 Most of the functionality is implemented in C++ with the most high-level functionality exposed to blueprints.
@@ -86,12 +87,6 @@ Located in the `/VolumeTextureToolkit` and `/VolumeTextureToolkitEditor` plugin 
 for loading .raw files into volumes, convenience functions for creating VolumeTextures from said .raw files, conversion functions
 to process data when it is imported etc.
 I tried to be very generous with comments, so check out `TextureUtilities.h`/`.cpp` and see for yourself.
-
-### RenderTargetVolume
-
-In 4.26, Epic introduced RenderTargetVolume, which removes the need for our custom ComputeVolumeTexture, which was used in 4.25. 
-Check out the 4.25 branch for the old way (which might give you ideas on how to extend the UTexture class in general, if you wanted to create your own 
-exotic texture classes).
 
 ### Volume loading
 All functionality discussed in this section can be found in `VolumeTextureToolkit/Public/VolumeAsset/VolumeAsset.h` and `VolumeTextureToolkit/Public/VolumeAsset/Loaders/VolumeLoader.h` 
@@ -123,7 +118,7 @@ The material graphs aren't very complex, as we do all our calculations in code, 
 
 Also, because using Custom nodes in material editor is a pain, we implemented our material functions in .usf files inside our plugin and then include and call these functions from within Custom nodes.
 
-You can see the way we hack the functions we need included into the compiled shader in the `GlobalIncludes` custom node. Credit for this beautiful hack goes here
+You can see the way we hack the functions we need included into the compiled shader in the `Include` custom node. Credit for this beautiful hack goes here
 [http://blog.kiteandlightning.la/ue4-hlsl-shader-development-guide-notes-tips/](http://blog.kiteandlightning.la/ue4-hlsl-shader-development-guide-notes-tips/).
 
 We based our implementation on [Ryan Brucks' raymarching](https://shaderbits.com/blog/creating-volumetric-ray-marcher) materials from way back when Volume Textures weren't a thing in Unreal. We made some modifications, most notably we added support for a cutting plane to cut away parts of the volume. 
@@ -140,7 +135,7 @@ If you have raw Volume Texture data saved on disk and you already know the dimen
 We tried to be generous with comments, so see `TBRaymarcherPlugin/Shaders/Private/RaymarchMaterialCommon.usf`, `TBRaymarching/Shaders/Private/WindowedSampling.usf` and `TBRaymarching/Shaders/Private/WindowedRaymarchMaterials.usf` for the actual code and explanation. 
 The `WindowedSampling.usf` and `WindowedRaymarchMaterials.usf` actually contain the code that is used in the final materials, as the other implementations don't support windowing. They are included for legacy reasons (they are slightly less complicated too, if you don't need the windowing option).
 
-I heartily recommend using "HLSL Tools for Visual Studio" or other plugins for syntax highlighting of the .usf files.
+I heartily recommend using "HLSL Tools for Visual Studio" (if you're using VS) or other plugins for syntax highlighting of the .usf files.
 
 The actual raymarching is a 2-step process. First part is getting the entry point and thickness at the current pixel. See `PerformRaymarchCubeSetup()`to see how that's done.
 Second part is performing the actual raymarch. See `PerformWindowedLitRaymarch()` for the simplest raymarcher.
@@ -162,7 +157,7 @@ As you can see in `WindowedRaymarchMaterials.usf`, we include common functions f
 The latter 2 files contains functions that are used both in material shaders and in compute shaders computing the illumination. Using the same functions assures consistency between opacity perceived when looking at the volume and the strength of shadows cast by the volume.  
 
 A notable function here is the `SampleWindowedVolumeStep()`function. This samples the volume at the given UVW position. Then it transforms the value according to the provided Windowing parameters. These are identical with the windowing parameters found in the DICOM standard - Window Center, Window Width.
-In short, these specify a "Window" of values that are interesting to us. A value of [WindowCenter - WindowWidth/2] will map to 0 (bottom of transfer function) and a value of [WindowCenter + WindowWidth/2] will map to a value of 1 (top of transfer function).
+In short, these specify a "Window" of values that are interesting to us. A value of [WindowCenter - WindowWidth/2] will map to 0 (sample left side of the transfer function texture) and a value of [WindowCenter + WindowWidth/2] will map to a value of 1 (will sample the right side of transfer function).
  Afterwards, the Transfer function texture is sampled at a position corresponding to the sampled intensity. The alpha of the color sampled from the Transfer Function is then modified by an extinction formula to accomodate for the size of the raymarching step. (Longer step means more opacity, same as in `CorrectForStepSize()` function) 
 
 
