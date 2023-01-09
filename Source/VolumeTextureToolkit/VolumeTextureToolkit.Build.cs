@@ -21,7 +21,8 @@ public class VolumeTextureToolkit : ModuleRules
 				"Core",
 				"RenderCore",
 				"RHI",
-				"AssetRegistry",
+				"AssetRegistry", 
+				"Engine"
 			}
 		);
 

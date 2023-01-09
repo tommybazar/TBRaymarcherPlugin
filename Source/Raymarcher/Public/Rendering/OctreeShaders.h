@@ -29,16 +29,18 @@ public:
 	FGenerateOctreeShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FGlobalShader(Initializer)
 	{
 		Volume.Bind(Initializer.ParameterMap, TEXT("Volume"), SPF_Mandatory);
-		OctreeVolume.Bind(Initializer.ParameterMap, TEXT("OctreeVolume"), SPF_Mandatory);
+		OctreeVolume0.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip0"), SPF_Mandatory);
+		OctreeVolume1.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip1"), SPF_Mandatory);
 		MinMaxValues.Bind(Initializer.ParameterMap, TEXT("MinMaxValues"), SPF_Mandatory);
 		LeafNodeSize.Bind(Initializer.ParameterMap, TEXT("LeafNodeSize"), SPF_Mandatory);
 	}
 		
 	void SetGeneratingResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTexture3DRHIRef pVolume,
-		const FUnorderedAccessViewRHIRef pOctreeVolume, int InLeafNodeSize)
+		const FTexture3DComputeResource* ComputeResource, int InLeafNodeSize)
 	{
 		SetTextureParameter(RHICmdList, ShaderRHI, Volume, pVolume);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume, pOctreeVolume);
+		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, ComputeResource->UnorderedAccessViewRHIs[0]);
+		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume1, ComputeResource->UnorderedAccessViewRHIs[1]);
 		SetShaderValue(RHICmdList, ShaderRHI, MinMaxValues, FVector2f(0.0, 1.0));
 		SetShaderValue(RHICmdList, ShaderRHI, LeafNodeSize, InLeafNodeSize);
 	}
@@ -46,7 +48,8 @@ public:
 	void UnbindResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
 	{
 		SetTextureParameter(RHICmdList, ShaderRHI, Volume, nullptr);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume, nullptr);
+		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, nullptr);
+		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume1, nullptr);
 	}
 
 protected:
@@ -54,8 +57,11 @@ protected:
 	LAYOUT_FIELD(FShaderResourceParameter, Volume);
 
 	// OctreeVolume volume to modify.
-	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume);
-	
+	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume0);
+
+	// OctreeVolume volume to modify.
+	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume1);
+
 	// Parameter for the added/removed multiplier.
 	LAYOUT_FIELD(FShaderParameter, MinMaxValues);
 	

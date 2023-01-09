@@ -8,7 +8,7 @@
 #include "CoreMinimal.h"
 #include "Engine/VolumeTexture.h"
 #include "RHIResources.h"
-#include "RaymarchMaterialParameters.h"
+#include "VolumeTextureToolkit/Public/RenderTargetVolumeMipped.h"
 #include "VolumeAsset/VolumeInfo.h"
 
 #include "RaymarchTypes.generated.h"
@@ -106,7 +106,7 @@ struct FBasicRaymarchRenderingResources
 
 	/// Pointer to the illumination volume texture render target.
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
-	UTextureRenderTargetVolume* OctreeVolumeRenderTarget = nullptr;
+	URenderTargetVolumeMipped* OctreeVolumeRenderTarget = nullptr;
 
 	/// If true, Light Volume texture will be created with it's side scaled down by 1/2 (-> 1/8 total voxels!)
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Basic Raymarch Rendering Resources")

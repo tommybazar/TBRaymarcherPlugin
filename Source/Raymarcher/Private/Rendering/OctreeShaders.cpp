@@ -41,7 +41,7 @@ void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, 
 	RHICmdList.Transition(FRHITransitionInfo(Resources.OctreeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 
 	ComputeShader->SetGeneratingResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
-		Resources.OctreeUAVRef, LEAF_NODE_SIZE);
+		Resources.OctreeVolumeRenderTarget->MippedTexture3DRTResource, LEAF_NODE_SIZE);
 
 	const uint32 GroupSizeX = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeX, GroupSizePerDimension);
 	const uint32 GroupSizeY = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeY, GroupSizePerDimension);
