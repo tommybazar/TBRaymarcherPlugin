@@ -387,6 +387,7 @@ void ARaymarchVolume::ResetAllLights()
 
 	// Clear Light volume to zero.
 	UVolumeTextureToolkit::ClearVolumeTexture(RaymarchResources.LightVolumeRenderTarget, 0);
+	URaymarchUtils::GenerateOctree(RaymarchResources);
 
 	// Add all lights.
 	bool bResetWasSuccessful = true;
@@ -800,7 +801,15 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 
 	RaymarchResources.LightVolumeRenderTarget = NewObject<UTextureRenderTargetVolume>(this, "Light Volume Render Target");
 	RaymarchResources.LightVolumeRenderTarget->bCanCreateUAV = true;
+	RaymarchResources.LightVolumeRenderTarget->bHDR = bLightVolume32Bit;
 	RaymarchResources.LightVolumeRenderTarget->Init(X, Y, Z, PixelFormat);
+
+	RaymarchResources.OctreeVolumeRenderTarget = NewObject<UTextureRenderTargetVolume>(this, "Octree Render Target");
+	RaymarchResources.OctreeVolumeRenderTarget->bCanCreateUAV = true;
+	RaymarchResources.OctreeVolumeRenderTarget->bHDR = false;
+	RaymarchResources.OctreeVolumeRenderTarget->Init(FMath::RoundUpToPowerOfTwo(Volume->GetSizeX()),
+												FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()),
+												FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()), PixelFormat);
 
 	// Flush rendering commands so that all textures are definitely initialized with resources and we can create a UAV ref.
 	FlushRenderingCommands();
@@ -814,6 +823,9 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 
 	RaymarchResources.LightVolumeUAVRef =
 		RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
+
+	RaymarchResources.OctreeUAVRef =
+		RHICreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
 
 	RaymarchResources.bIsInitialized = true;
 }

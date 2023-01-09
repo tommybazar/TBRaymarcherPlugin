@@ -24,11 +24,12 @@ DECLARE_GPU_STAT_NAMED(GPUGeneratingOctree, TEXT("GeneratingOctree_"));
 
 // #TODO profile with different dimensions.
 #define NUM_THREADS_PER_GROUP_DIMENSION 8	  // This has to be the same as in the compute shader's spec [X, X, X]
-#define LEAF_NODE_SIZE 4					  // Also has to match the shader.
+#define LEAF_NODE_SIZE 4					  // Provided to the shader as a uniform.
 
 void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, FBasicRaymarchRenderingResources Resources)
 {
 	check(IsInRenderingThread());
+	constexpr int32 GroupSizePerDimension = NUM_THREADS_PER_GROUP_DIMENSION * LEAF_NODE_SIZE;
 
 	// For GPU profiling.
 	SCOPED_DRAW_EVENTF(RHICmdList, GenerateOctreeForVolume_RenderThread, TEXT("GeneratingOctree"));
@@ -37,16 +38,18 @@ void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, 
 	TShaderMapRef<FGenerateOctreeShader> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
 	SetComputePipelineState(RHICmdList, ShaderRHI);
+	RHICmdList.Transition(FRHITransitionInfo(Resources.OctreeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 
 	ComputeShader->SetGeneratingResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
-		Resources.OctreeUAVRef);
+		Resources.OctreeUAVRef, LEAF_NODE_SIZE);
 
-	const uint32 GroupSizeX = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeX, NUM_THREADS_PER_GROUP_DIMENSION);
-	const uint32 GroupSizeY = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeY, NUM_THREADS_PER_GROUP_DIMENSION);
-	const uint32 GroupSizeZ = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeZ, NUM_THREADS_PER_GROUP_DIMENSION);
+	const uint32 GroupSizeX = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeX, GroupSizePerDimension);
+	const uint32 GroupSizeY = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeY, GroupSizePerDimension);
+	const uint32 GroupSizeZ = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeZ, GroupSizePerDimension);
 	RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, GroupSizeZ);
 
 	ComputeShader->UnbindResources(RHICmdList, ShaderRHI);
+	RHICmdList.Transition(FRHITransitionInfo(Resources.OctreeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }
 
 #undef LOCTEXT_NAMESPACE

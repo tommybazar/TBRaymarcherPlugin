@@ -4,8 +4,7 @@
 // (original raymarching code).
 
 //
-// This shader propagates adding (or removing) a light in a single slice of a volume texture.
-// (Has to be invoked per-slice to propagate through whole volume).
+// This shader generates an Octree acceleration structure.
 //
 
 #include "/Engine/Private/Common.ush"
@@ -20,6 +19,7 @@ float2 MinMaxValues;
 // The Volume we're propagating light through.
 Texture3D Volume;
 
+int LeafNodeSize = 32;
 
 [numthreads(8, 8, 8)]
 void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
@@ -27,10 +27,19 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 	// Position in Leaf space (index of the leaf in the octree that this shader will generate)
     int3 pos = int3(voxelLoc.x, voxelLoc.y, voxelLoc.z);
 
-    uint sizeX, sizeY, sizeZ;
-    OctreeVolume.GetDimensions(sizeX, sizeY, sizeZ);
-    uint3 uResolution = uint3(sizeX, sizeY, sizeZ);
-    
-    // If we're removing a light, multiply alpha by -1. (but read/write buffers stay positive)
-    OctreeVolume[pos] = Volume.Load(int4(pos, 0), 0);
+	int3 posOffset = pos * LeafNodeSize;
+
+	for (int x = 0; x < LeafNodeSize; x++)
+	{
+		for (int y = 0; y < LeafNodeSize; y++)
+		{
+			for (int z = 0; z < LeafNodeSize; z++)
+			{
+				int3 localPos = int3(x, y, z);
+				int3 actualPos = posOffset + localPos;
+				// For now, just copy volume value.
+				OctreeVolume[actualPos] = Volume.Load(int4(actualPos, 0), 0).r * MinMaxValues.y;
+			}
+		}
+	}
 }

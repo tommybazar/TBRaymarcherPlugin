@@ -5,7 +5,6 @@
 
 #include "Util/RaymarchUtils.h"
 
-#include "AssetRegistry/Public/AssetRegistryModule.h"
 #include "Containers/UnrealString.h"
 #include "GlobalShader.h"
 #include "Logging/MessageLog.h"
@@ -18,6 +17,7 @@
 #include "SceneInterface.h"
 #include "SceneUtils.h"
 #include "ShaderParameterUtils.h"
+#include "Rendering/OctreeShaders.h"
 #include "VolumeTextureToolkit/Public/TextureUtilities.h"
 
 #include <Engine/TextureRenderTargetVolume.h>
@@ -88,6 +88,16 @@ void URaymarchUtils::ChangeDirLightInSingleVolume(FBasicRaymarchRenderingResourc
 	([=](FRHICommandListImmediate& RHICmdList) {
 		ChangeDirLightInSingleLightVolume_RenderThread(
 			RHICmdList, Resources, OldLightParameters, NewLightParameters, WorldParameters);
+	});
+}
+
+void URaymarchUtils::GenerateOctree(FBasicRaymarchRenderingResources& Resources)
+{
+	// Call the actual rendering code on RenderThread. We capture by value so that if
+	ENQUEUE_RENDER_COMMAND(CaptureCommand)
+	([=](FRHICommandListImmediate& RHICmdList)
+	{
+		GenerateOctreeForVolume_RenderThread(RHICmdList, Resources);
 	});
 }
 

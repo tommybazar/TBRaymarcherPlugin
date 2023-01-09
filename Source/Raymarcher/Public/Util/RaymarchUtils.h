@@ -40,6 +40,10 @@ public:
 		const FDirLightParameters OldLightParameters, const FDirLightParameters NewLightParameters,
 		const FRaymarchWorldParameters WorldParameters, bool& LightAdded, bool bGPUSync = false);
 
+	/** Generates an octree in the provided resources to accelerate raymarching through the volume.	 */
+	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
+	static RAYMARCHER_API void GenerateOctree(FBasicRaymarchRenderingResources& Resources);
+	
 	/** Clears a light volume in provided raymarch resources. */
 	UFUNCTION(BlueprintCallable, Category = "Raymarcher")
 	static RAYMARCHER_API void ClearResourceLightVolumes(FBasicRaymarchRenderingResources Resources, float ClearValue);
