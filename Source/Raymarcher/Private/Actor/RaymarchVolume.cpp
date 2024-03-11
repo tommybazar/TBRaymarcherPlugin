@@ -689,6 +689,8 @@ void ARaymarchVolume::SetWindowCenter(const float& Center)
 	if (Center == RaymarchResources.WindowingParameters.Center)
 		return;
 
+	GEngine->AddOnScreenDebugMessage(25, 5, FColor::Yellow, "Center " + FString::SanitizeFloat(Center));
+	
 	RaymarchResources.WindowingParameters.Center = Center;
 	SetMaterialWindowingParameters();
 	bRequestedRecompute = true;
