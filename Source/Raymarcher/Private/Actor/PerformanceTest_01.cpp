@@ -76,7 +76,6 @@ void APerformanceTest_01::SetWindowCenter(float Value)
 {
 	for (auto* ListenerVolume : ListenerVolumes)
 	{
-		//ListenerVolume->Norm
 		ListenerVolume->SetWindowCenter(ListenerVolume->VolumeAsset->ImageInfo.NormalizeValue(Value));
 	}
 }

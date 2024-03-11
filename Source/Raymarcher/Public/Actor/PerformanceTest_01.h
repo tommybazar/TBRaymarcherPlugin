@@ -16,23 +16,20 @@ class RAYMARCHER_API APerformanceTest_01 : public AFunctionalTest
 	GENERATED_BODY()
 
 	virtual void Tick(float DeltaSeconds) override;
-	
+
+	// Called when the test is started.
 	virtual bool RunTest(const TArray<FString>& Params = TArray<FString>()) override;
 
+	// Set the window center to each volume added to ListenerVolumes.
 	void SetWindowCenter(float Value);
-	
 	// Define if the test was started by calling 'RunTest'
 	bool bRunning = false;
-
+	// Define the current execution time from the start of the test.
 	float CurrentTime = 0.0f;
-
-	UPROPERTY(EditAnywhere)
-	bool bPlotResult = true;
-
-	/// The volumes this test is affecting.
-	/// #TODO do not touch the volume directly and expose delegates instead?
+	// The volumes this test is affecting.
 	UPROPERTY(EditAnywhere)
 	TArray<ARaymarchVolume*> ListenerVolumes;
-	
+	// Performance helper that captures the current performance. The performance is logged to csv file in
+	// <Engine>/Saved/Profiling. It also captures the .uestats file to <Engine>/Saved/Profiling/UnrealStats/.
 	UAutomationPerformaceHelper* PerformanceHelper;
 };
