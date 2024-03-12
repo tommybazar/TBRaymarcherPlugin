@@ -9,7 +9,8 @@ public class Tests : ModuleRules
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
-                "Core"
+                "Core",
+                "Raymarcher"
             }
         );
 
@@ -20,7 +21,8 @@ public class Tests : ModuleRules
                 "Engine",
                 "Slate",
                 "SlateCore",
-                "FunctionalTesting"
+                "FunctionalTesting",
+                "VolumeTextureToolkit"
             }
         );
     }

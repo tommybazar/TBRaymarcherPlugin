@@ -46,8 +46,7 @@ public class Raymarcher: ModuleRules
 				"Engine",
 				"Slate",
                 "SlateCore",
-                "UMG",
-                "FunctionalTesting"
+                "UMG"
 				// ... add private dependencies that you statically link with here ...	
 			}
             );

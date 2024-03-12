@@ -3,7 +3,7 @@
 // (original raymarching code).
 
 #include "Actor/PerformanceTest1.h"
-
+#include "VolumeTextureToolkit/Public/VolumeAsset/VolumeInfo.h"
 #include <cstdlib>	  // For system function
 
 void APerformanceTest1::Tick(float DeltaSeconds)
@@ -54,7 +54,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		PerformanceHelper->EndRecording();
 		PerformanceHelper->EndStatsFile();
 
-		FinishTest(EFunctionalTestResult::Succeeded, "PerformanceTest01 passed.");
+		FinishTest(EFunctionalTestResult::Succeeded, "PerformanceTest1 passed.");
 	}
 
 	Super::Tick(DeltaSeconds);
@@ -62,10 +62,10 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 bool APerformanceTest1::RunTest(const TArray<FString>& Params)
 {
 	bRunning = true;
-	GEngine->AddOnScreenDebugMessage(20, 20, FColor::Purple, "Performance test 01 started.");
+	GEngine->AddOnScreenDebugMessage(20, 20, FColor::Purple, "Performance test 1 started.");
 
 	PerformanceHelper = NewObject<UAutomationPerformaceHelper>(this);
-	PerformanceHelper->BeginRecording(TEXT("PerformanceTest01"), 60.0f, 30.0f, 20.0f);
+	PerformanceHelper->BeginRecording(TEXT("PerformanceTest1"), 60.0f, 30.0f, 20.0f);
 
 	// Save also the stats file. The stats file are saved in <Engine>/Saved/Profiling/UnrealStats
 	PerformanceHelper->BeginStatsFile(TEXT("MyPerformanceRecord"));
