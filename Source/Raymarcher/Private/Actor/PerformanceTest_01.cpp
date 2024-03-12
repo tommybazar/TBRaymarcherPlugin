@@ -1,10 +1,10 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich .Licensed under MIT license - See License.txt for details. Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks (original raymarching code).
-
+// Copyright 2021 Tomas Bartipan and Technical University of Munich .Licensed under MIT license - See License.txt for details.
+// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
+// (original raymarching code).
 
 #include "Actor/PerformanceTest_01.h"
-#include <cstdlib> // For system function
-#include "Python3/Win64/include/Python.h"
 
+#include <cstdlib>	  // For system function
 
 void APerformanceTest_01::Tick(float DeltaSeconds)
 {
@@ -21,14 +21,14 @@ void APerformanceTest_01::Tick(float DeltaSeconds)
 	{
 		SetWindowCenter(100.0f);
 	}
-	else if(CurrentTime > TimeWindow && CurrentTime < TimeWindow * 2.0f)
+	else if (CurrentTime > TimeWindow && CurrentTime < TimeWindow * 2.0f)
 	{
 		for (auto* ListenerVolume : ListenerVolumes)
 		{
 			ListenerVolume->bRequestedRecompute = true;
 		}
 	}
-	else if(CurrentTime > TimeWindow * 2.0f && CurrentTime < TimeWindow * 3.0f)
+	else if (CurrentTime > TimeWindow * 2.0f && CurrentTime < TimeWindow * 3.0f)
 	{
 		SetWindowCenter(400.0f + TimeWindow * 30);
 	}
@@ -42,21 +42,21 @@ void APerformanceTest_01::Tick(float DeltaSeconds)
 	else
 	{
 		// Report the numbers to the test output window in UE.
-		if(auto* stat = PerformanceHelper->GetCurrentRecord())
+		if (auto* stat = PerformanceHelper->GetCurrentRecord())
 		{
 			FString outStr = stat->GetReportString();
 			LogStep(ELogVerbosity::Log, outStr);
 		}
 
-		// Write the log file with the csv data to plot. 
-		PerformanceHelper->WriteLogFile("PerformanceTest01",".csv");
+		// Write the log file with the csv data to plot.
+		PerformanceHelper->WriteLogFile("PerformanceTest01", ".csv");
 
 		PerformanceHelper->EndRecording();
 		PerformanceHelper->EndStatsFile();
 
 		FinishTest(EFunctionalTestResult::Succeeded, "PerformanceTest01 passed.");
 	}
-	
+
 	Super::Tick(DeltaSeconds);
 }
 bool APerformanceTest_01::RunTest(const TArray<FString>& Params)

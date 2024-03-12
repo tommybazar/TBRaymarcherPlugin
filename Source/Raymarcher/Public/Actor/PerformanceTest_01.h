@@ -27,13 +27,17 @@ class RAYMARCHER_API APerformanceTest_01 : public AFunctionalTest
 
 	// Set the window center to each volume added to ListenerVolumes.
 	void SetWindowCenter(float Value);
+
 	// Define if the test was started by calling 'RunTest'
 	bool bRunning = false;
+
 	// Define the current execution time from the start of the test.
 	float CurrentTime = 0.0f;
+
 	// The volumes this test is affecting.
 	UPROPERTY(EditAnywhere)
 	TArray<ARaymarchVolume*> ListenerVolumes;
+
 	// Performance helper that captures the current performance. The performance is logged to csv file in
 	// <Engine>/Saved/Profiling. It also captures the .uestats file to <Engine>/Saved/Profiling/UnrealStats/.
 	UAutomationPerformaceHelper* PerformanceHelper;
