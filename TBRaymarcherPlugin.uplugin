@@ -1,8 +1,8 @@
 {
   "FileVersion": 3,
   "Version": 1,
-  "VersionName": "0.9.1",
-  "EngineVersion": "5.2",
+  "VersionName": "0.9.2",
+  "EngineVersion": "5.3",
   "FriendlyName": "Tommy Bazar's Raymarcher Plugin",
   "Description": "A plugin for raymarching volumetric data",
   "Category": "Volumetrics",

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DataDrivenShaderPlatformInfo.h"
 #include "Engine.h"
 #include "Engine/VolumeTexture.h"
 #include "Engine/World.h"
@@ -109,7 +110,7 @@ public:
 	{
 		SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), Volume, nullptr);
 	}
-
+	
 protected:
 	// Float values to be set to the alpha volume.
 	LAYOUT_FIELD(FShaderResourceParameter, Volume);

@@ -17,6 +17,13 @@ IMPLEMENT_GLOBAL_SHADER(
 DECLARE_FLOAT_COUNTER_STAT(TEXT("ClearingVolumeTextures"), STAT_GPU_ClearingVolumeTextures, STATGROUP_GPU);
 DECLARE_GPU_STAT_NAMED(GPUClearingVolumeTextures, TEXT("ClearingVolumeTextures"));
 
+
+// Shorthand
+FRHICommandListImmediate& GetCmdList()
+{
+	return FRHICommandListExecutor::GetImmediateCommandList();
+}
+
 void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture3D* VolumeResourceRef, float ClearValues)
 {
 	// For GPU profiling.
@@ -29,7 +36,7 @@ void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHIT
 
 	// RHICmdList.TransitionResource(EResourceTransitionAccess::ERWNoBarrier,
 	// LightVolumeResource);
-	FUnorderedAccessViewRHIRef VolumeUAVRef = RHICreateUnorderedAccessView(VolumeResourceRef);
+	FUnorderedAccessViewRHIRef VolumeUAVRef = GetCmdList().CreateUnorderedAccessView(VolumeResourceRef);
 
 	// Don't need barriers on these - we only ever read/write to the same pixel from one thread ->
 	// no race conditions But we definitely need to transition the resource to Compute-shader

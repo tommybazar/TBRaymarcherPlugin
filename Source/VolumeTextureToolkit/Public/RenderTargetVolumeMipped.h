@@ -107,7 +107,7 @@ public:
 	/**
 	 * Called when the resource is initialized. This is only called by the rendering thread.
 	 */
-	virtual void InitDynamicRHI() override
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override
 	{
 		// Create the RHI texture.
 		FRHITextureCreateDesc Desc =
@@ -123,7 +123,7 @@ public:
 
 		for (int i = 0; i < NumMips; i++)
 		{
-			UnorderedAccessViewRHIs.Add(RHICreateUnorderedAccessView(TextureRHI, i));
+			UnorderedAccessViewRHIs.Add(GetCommandList().CreateUnorderedAccessView(TextureRHI, i));
 		}
 
 		RHIUpdateTextureReference(Owner->TextureReference.TextureReferenceRHI, TextureRHI);

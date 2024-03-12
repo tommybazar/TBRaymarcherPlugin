@@ -21,7 +21,7 @@ DECLARE_MULTICAST_DELEGATE(FVolumeInfoChangedDelegate);
 ///
 /// Class wrapping most of the functionality in this plugin. Contains a FVolumeInfo containing loaded data and a transfer function to get color from scalar values depending on windowing settings.
 ///
-UCLASS()
+UCLASS(BlueprintType, Blueprintable)
 class VOLUMETEXTURETOOLKIT_API UVolumeAsset : public UDataAsset
 {
 	GENERATED_BODY()
