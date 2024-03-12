@@ -41,6 +41,7 @@ FTextureResource* URenderTargetVolumeMipped::CreateResource()
 	return nullptr;
 }
 
+#if WITH_EDITOR
 void URenderTargetVolumeMipped::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	constexpr int32 MaxSize = 2048;
@@ -52,7 +53,7 @@ void URenderTargetVolumeMipped::PostEditChangeProperty(FPropertyChangedEvent& Pr
 
 	UTexture::PostEditChangeProperty(PropertyChangedEvent);
 }
-
+#endif
 
 void URenderTargetVolumeMipped::PostLoad()
 {
