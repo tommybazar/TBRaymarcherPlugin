@@ -33,7 +33,7 @@ public class Raymarcher: ModuleRules
                 "AssetRegistry",
                 "VolumeTextureToolkit",
 				"HeadMountedDisplay",
-				"InputCore"
+				"InputCore",
 				// ... add other public dependencies that you statically link with here ...
 			}
             );
@@ -47,7 +47,7 @@ public class Raymarcher: ModuleRules
 				"Slate",
                 "SlateCore",
                 "UMG",
-				// ... add private dependencies that you statically link with here ...	
+                // ... add private dependencies that you statically link with here ...	
 			}
             );
 		

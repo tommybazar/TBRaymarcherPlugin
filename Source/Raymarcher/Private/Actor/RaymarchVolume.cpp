@@ -5,17 +5,17 @@
 
 #include "Actor/RaymarchVolume.h"
 
-#include "RenderTargetVolumeMipped.h"
 #include "GenericPlatform/GenericPlatformTime.h"
+#include "RenderTargetVolumeMipped.h"
 #include "Rendering/RaymarchMaterialParameters.h"
 #include "TextureUtilities.h"
 #include "UObject/SavePackage.h"
 #include "Util/RaymarchUtils.h"
+#include "VolumeAsset/Loaders/MHDLoader.h"
 #include "VolumeAsset/VolumeAsset.h"
 
 #include <Curves/CurveLinearColor.h>
 #include <Engine/TextureRenderTargetVolume.h>
-#include "VolumeAsset/Loaders/MHDLoader.h"
 
 DEFINE_LOG_CATEGORY(LogRaymarchVolume)
 
@@ -28,7 +28,7 @@ ARaymarchVolume::ARaymarchVolume() : AActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
-	
+
 	SetActorEnableCollision(true);
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Default Scene Root"));
@@ -181,8 +181,8 @@ void ARaymarchVolume::OnTFColorCurveUpdated(UCurveBase* Curve, EPropertyChangeTy
 
 void ARaymarchVolume::OnImageInfoChangedInEditor()
 {
-	// Just update parameters from default VolumeAsset values, that's the only thing that can change that's interesting in the Image Info
-	// we're initialized.
+	// Just update parameters from default VolumeAsset values, that's the only thing that can change that's interesting in the Image
+	// Info we're initialized.
 	RaymarchResources.WindowingParameters = VolumeAsset->ImageInfo.DefaultWindowingParameters;
 	SetMaterialWindowingParameters();
 
@@ -292,7 +292,7 @@ bool ARaymarchVolume::ShouldTickIfViewportsOnly() const
 	return true;
 }
 
-#endif	  //#if WITH_EDITOR
+#endif	  // #if WITH_EDITOR
 
 // Called every frame
 void ARaymarchVolume::Tick(float DeltaTime)
@@ -388,7 +388,9 @@ void ARaymarchVolume::ResetAllLights()
 
 	// Clear Light volume to zero.
 	UVolumeTextureToolkit::ClearVolumeTexture(RaymarchResources.LightVolumeRenderTarget, 0);
-	URaymarchUtils::GenerateOctree(RaymarchResources);
+
+	// Experimental
+	// URaymarchUtils::GenerateOctree(RaymarchResources);
 
 	// Add all lights.
 	bool bResetWasSuccessful = true;
@@ -503,7 +505,7 @@ bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 
 	RaymarchResources.WindowingParameters = VolumeAsset->ImageInfo.DefaultWindowingParameters;
 
-	// Unreal units = cm, MHD and Dicoms both have sizes in mm -> divide by 10.
+	// Unreal units are in cm, MHD and Dicoms both have sizes in mm -> divide by 10.
 	StaticMeshComponent->SetRelativeScale3D(InVolumeAsset->ImageInfo.WorldDimensions / 10);
 
 	// Update world, set all parameters and request recompute.
@@ -752,28 +754,6 @@ void ARaymarchVolume::SetRaymarchSteps(float InRaymarchingSteps)
 
 void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 {
-	if (RaymarchResources.bIsInitialized)
-	{
-		FreeRaymarchResources();
-	}
-
-	if (!Volume)
-	{
-		UE_LOG(LogRaymarchVolume, Error, TEXT("Tried to initialize Raymarch resources with no data volume!"));
-		return;
-	}
-	else if (!Volume->GetPlatformData() || Volume->GetSizeX() == 0 || Volume->GetSizeY() == 0 || Volume->GetSizeZ() == 0)
-	{
-		// Happens in cooking stage where per-platform data isn't initalized. Return.
-		UE_LOG(LogRaymarchVolume, Warning,
-			TEXT("Following is safe to ignore during cooking :\nTried to initialize Raymarch resources with an unitialized data "
-				 "volume with size 0!\nRaymarch volume name = %s, VolumeTexture name = %s"),
-			*(GetName()), *(Volume->GetName()));
-		return;
-	};
-
-	RaymarchResources.DataVolumeTextureRef = Volume;
-
 	int X = Volume->GetSizeX();
 	int Y = Volume->GetSizeY();
 	int Z = Volume->GetSizeZ();
@@ -792,44 +772,73 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 		PixelFormat = PF_R32_FLOAT;
 	}
 
+	// Call the actual rendering code on RenderThread.
 	FIntPoint XBufferSize = FIntPoint(Y, Z);
 	FIntPoint YBufferSize = FIntPoint(X, Z);
 	FIntPoint ZBufferSize = FIntPoint(X, Y);
-	// Make buffers fully colored if we need to support colored lights.
-	URaymarchUtils::CreateBufferTextures(XBufferSize, PixelFormat, RaymarchResources.XYZReadWriteBuffers[0]);
-	URaymarchUtils::CreateBufferTextures(YBufferSize, PixelFormat, RaymarchResources.XYZReadWriteBuffers[1]);
-	URaymarchUtils::CreateBufferTextures(ZBufferSize, PixelFormat, RaymarchResources.XYZReadWriteBuffers[2]);
 
 	RaymarchResources.LightVolumeRenderTarget = NewObject<UTextureRenderTargetVolume>(this, "Light Volume Render Target");
 	RaymarchResources.LightVolumeRenderTarget->bCanCreateUAV = true;
 	RaymarchResources.LightVolumeRenderTarget->bHDR = bLightVolume32Bit;
+	RaymarchResources.LightVolumeRenderTarget->ClearColor = FLinearColor(1.0, 0, 0, 0);
 	RaymarchResources.LightVolumeRenderTarget->Init(X, Y, Z, PixelFormat);
 
-	RaymarchResources.OctreeVolumeRenderTarget = NewObject<URenderTargetVolumeMipped>(this, "Octree Render Target");
-	RaymarchResources.OctreeVolumeRenderTarget->bCanCreateUAV = true;
-	RaymarchResources.OctreeVolumeRenderTarget->bHDR = false;
-	RaymarchResources.OctreeVolumeRenderTarget->Init(FMath::RoundUpToPowerOfTwo(Volume->GetSizeX()),
-												FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()),
-												FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()),
-												2, PF_G16);
+	// Experimental
+	// RaymarchResources.OctreeVolumeRenderTarget = NewObject<URenderTargetVolumeMipped>(this, "Octree Render Target");
+	// RaymarchResources.OctreeVolumeRenderTarget->bCanCreateUAV = true;
+	// RaymarchResources.OctreeVolumeRenderTarget->bHDR = false;
+	// RaymarchResources.OctreeVolumeRenderTarget->Init(FMath::RoundUpToPowerOfTwo(Volume->GetSizeX()),
+	// 	FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()), FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()), 2, PF_G16);
 
-	// Flush rendering commands so that all textures are definitely initialized with resources and we can create a UAV ref.
+	ENQUEUE_RENDER_COMMAND(CaptureCommand)
+	(
+		[&](FRHICommandListImmediate& RHICmdList)
+		{
+			if (RaymarchResources.bIsInitialized)
+			{
+				FreeRaymarchResources();
+			}
+
+			if (!Volume)
+			{
+				UE_LOG(LogRaymarchVolume, Error, TEXT("Tried to initialize Raymarch resources with no data volume!"));
+				return;
+			}
+			else if (!Volume->GetPlatformData() || Volume->GetSizeX() == 0 || Volume->GetSizeY() == 0 || Volume->GetSizeZ() == 0)
+			{
+				// Happens in cooking stage where per-platform data isn't initialized. Return.
+				UE_LOG(LogRaymarchVolume, Warning,
+					TEXT("Following is safe to ignore during cooking :\nTried to initialize Raymarch resources with an unitialized "
+						 "data "
+						 "volume with size 0!\nRaymarch volume name = %s, VolumeTexture name = %s"),
+					*(GetName()), *(Volume->GetName()));
+				return;
+			};
+
+			RaymarchResources.DataVolumeTextureRef = Volume;
+
+			// Make buffers fully colored if we need to support colored lights.
+			URaymarchUtils::CreateBufferTextures(XBufferSize, PixelFormat, RaymarchResources.XYZReadWriteBuffers[0]);
+			URaymarchUtils::CreateBufferTextures(YBufferSize, PixelFormat, RaymarchResources.XYZReadWriteBuffers[1]);
+			URaymarchUtils::CreateBufferTextures(ZBufferSize, PixelFormat, RaymarchResources.XYZReadWriteBuffers[2]);
+
+			if (!RaymarchResources.LightVolumeRenderTarget || !RaymarchResources.LightVolumeRenderTarget->GetResource() ||
+				!RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI)
+			{
+				// Return if anything was not initialized.
+				return;
+			}
+
+			RaymarchResources.LightVolumeUAVRef =
+				RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
+
+			// Experimental
+			// RaymarchResources.OctreeUAVRef =
+			// 	RHICreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
+
+			RaymarchResources.bIsInitialized = true;
+		});
 	FlushRenderingCommands();
-
-	if (!RaymarchResources.LightVolumeRenderTarget || !RaymarchResources.LightVolumeRenderTarget->GetResource() ||
-		!RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI)
-	{
-		// Return if anything was not initialized.
-		return;
-	}
-
-	RaymarchResources.LightVolumeUAVRef =
-		RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
-
-	RaymarchResources.OctreeUAVRef =
-		RHICreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
-
-	RaymarchResources.bIsInitialized = true;
 }
 
 void ARaymarchVolume::FreeRaymarchResources()

@@ -7,7 +7,6 @@
 
 #include "Actor/VR/Grabbable.h"
 #include "Components/WidgetInteractionComponent.h"
-#include "XRMotionControllerBase.h"
 
 AVRMotionController::AVRMotionController()
 {
@@ -49,7 +48,7 @@ void AVRMotionController::SetupInput(UInputComponent* InInputComponent)
 {
 	if (bIsInRightHand)
 	{
-		MotionControllerComponent->SetTrackingMotionSource(FXRMotionControllerBase::RightHandSourceId);
+		MotionControllerComponent->SetTrackingMotionSource(FName("Right"));
 
 		InInputComponent->BindAction("Right_Grip", IE_Pressed, this, &AVRMotionController::OnGripPressed);
 		InInputComponent->BindAction("Right_Grip", IE_Released, this, &AVRMotionController::OnGripReleased);
@@ -66,7 +65,7 @@ void AVRMotionController::SetupInput(UInputComponent* InInputComponent)
 	}
 	else
 	{
-		MotionControllerComponent->SetTrackingMotionSource(FXRMotionControllerBase::LeftHandSourceId);
+		MotionControllerComponent->SetTrackingMotionSource(FName("Left"));
 
 		InInputComponent->BindAction("Left_Grip", IE_Pressed, this, &AVRMotionController::OnGripPressed);
 		InInputComponent->BindAction("Left_Grip", IE_Released, this, &AVRMotionController::OnGripReleased);

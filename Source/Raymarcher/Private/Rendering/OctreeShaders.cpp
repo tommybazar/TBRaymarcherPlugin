@@ -23,13 +23,13 @@ DECLARE_FLOAT_COUNTER_STAT(TEXT("GeneratingOctree"), STAT_GPU_GeneratingOctree, 
 DECLARE_GPU_STAT_NAMED(GPUGeneratingOctree, TEXT("GeneratingOctree_"));
 
 // #TODO profile with different dimensions.
-#define NUM_THREADS_PER_GROUP_DIMENSION 8	  // This has to be the same as in the compute shader's spec [X, X, X]
-#define LEAF_NODE_SIZE 4					  // Provided to the shader as a uniform.
+#define OCTREE_NUM_THREADS_PER_GROUP_DIMENSION 8	  // This has to be the same as in the compute shader's spec [X, X, X]
+#define LEAF_NODE_SIZE 4							  // Provided to the shader as a uniform.
 
 void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, FBasicRaymarchRenderingResources Resources)
 {
 	check(IsInRenderingThread());
-	constexpr int32 GroupSizePerDimension = NUM_THREADS_PER_GROUP_DIMENSION * LEAF_NODE_SIZE;
+	constexpr int32 GroupSizePerDimension = OCTREE_NUM_THREADS_PER_GROUP_DIMENSION * LEAF_NODE_SIZE;
 
 	// For GPU profiling.
 	SCOPED_DRAW_EVENTF(RHICmdList, GenerateOctreeForVolume_RenderThread, TEXT("GeneratingOctree"));

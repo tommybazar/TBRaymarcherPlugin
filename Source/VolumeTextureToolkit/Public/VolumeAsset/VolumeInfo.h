@@ -68,23 +68,23 @@ public:
 	/// Format of voxels loaded from the volume. Does NOT have to match the actual PixelFormat that the VolumeTexture is stored in!
 	/// e.g. this could be UChar and VolumeTexture is saved as a EPixelFormat::Float - so don't use for calculating sizes!
 	UPROPERTY(VisibleAnywhere)
-	EVolumeVoxelFormat OriginalFormat;
+	EVolumeVoxelFormat OriginalFormat = EVolumeVoxelFormat::UnsignedChar;
 
 	/// The format we're using after load has been finished. Takes into account being normalized or converted to float.
 	UPROPERTY(VisibleAnywhere)
-	EVolumeVoxelFormat ActualFormat;
+	EVolumeVoxelFormat ActualFormat = EVolumeVoxelFormat::UnsignedChar;
 
 	// Size of volume in voxels.
 	UPROPERTY(VisibleAnywhere)
-	FIntVector Dimensions;
+	FIntVector Dimensions = FIntVector(0,0,0);
 
 	// Size of a voxel in mm.
 	UPROPERTY(VisibleAnywhere)
-	FVector Spacing;
+	FVector Spacing = FVector(0,0,0);
 
 	// Size of the whole volume in mm (equals Dimensions * Spacing)
 	UPROPERTY(VisibleAnywhere)
-	FVector WorldDimensions;
+	FVector WorldDimensions = FVector(0,0,0);
 
 	// Default windowing parameters used when this volume is loaded.
 	UPROPERTY(EditAnywhere)

@@ -401,9 +401,6 @@ ETextureSourceFormat UVolumeTextureToolkit::PixelFormatToSourceFormat(EPixelForm
 		case PF_B8G8R8A8:
 			return TSF_BGRA8;
 
-		case PF_R8G8B8A8:
-			return TSF_RGBA8;
-
 		case PF_R16G16B16A16_SINT:
 		case PF_R16G16B16A16_UINT:
 			return TSF_RGBA16;

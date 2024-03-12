@@ -87,8 +87,8 @@ public:
 	/** Fired when data in the Volume asset is changed.*/
 	FDelegateHandle VolumeAssetUpdatedDelegateHandle;
 
-	/** Function that is bound to the current VolumeAssets OnCurveChanged delegate (in-editor only). Gets fired when the asset's curve
-	 * changes.*/
+	/** Function that is bound to the current VolumeAssets OnCurveChanged delegate (in-editor only). Gets fired when the asset's
+	 * curve changes.*/
 	void OnVolumeAssetChangedTF(UCurveLinearColor* Curve);
 
 	/** Function that is bound to the current transfer function color curve and gets fired when that gets changed (e.g. when the
