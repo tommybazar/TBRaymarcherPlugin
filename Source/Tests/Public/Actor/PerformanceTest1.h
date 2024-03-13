@@ -7,8 +7,14 @@
 #include "Raymarcher/Public/Actor/RaymarchVolume.h"
 #include "PerformanceTest1.generated.h"
 
-/**
- * 
+/** PerformanceTest1
+ * Test is used over the test interface ("Tools" -> "Test Automation"). Then search for 'PerformanceTest' keyword.
+ * The performance test actor added to the scene should be filtered. Check it and press Start Tests button to play it. 
+ *
+ * The Stats are saved to <Engine>/Saved/Profiling/PerformanceTest1.
+ * There is also a WIP tool that will show all tests results plotted. To use it, open CMD (or any other command line),
+ * CD to the <Engine>/Saved/ folder and call 'python3 plotResults.py PerformanceTest1' (the mathplotlib library must be
+ * installed within python3). 
  */
 UCLASS()
 class TESTS_API APerformanceTest1 : public AFunctionalTest
