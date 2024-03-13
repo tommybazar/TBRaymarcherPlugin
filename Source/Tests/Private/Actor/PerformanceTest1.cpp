@@ -49,7 +49,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		}
 
 		// Write the log file with the csv data to plot.
-		PerformanceHelper->WriteLogFile("PerformanceTest01", ".csv");
+		PerformanceHelper->WriteLogFile("PerformanceTest1", ".csv");
 
 		PerformanceHelper->EndRecording();
 		PerformanceHelper->EndStatsFile();
