@@ -4,8 +4,8 @@
 // (original raymarching code).
 #include "VolumeAsset/Loaders/DICOMLoader.h"
 
-#include "TextureUtilities.h"
 #include "HAL/FileManagerGeneric.h"
+#include "TextureUtilities.h"
 #include "VolumeAsset/DICOMParser/DICOMAppHelper.h"
 #include "VolumeAsset/DICOMParser/DICOMParser.h"
 

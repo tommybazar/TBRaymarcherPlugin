@@ -64,8 +64,9 @@ void IVolumeLoader::GetValidPackageNameFromFileName(const FString& FullPath, FSt
 
 	FPaths::Split(FullPath, OutFilePath, OutPackageName, ExtensionPart);
 	OutPackageName = FPaths::MakeValidFileName(OutPackageName);
-	// Periods are not cool in package names -> replace with underscores.
+	// Periods and spaces are not cool in package names -> replace with underscores.
 	OutPackageName.ReplaceCharInline('.', '_');
+	OutPackageName.ReplaceCharInline(' ', '_');
 }
 
 void IVolumeLoader::GetValidPackageNameFromFolderName(const FString& FullPath, FString& OutPackageName)
@@ -78,8 +79,9 @@ void IVolumeLoader::GetValidPackageNameFromFolderName(const FString& FullPath, F
 	int32 LastSlash = OutPackageName.Find("\\", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
 	OutPackageName.RightChopInline(LastSlash);
 	OutPackageName = FPaths::MakeValidFileName(OutPackageName);
-	// Periods are not cool in package names -> replace with underscores.
+	// Periods and spaces are not cool in package names -> replace with underscores.
 	OutPackageName.ReplaceCharInline('.', '_');
+	OutPackageName.ReplaceCharInline(' ', '_');
 
 }
 

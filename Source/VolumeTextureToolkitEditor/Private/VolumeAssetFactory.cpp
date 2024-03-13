@@ -74,8 +74,13 @@ UObject* UVolumeAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
 			bConvertToFloat = true;
 		}
 	}
-
-	UVolumeAsset* OutVolume = Loader->CreateVolumeFromFileInExistingPackage(Filename, InParent, bNormalize, bConvertToFloat);
+	
+	FString FullPath = InParent->GetName();
+	FString AssetName;
+	FString FolderName;
+	Loader->GetValidPackageNameFromFileName(FullPath, FolderName, AssetName);
+	
+	UVolumeAsset* OutVolume = Loader->CreatePersistentVolumeFromFile(Filename, FolderName, bNormalize);
 	bOutOperationCanceled = false;
 
 	// Add created MHD file to AdditionalImportedObjects so it also gets saved in-editor.
