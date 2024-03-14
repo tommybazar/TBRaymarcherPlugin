@@ -361,19 +361,14 @@ void ARaymarchVolume::Tick(float DeltaTime)
 				}
 			}
 
-			// More than half lights need update -> full reset is quicker
-			if ((LightsToUpdate.Num() > 1) && LightsToUpdate.Num() >= (LightsArray.Num() / 2))
+			if (LightsToUpdate.Num() > 0)
 			{
 				ResetAllLights();
 			}
-			else
+
+			for (ARaymarchLight* UpdatedLight : LightsToUpdate)
 			{
-				// Only update the lights that need it.
-				for (ARaymarchLight* UpdatedLight : LightsToUpdate)
-				{
-					UpdateSingleLight(UpdatedLight);
-					LightParametersMap[UpdatedLight] = UpdatedLight->GetCurrentParameters();
-				}
+				LightParametersMap[UpdatedLight] = UpdatedLight->GetCurrentParameters();
 			}
 		}
 	}
@@ -415,20 +410,6 @@ void ARaymarchVolume::ResetAllLights()
 
 	// False-out request recompute flag when we succeeded in resetting lights.
 	bRequestedRecompute = false;
-}
-
-void ARaymarchVolume::UpdateSingleLight(ARaymarchLight* UpdatedLight)
-{
-	bool bLightAddWasSuccessful = false;
-
-	URaymarchUtils::ChangeDirLightInSingleVolume(RaymarchResources, LightParametersMap[UpdatedLight],
-		UpdatedLight->GetCurrentParameters(), WorldParameters, bLightAddWasSuccessful);
-
-	if (!bLightAddWasSuccessful)
-	{
-		FString log = "Error. Could not change light " + UpdatedLight->GetName() + " in volume " + GetName() + " .";
-		UE_LOG(LogRaymarchVolume, Error, TEXT("%s"), *log, 3);
-	}
 }
 
 bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
@@ -754,6 +735,11 @@ void ARaymarchVolume::SetRaymarchSteps(float InRaymarchingSteps)
 
 void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 {
+	if (RaymarchResources.bIsInitialized)
+	{
+		FreeRaymarchResources();
+	}
+
 	int X = Volume->GetSizeX();
 	int Y = Volume->GetSizeY();
 	int Z = Volume->GetSizeZ();
@@ -794,11 +780,6 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	(
 		[&](FRHICommandListImmediate& RHICmdList)
 		{
-			if (RaymarchResources.bIsInitialized)
-			{
-				FreeRaymarchResources();
-			}
-
 			if (!Volume)
 			{
 				UE_LOG(LogRaymarchVolume, Error, TEXT("Tried to initialize Raymarch resources with no data volume!"));
@@ -829,8 +810,7 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 				return;
 			}
 
-			RaymarchResources.LightVolumeUAVRef =
-				RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
+			RaymarchResources.LightVolumeUAVRef = URaymarchUtils::GetCmdList().CreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
 
 			// Experimental
 			// RaymarchResources.OctreeUAVRef =
@@ -843,19 +823,26 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 
 void ARaymarchVolume::FreeRaymarchResources()
 {
-	RaymarchResources.DataVolumeTextureRef = nullptr;
-	if (RaymarchResources.LightVolumeRenderTarget)
-	{
-		RaymarchResources.LightVolumeRenderTarget->MarkAsGarbage();
-	}
-	RaymarchResources.LightVolumeRenderTarget = nullptr;
+	ENQUEUE_RENDER_COMMAND(CaptureCommand)
+	(
+		[&](FRHICommandListImmediate& RHICmdList)
+		{
+			RaymarchResources.DataVolumeTextureRef = nullptr;
+			if (RaymarchResources.LightVolumeRenderTarget)
+			{
+				RaymarchResources.LightVolumeRenderTarget->MarkAsGarbage();
+			}
+			RaymarchResources.LightVolumeRenderTarget = nullptr;
 
-	for (OneAxisReadWriteBufferResources& Buffer : RaymarchResources.XYZReadWriteBuffers)
-	{
-		URaymarchUtils::ReleaseOneAxisReadWriteBufferResources(Buffer);
-	}
+			for (OneAxisReadWriteBufferResources& Buffer : RaymarchResources.XYZReadWriteBuffers)
+			{
+				URaymarchUtils::ReleaseOneAxisReadWriteBufferResources(Buffer);
+			}
 
-	RaymarchResources.bIsInitialized = false;
+			RaymarchResources.bIsInitialized = false;
+		});
+	FlushRenderingCommands();
+
 }
 
 #if !UE_BUILD_SHIPPING

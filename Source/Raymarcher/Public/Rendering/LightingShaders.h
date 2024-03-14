@@ -49,14 +49,7 @@ public:
 		WindowingParameters.Bind(Initializer.ParameterMap, TEXT("WindowingParameters"), SPF_Mandatory);
 		StepSize.Bind(Initializer.ParameterMap, TEXT("StepSize"), SPF_Mandatory);
 
-		Loop.Bind(Initializer.ParameterMap, TEXT("Loop"), SPF_Optional);
 		PermutationMatrix.Bind(Initializer.ParameterMap, TEXT("PermutationMatrix"), SPF_Mandatory);
-
-		// Read buffer and sampler.
-		ReadBuffer.Bind(Initializer.ParameterMap, TEXT("ReadBuffer"), SPF_Optional);
-		ReadBufferSampler.Bind(Initializer.ParameterMap, TEXT("ReadBufferSampler"), SPF_Optional);
-		// Write buffer.
-		WriteBuffer.Bind(Initializer.ParameterMap, TEXT("WriteBuffer"), SPF_Optional);
 		// Actual light volume
 		ALightVolume.Bind(Initializer.ParameterMap, TEXT("ALightVolume"), SPF_Mandatory);
 
@@ -66,6 +59,12 @@ public:
 
 		// Multiplier for adding or removing light.
 		bAdded.Bind(Initializer.ParameterMap, TEXT("bAdded"), SPF_Mandatory);
+		Loop.Bind(Initializer.ParameterMap, TEXT("Loop"), SPF_Mandatory);
+		// Read buffer and sampler.
+		ReadBuffer.Bind(Initializer.ParameterMap, TEXT("ReadBuffer"), SPF_Mandatory);
+		ReadBufferSampler.Bind(Initializer.ParameterMap, TEXT("ReadBufferSampler"), SPF_Mandatory);
+		// Write buffer.
+		WriteBuffer.Bind(Initializer.ParameterMap, TEXT("WriteBuffer"), SPF_Mandatory);
 	}
 
 	void SetLightAdded(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, bool bLightAdded)
@@ -111,7 +110,7 @@ public:
 	}
 
 	// Sets loop-dependent uniforms in the pipeline.
-	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const unsigned loopIndex,
+	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int loopIndex,
 		const FTexture2DRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
 		const FUnorderedAccessViewRHIRef pWriteBuffer)
 	{
@@ -151,12 +150,14 @@ public:
 
 	void SetUVOffset(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector2D PixelOffset)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, PrevPixelOffset, FVector2f(PixelOffset));
+		auto fPixelOffset = FVector2f(PixelOffset);
+		SetShaderValue(RHICmdList, ShaderRHI, PrevPixelOffset, fPixelOffset);
 	}
 
 	void SetUVWOffset(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector pUVWOffset)
 	{
-		SetShaderValue(RHICmdList, ShaderRHI, UVWOffset, FVector3f(pUVWOffset));
+		auto fUVWOffset = FVector3f(pUVWOffset);
+		SetShaderValue(RHICmdList, ShaderRHI, UVWOffset, fUVWOffset);
 	}
 
 protected:
@@ -172,24 +173,24 @@ protected:
 	LAYOUT_FIELD(FShaderParameter, WindowingParameters);
 	// Step size taken each iteration
 	LAYOUT_FIELD(FShaderParameter, StepSize);
-	// The current loop index of this shader run.
-	LAYOUT_FIELD(FShaderParameter, Loop);
 	// Permutation matrix - used to get position in the volume from axis-aligned X,Y and loop index.
 	LAYOUT_FIELD(FShaderParameter, PermutationMatrix);
-	// Read buffer texture and sampler.
-	LAYOUT_FIELD(FShaderResourceParameter, ReadBuffer);
-	LAYOUT_FIELD(FShaderResourceParameter, ReadBufferSampler);
-	// Write buffer UAV.
-	LAYOUT_FIELD(FShaderResourceParameter, WriteBuffer);
 	// Light volume to modify.
 	LAYOUT_FIELD(FShaderResourceParameter, ALightVolume);
 	// Tells the shader the pixel offset for reading from the previous loop's buffer
 	LAYOUT_FIELD(FShaderParameter, PrevPixelOffset);
 	// And the offset in the volume from the previous volume sample.
 	LAYOUT_FIELD(FShaderParameter, UVWOffset);
-
 	// Parameter for the added/removed multiplier.
 	LAYOUT_FIELD(FShaderParameter, bAdded);
+	// The current loop index of this shader run.
+	LAYOUT_FIELD(FShaderParameter, Loop);
+	// Read buffer texture and sampler.
+	LAYOUT_FIELD(FShaderResourceParameter, ReadBuffer);
+	LAYOUT_FIELD(FShaderResourceParameter, ReadBufferSampler);
+	// Write buffer UAV.
+	LAYOUT_FIELD(FShaderResourceParameter, WriteBuffer);
+	
 };
 
 // A shader implementing changing a light in one pass.
@@ -250,7 +251,7 @@ public:
 	}
 
 		// Sets loop-dependent uniforms in the pipeline.
-	void SetLoopAdd(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const unsigned loopIndex,
+	void SetLoopAdd(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int loopIndex,
 		const FTexture2DRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
 		const FUnorderedAccessViewRHIRef pWriteBuffer)
 	{
@@ -262,7 +263,7 @@ public:
 	}
 
 	// Sets loop-dependent uniforms in the pipeline.
-	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const unsigned loopIndex,
+	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int loopIndex,
 		const FTexture2DRHIRef pRemovedReadBuffer, const FSamplerStateRHIRef pRemovedReadBuffSampler,
 		const FUnorderedAccessViewRHIRef pRemovedWriteBuffer, const FTexture2DRHIRef pAddedReadBuffer,
 		const FSamplerStateRHIRef pAddedReadBuffSampler, const FUnorderedAccessViewRHIRef pAddedWriteBuffer)
@@ -279,7 +280,7 @@ public:
 
 	
 	// Sets loop-dependent uniforms in the pipeline.
-	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const unsigned loopIndex,
+	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int loopIndex,
 		const FTexture2DRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
 		const FUnorderedAccessViewRHIRef pWriteBuffer)
 	{

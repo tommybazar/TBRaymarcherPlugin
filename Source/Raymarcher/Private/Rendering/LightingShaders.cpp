@@ -133,10 +133,8 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 		UVWOffset.Normalize();
 		UVWOffset *= LongestVoxelSide;
 
-		ComputeShader->SetStepSize(RHICmdList, ShaderRHI, StepSize);
-		ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermutationMatrix);
-		ComputeShader->SetUVOffset(RHICmdList, ShaderRHI, UVOffset);
 		ComputeShader->SetUVWOffset(RHICmdList, ShaderRHI, UVWOffset);
+		ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermutationMatrix);
 
 		uint32 GroupSizeX = FMath::DivideAndRoundUp(TransposedDimensions.X, NUM_THREADS_PER_GROUP_DIMENSION);
 		uint32 GroupSizeY = FMath::DivideAndRoundUp(TransposedDimensions.Y, NUM_THREADS_PER_GROUP_DIMENSION);
@@ -146,6 +144,9 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 
 		for (int j = Start; j != Stop; j += AxisDirection)
 		{
+			// TODO figure out why StepSize has to be set every iteration, otherwise the shader completely freaks out.
+			ComputeShader->SetStepSize(RHICmdList, ShaderRHI, StepSize);
+
 			// Switch read and write buffers each row.
 			if (j % 2 == 0)
 			{
