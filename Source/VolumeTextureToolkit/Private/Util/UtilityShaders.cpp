@@ -5,7 +5,7 @@
 
 #include "Util/UtilityShaders.h"
 
-#define NUM_THREADS_PER_GROUP_DIMENSION 16	  // This has to be the same as in the compute shader's spec [X, X, 1]
+#define CLEAR_NUM_THREADS_PER_GROUP_DIMENSION 16	  // This has to be the same as in the compute shader's spec [X, X, 1]
 
 IMPLEMENT_GLOBAL_SHADER(
 	FClearVolumeTextureShaderCS, "/VolumeTextureToolkit/Private/ClearVolumeTextureShader.usf", "MainComputeShader", SF_Compute);
@@ -45,8 +45,8 @@ void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHIT
 
 	ComputeShader->SetParameters(RHICmdList, VolumeUAVRef, ClearValues, VolumeResourceRef->GetSizeZ());
 
-	uint32 GroupSizeX = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeX(), NUM_THREADS_PER_GROUP_DIMENSION);
-	uint32 GroupSizeY = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeY(), NUM_THREADS_PER_GROUP_DIMENSION);
+	uint32 GroupSizeX = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeX(), CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
+	uint32 GroupSizeY = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeY(), CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
 
 	RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
 	ComputeShader->UnbindUAV(RHICmdList);
@@ -64,8 +64,8 @@ void Clear2DTexture_RenderThread(
 	RHICmdList.Transition(FRHITransitionInfo(TextureUAVRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute));
 
 	ShaderRef->SetParameters(RHICmdList, TextureUAVRef, Value);
-	uint32 GroupSizeX = FMath::DivideAndRoundUp(TextureSize.X, NUM_THREADS_PER_GROUP_DIMENSION);
-	uint32 GroupSizeY = FMath::DivideAndRoundUp(TextureSize.Y, NUM_THREADS_PER_GROUP_DIMENSION);
+	uint32 GroupSizeX = FMath::DivideAndRoundUp(TextureSize.X, CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
+	uint32 GroupSizeY = FMath::DivideAndRoundUp(TextureSize.Y, CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
 
 	RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
 	//  DispatchComputeShader(RHICmdList, ShaderRef, GroupSizeX, GroupSizeY, 1);

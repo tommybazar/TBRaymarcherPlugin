@@ -91,4 +91,9 @@ public:
 		FIntPoint Size, EPixelFormat PixelFormat, OneAxisReadWriteBufferResources& RWBuffers);
 
 	static RAYMARCHER_API void ReleaseOneAxisReadWriteBufferResources(OneAxisReadWriteBufferResources& Buffer);
+
+	static RAYMARCHER_API FRHICommandListBase& GetCmdList()
+	{
+		return FRHICommandListExecutor::GetImmediateCommandList();
+	}
 };

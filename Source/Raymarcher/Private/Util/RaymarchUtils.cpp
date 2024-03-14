@@ -191,7 +191,7 @@ void URaymarchUtils::CreateBufferTextures(FIntPoint Size, EPixelFormat PixelForm
 	{
 		RWBuffers.Buffers[i] =
 			RHICreateTexture(Desc);
-		RWBuffers.UAVs[i] = RHICreateUnorderedAccessView(RWBuffers.Buffers[i]);
+		RWBuffers.UAVs[i] = GetCmdList().CreateUnorderedAccessView(RWBuffers.Buffers[i]);
 	}
 }
 
