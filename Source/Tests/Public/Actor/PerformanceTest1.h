@@ -39,6 +39,10 @@ class TESTS_API APerformanceTest1 : public AFunctionalTest
 	UPROPERTY(EditAnywhere)
 	TArray<ARaymarchVolume*> ListenerVolumes;
 
+	// Volume the test is rotating around.
+	UPROPERTY(EditAnywhere)
+	ARaymarchVolume* RotateAroundVolume;
+	
 	// Performance helper that captures the current performance. The performance is logged to csv file in
 	// <Engine>/Saved/Profiling. It also captures the .uestats file to <Engine>/Saved/Profiling/UnrealStats/.
 	UAutomationPerformaceHelper* PerformanceHelper;

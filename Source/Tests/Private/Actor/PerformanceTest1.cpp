@@ -3,7 +3,13 @@
 // (original raymarching code).
 
 #include "Actor/PerformanceTest1.h"
+
+#include "GameFramework/PlayerController.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameUserSettings.h"
 #include "VolumeTextureToolkit/Public/VolumeAsset/VolumeInfo.h"
+
 #include <cstdlib>	  // For system function
 
 void APerformanceTest1::Tick(float DeltaSeconds)
@@ -39,6 +45,35 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 			ListenerVolume->bRequestedRecompute = true;
 		}
 	}
+	else if (CurrentTime > TimeWindow * 4.0f && CurrentTime < TimeWindow * 6.0f)
+	{
+		// Rotate camera around the volume.
+		APawn* CurrentPlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
+		AActor* Target = RotateAroundVolume; 
+
+		// Check for valid pawn and target
+		if (!CurrentPlayerPawn || !Target) return;
+
+		// Make player look at the volume.
+		FRotator rot = UKismetMathLibrary::FindLookAtRotation(CurrentPlayerPawn->GetActorLocation(), Target->GetActorLocation());
+		CurrentPlayerPawn->GetController()->SetControlRotation(rot);
+
+		// Rotate the player around the volume.
+		FVector TranslatedPosition = CurrentPlayerPawn->GetActorLocation() - Target->GetActorLocation();
+		const float Angle = DeltaSeconds;
+		float NewX = cos(Angle) * TranslatedPosition.X - sin(Angle) * TranslatedPosition.Y;
+		float NewY = sin(Angle) * TranslatedPosition.X + cos(Angle) * TranslatedPosition.Y;
+		FVector RotatedPosition = FVector(NewX, NewY, 0.0f) + Target->GetActorLocation();
+		CurrentPlayerPawn->SetActorLocation(RotatedPosition);
+	}
+	else if(CurrentTime > TimeWindow * 6.0f && CurrentTime < TimeWindow * 13.0f)
+	{
+		// Change the rotation of the volume.
+		AActor* Target = RotateAroundVolume;
+		FRotator Rot = Target->GetActorRotation();
+		Rot.Pitch += 2.0f;
+		Target->SetActorRotation(Rot);
+	}
 	else
 	{
 		// Report the numbers to the test output window in UE.
@@ -68,8 +103,13 @@ bool APerformanceTest1::RunTest(const TArray<FString>& Params)
 	PerformanceHelper->BeginRecording(TEXT("PerformanceTest1"), 60.0f, 30.0f, 20.0f);
 
 	// Save also the stats file. The stats file are saved in <Engine>/Saved/Profiling/UnrealStats
-	PerformanceHelper->BeginStatsFile(TEXT("MyPerformanceRecord"));
+	PerformanceHelper->BeginStatsFile(TEXT("PerformanceTest1") + FDateTime::Now().ToString());
 
+	// Change the resolution to 4K.
+	UGameUserSettings* MyGameSettings = GEngine->GetGameUserSettings();
+	MyGameSettings->SetScreenResolution(FIntPoint(3840, 2160));
+	MyGameSettings->ApplySettings(true);
+	
 	return Super::RunTest(Params);
 }
 void APerformanceTest1::SetWindowCenter(float Value)
