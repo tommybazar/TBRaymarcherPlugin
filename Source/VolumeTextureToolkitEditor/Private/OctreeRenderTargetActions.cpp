@@ -23,3 +23,8 @@ uint32 FOctreeRenderTargetAssetTypeActions::GetCategories()
 {
 	return EAssetTypeCategories::Misc;
 }
+void FOctreeRenderTargetAssetTypeActions::OpenAssetEditor(
+	const TArray<UObject*>& InObjects, TSharedPtr<IToolkitHost> EditWithinLevelEditor)
+{
+	FAssetTypeActions_Base::OpenAssetEditor(InObjects, EditWithinLevelEditor);
+}

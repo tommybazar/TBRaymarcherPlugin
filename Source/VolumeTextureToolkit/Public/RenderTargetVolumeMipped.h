@@ -19,7 +19,7 @@ public:
 
 	// The only thing we need to override so that a FTexture3DResource gets created with UAV flag.
 	virtual FTextureResource* CreateResource() override;
-
+	
 	// Override stuff because these functions are missing ENGINE_API, so they won't link outside the engine module.
 	// Implementation is exclusively calling Super::functions;
 

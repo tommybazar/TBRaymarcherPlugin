@@ -14,4 +14,6 @@ public:
 	FText GetName() const override;
 	FColor GetTypeColor() const override;
 	uint32 GetCategories() override;
+
+	void OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor) override;
 };
