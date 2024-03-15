@@ -6,6 +6,7 @@
 #pragma once
 
 #include "Modules/ModuleManager.h"
+#include "OctreeRenderTargetActions.h"
 
 class FVolumeTextureToolkitEditorModule : public IModuleInterface
 {
@@ -14,4 +15,7 @@ public:
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+private:
+	TSharedPtr<FOctreeRenderTargetAssetTypeActions> OctreeRenderTargetAssetTypeActions;
+
 };
