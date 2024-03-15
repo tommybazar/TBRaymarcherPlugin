@@ -3,6 +3,7 @@
 
 #include "OctreeRenderTargetActions.h"
 #include "VolumeTextureToolkit/Public/RenderTargetVolumeMipped.h"
+#include "OctreeRenderTargetEditorToolkit.h"
 
 UClass* FOctreeRenderTargetAssetTypeActions::GetSupportedClass() const
 {
@@ -26,5 +27,6 @@ uint32 FOctreeRenderTargetAssetTypeActions::GetCategories()
 void FOctreeRenderTargetAssetTypeActions::OpenAssetEditor(
 	const TArray<UObject*>& InObjects, TSharedPtr<IToolkitHost> EditWithinLevelEditor)
 {
-	FAssetTypeActions_Base::OpenAssetEditor(InObjects, EditWithinLevelEditor);
+	MakeShared<FOctreeRenderTargetEditorToolkit>()->InitTextureEditor(EToolkitMode::Standalone, EditWithinLevelEditor, InObjects[0]);
+	//FAssetTypeActions_Base::OpenAssetEditor(InObjects, EditWithinLevelEditor);
 }

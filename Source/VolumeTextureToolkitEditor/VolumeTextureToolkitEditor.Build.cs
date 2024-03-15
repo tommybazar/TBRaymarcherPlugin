@@ -3,6 +3,7 @@
 // Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
 // (original raymarching code).
 
+using System.IO;
 using UnrealBuildTool;
 
 public class VolumeTextureToolkitEditor : ModuleRules
@@ -25,12 +26,12 @@ public class VolumeTextureToolkitEditor : ModuleRules
                 }
             );
 			
-		
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Core",
-                "VolumeTextureToolkit"
+                "VolumeTextureToolkit",
+                "TextureEditor"
 				// ... add other public dependencies that you statically link with here ...
 			}
             );
@@ -47,7 +48,8 @@ public class VolumeTextureToolkitEditor : ModuleRules
                 "SlateCore",
                 "UnrealEd",
                 "Projects",
-				"VolumeTextureToolkit"
+				"VolumeTextureToolkit",
+				"TextureEditor"	
 				// ... add private dependencies that you statically link with here ...	
 			}
             );

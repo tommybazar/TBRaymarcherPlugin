@@ -3,15 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
+#include "TextureEditor/Private/TextureEditorToolkit.h"
 /**
  * 
  */
-class VOLUMETEXTURETOOLKITEDITOR_API OctreeRenderTargetEditorToolkit : public FAssetEditorToolkit
+class VOLUMETEXTURETOOLKITEDITOR_API FOctreeRenderTargetEditorToolkit : public FTextureEditorToolkit
 {
 public:
-	OctreeRenderTargetEditorToolkit();
-	~OctreeRenderTargetEditorToolkit();
+	FOctreeRenderTargetEditorToolkit();
+	~FOctreeRenderTargetEditorToolkit();
 
 	void InitEditor(const TArray<UObject*>& InObjects);
 

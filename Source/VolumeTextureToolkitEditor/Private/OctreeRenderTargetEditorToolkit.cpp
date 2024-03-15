@@ -3,14 +3,14 @@
 
 #include "OctreeRenderTargetEditorToolkit.h"
 
-OctreeRenderTargetEditorToolkit::OctreeRenderTargetEditorToolkit()
+FOctreeRenderTargetEditorToolkit::FOctreeRenderTargetEditorToolkit()
 {
 }
 
-OctreeRenderTargetEditorToolkit::~OctreeRenderTargetEditorToolkit()
+FOctreeRenderTargetEditorToolkit::~FOctreeRenderTargetEditorToolkit()
 {
 }
 
-void OctreeRenderTargetEditorToolkit::InitEditor(const TArray<UObject*>& InObjects)
+void FOctreeRenderTargetEditorToolkit::InitEditor(const TArray<UObject*>& InObjects)
 {
 }
