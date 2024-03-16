@@ -46,6 +46,11 @@
 			"Name": "Tests",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "TextureEditorCustom",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		}
 	]
 }

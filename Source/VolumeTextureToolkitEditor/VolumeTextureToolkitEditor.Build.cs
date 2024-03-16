@@ -31,6 +31,7 @@ public class VolumeTextureToolkitEditor : ModuleRules
 			{
 				"Core",
                 "VolumeTextureToolkit",
+                "TextureEditorCustom",
                 "TextureEditor"
 				// ... add other public dependencies that you statically link with here ...
 			}

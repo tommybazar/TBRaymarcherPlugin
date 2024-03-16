@@ -2,10 +2,10 @@
 
 #pragma once
 
+#include "TextureEditorCustom/Public/TextureEditorToolkitCustom.h"
 #include "CoreMinimal.h"
-#include "TextureEditor/Private/TextureEditorToolkit.h"
 /**
- * 
+ *
  */
 class VOLUMETEXTURETOOLKITEDITOR_API FOctreeRenderTargetEditorToolkit : public FTextureEditorToolkit
 {
