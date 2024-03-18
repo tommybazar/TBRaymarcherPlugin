@@ -29,6 +29,9 @@ class TESTS_API APerformanceTest1 : public AFunctionalTest
 	// Set the window center to each volume added to ListenerVolumes.
 	void SetWindowCenter(float Value);
 
+	// Set the window width to each volume added to ListenerVolumes.
+	void SetWindowWidth(float Value);
+
 	// Define if the test was started by calling 'RunTest'
 	bool bRunning = false;
 
@@ -46,4 +49,6 @@ class TESTS_API APerformanceTest1 : public AFunctionalTest
 	// Performance helper that captures the current performance. The performance is logged to csv file in
 	// <Engine>/Saved/Profiling. It also captures the .uestats file to <Engine>/Saved/Profiling/UnrealStats/.
 	UAutomationPerformaceHelper* PerformanceHelper;
+
+	FVector OriginalOffsetVector{};
 };

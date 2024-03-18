@@ -20,67 +20,97 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	PerformanceHelper->Tick(DeltaSeconds);
 
 	CurrentTime += DeltaSeconds;
-	static constexpr float TimeWindow = 1.0f;
 
+	constexpr float FirstRecomputeDuration = 1.0f;
+	constexpr float WindowCenterMoveDuration = 2.0f;
+	constexpr float SecondRecomputeDuration = 1.0f;
+	constexpr float RotateCameraDuration = 4.0f;
+	constexpr float RotateVolumeYawDuration = 4.0f;
+	constexpr float RotateVolumeRollDuration = 4.0f;
+		
+	constexpr float InitializationEnd = 1.0f;
+	constexpr float RecomputeTimeEnd = InitializationEnd + FirstRecomputeDuration;
+	constexpr float WindowCenterMovingEnd = RecomputeTimeEnd + WindowCenterMoveDuration;
+	constexpr float SecondRecomputeEnd = WindowCenterMovingEnd + SecondRecomputeDuration;
+	constexpr float RotateCameraEnd = SecondRecomputeEnd + RotateCameraDuration;
+	constexpr float RotateVolumeYawEnd = RotateCameraEnd + RotateVolumeYawDuration;
+	constexpr float RotateVolumeRollEnd = RotateVolumeYawEnd + RotateVolumeRollDuration;
+
+	constexpr float DefaultWindowCenter = 300.0f;
+	constexpr float DefaultWindowWidth = 500.0f;
+	constexpr float WindowCenterChangeSpeed = -200.0f;
+	
 	// Iterate the test. Each if case is played every frame in the TimeWindow.
-	if (CurrentTime < TimeWindow)
+	if (CurrentTime < InitializationEnd)
 	{
-		SetWindowCenter(100.0f);
+		SetWindowCenter(DefaultWindowCenter);
+		SetWindowWidth(DefaultWindowWidth);
 	}
-	else if (CurrentTime > TimeWindow && CurrentTime < TimeWindow * 2.0f)
-	{
-		for (auto* ListenerVolume : ListenerVolumes)
-		{
-			ListenerVolume->bRequestedRecompute = true;
-		}
-	}
-	else if (CurrentTime > TimeWindow * 2.0f && CurrentTime < TimeWindow * 3.0f)
-	{
-		SetWindowCenter(400.0f + TimeWindow * 30);
-	}
-	else if (CurrentTime > TimeWindow * 3.0f && CurrentTime < TimeWindow * 4.0f)
+	else if (CurrentTime < RecomputeTimeEnd)
 	{
 		for (auto* ListenerVolume : ListenerVolumes)
 		{
 			ListenerVolume->bRequestedRecompute = true;
 		}
 	}
-	else if (CurrentTime > TimeWindow * 4.0f && CurrentTime < TimeWindow * 6.0f)
+	else if (CurrentTime < WindowCenterMovingEnd)
+	{
+		SetWindowCenter(DefaultWindowCenter + (CurrentTime - RecomputeTimeEnd) * WindowCenterChangeSpeed);
+	}
+	else if (CurrentTime < SecondRecomputeEnd)
+	{
+		for (auto* ListenerVolume : ListenerVolumes)
+		{
+			ListenerVolume->bRequestedRecompute = true;
+		}
+	}
+	else if (CurrentTime < RotateCameraEnd)
 	{
 		// Rotate camera around the volume.
 		APawn* CurrentPlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
 		AActor* Target = RotateAroundVolume; 
 
 		// Check for valid pawn and target
-		if (!CurrentPlayerPawn || !Target) return;
+		if (!CurrentPlayerPawn || !Target)
+		{
+			return;
+		}
+
+		float AngleToSetDegrees = (CurrentTime - RotateCameraEnd) * (360 / RotateCameraDuration);
+		FVector OffsetVector = OriginalOffsetVector.RotateAngleAxis(AngleToSetDegrees, FVector::UpVector);
+	
+		FVector RotatedPosition = Target->GetActorLocation() - OffsetVector;
+		CurrentPlayerPawn->SetActorLocation(RotatedPosition);
 
 		// Make player look at the volume.
-		FRotator rot = UKismetMathLibrary::FindLookAtRotation(CurrentPlayerPawn->GetActorLocation(), Target->GetActorLocation());
-		CurrentPlayerPawn->GetController()->SetControlRotation(rot);
-
-		// Rotate the player around the volume.
-		FVector TranslatedPosition = CurrentPlayerPawn->GetActorLocation() - Target->GetActorLocation();
-		const float Angle = DeltaSeconds;
-		float NewX = cos(Angle) * TranslatedPosition.X - sin(Angle) * TranslatedPosition.Y;
-		float NewY = sin(Angle) * TranslatedPosition.X + cos(Angle) * TranslatedPosition.Y;
-		FVector RotatedPosition = FVector(NewX, NewY, 0.0f) + Target->GetActorLocation();
-		CurrentPlayerPawn->SetActorLocation(RotatedPosition);
+		FRotator Rotator = UKismetMathLibrary::FindLookAtRotation(RotatedPosition, Target->GetActorLocation());
+		CurrentPlayerPawn->GetController()->SetControlRotation(Rotator);
 	}
-	else if(CurrentTime > TimeWindow * 6.0f && CurrentTime < TimeWindow * 13.0f)
+	else if(CurrentTime < RotateVolumeYawEnd)
 	{
 		// Change the rotation of the volume.
 		AActor* Target = RotateAroundVolume;
-		FRotator Rot = Target->GetActorRotation();
-		Rot.Pitch += 2.0f;
-		Target->SetActorRotation(Rot);
+		FRotator Rotator = Target->GetActorRotation();
+		const float Angle = DeltaSeconds * (360 / RotateVolumeYawDuration);
+		Rotator.Yaw = Rotator.Yaw + Angle;
+		Target->SetActorRotation(Rotator);
+	}
+	else if(CurrentTime < RotateVolumeRollEnd)
+	{
+		// Change the rotation of the volume.
+		AActor* Target = RotateAroundVolume;
+		FRotator Rotator = Target->GetActorRotation();
+		const float Angle = DeltaSeconds * (360 / RotateVolumeRollDuration);
+		Rotator.Roll = Rotator.Roll + Angle;
+		Target->SetActorRotation(Rotator);
 	}
 	else
 	{
 		// Report the numbers to the test output window in UE.
-		if (auto* stat = PerformanceHelper->GetCurrentRecord())
+		if (auto* StatRecord = PerformanceHelper->GetCurrentRecord())
 		{
-			FString outStr = stat->GetReportString();
-			LogStep(ELogVerbosity::Log, outStr);
+			FString OutString = StatRecord->GetReportString();
+			LogStep(ELogVerbosity::Log, OutString);
 		}
 
 		// Write the log file with the csv data to plot.
@@ -94,13 +124,14 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 
 	Super::Tick(DeltaSeconds);
 }
+
 bool APerformanceTest1::RunTest(const TArray<FString>& Params)
 {
 	bRunning = true;
 	GEngine->AddOnScreenDebugMessage(20, 20, FColor::Purple, "Performance test 1 started.");
 
 	PerformanceHelper = NewObject<UAutomationPerformaceHelper>(this);
-	PerformanceHelper->BeginRecording(TEXT("PerformanceTest1"), 60.0f, 30.0f, 20.0f);
+	PerformanceHelper->BeginRecording(TEXT("PerformanceTest1"), 13.0f, 13.0f, 5.0f);
 
 	// Save also the stats file. The stats file are saved in <Engine>/Saved/Profiling/UnrealStats
 	PerformanceHelper->BeginStatsFile(TEXT("PerformanceTest1") + FDateTime::Now().ToString());
@@ -108,14 +139,28 @@ bool APerformanceTest1::RunTest(const TArray<FString>& Params)
 	// Change the resolution to 4K.
 	UGameUserSettings* MyGameSettings = GEngine->GetGameUserSettings();
 	MyGameSettings->SetScreenResolution(FIntPoint(3840, 2160));
+	MyGameSettings->SetFrameRateLimit(10000.0f);
 	MyGameSettings->ApplySettings(true);
+
+	OriginalOffsetVector = RotateAroundVolume->GetActorLocation() - GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
+
 	
 	return Super::RunTest(Params);
 }
+
 void APerformanceTest1::SetWindowCenter(float Value)
 {
 	for (auto* ListenerVolume : ListenerVolumes)
 	{
 		ListenerVolume->SetWindowCenter(ListenerVolume->VolumeAsset->ImageInfo.NormalizeValue(Value));
+	}
+}
+
+
+void APerformanceTest1::SetWindowWidth(float Value)
+{
+	for (auto* ListenerVolume : ListenerVolumes)
+	{
+		ListenerVolume->SetWindowWidth(ListenerVolume->VolumeAsset->ImageInfo.NormalizeValue(Value));
 	}
 }
