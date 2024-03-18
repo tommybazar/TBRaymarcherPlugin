@@ -20,7 +20,7 @@ FString UVolumeTextureToolkit::MakePackageName(FString AssetName, FString Folder
 	{
 		FolderName = "GeneratedTextures";
 	}
-	return "/Game" / FolderName / AssetName;
+	return FolderName / AssetName;
 }
 
 void UVolumeTextureToolkit::SetVolumeTextureDetails(UVolumeTexture*& VolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions)
