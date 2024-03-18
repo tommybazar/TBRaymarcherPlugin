@@ -32,6 +32,9 @@ class TESTS_API APerformanceTest1 : public AFunctionalTest
 	// Set the window width to each volume added to ListenerVolumes.
 	void SetWindowWidth(float Value);
 
+	// Return true if the bookmark was not yet added to the trace.
+	bool IsBookmarkNew(FString Name);
+
 	// Define if the test was started by calling 'RunTest'
 	bool bRunning = false;
 
@@ -42,13 +45,20 @@ class TESTS_API APerformanceTest1 : public AFunctionalTest
 	UPROPERTY(EditAnywhere)
 	TArray<ARaymarchVolume*> ListenerVolumes;
 
-	// Volume the test is rotating around.
+	// Volume the camera rotate around.
 	UPROPERTY(EditAnywhere)
 	ARaymarchVolume* RotateAroundVolume;
+
+	// Plane to rotate.
+	UPROPERTY(EditAnywhere)
+	ARaymarchClipPlane* PlaneToRotate;
 	
 	// Performance helper that captures the current performance. The performance is logged to csv file in
 	// <Engine>/Saved/Profiling. It also captures the .uestats file to <Engine>/Saved/Profiling/UnrealStats/.
 	UAutomationPerformaceHelper* PerformanceHelper;
 
 	FVector OriginalOffsetVector{};
+
+	// List of all applied bookmarks in current test run.
+	TSet<FString> BookmarksApplied;
 };

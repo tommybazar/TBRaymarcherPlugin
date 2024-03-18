@@ -22,7 +22,8 @@ public class Tests : ModuleRules
                 "Slate",
                 "SlateCore",
                 "FunctionalTesting",
-                "VolumeTextureToolkit"
+                "VolumeTextureToolkit",
+                "TraceInsights"
             }
         );
     }

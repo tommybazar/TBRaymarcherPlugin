@@ -6,7 +6,6 @@
 
 #include "GameFramework/PlayerController.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "GameFramework/GameModeBase.h"
 #include "GameFramework/GameUserSettings.h"
 #include "VolumeTextureToolkit/Public/VolumeAsset/VolumeInfo.h"
 
@@ -21,33 +20,49 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 
 	CurrentTime += DeltaSeconds;
 
-	constexpr float FirstRecomputeDuration = 1.0f;
-	constexpr float WindowCenterMoveDuration = 2.0f;
-	constexpr float SecondRecomputeDuration = 1.0f;
-	constexpr float RotateCameraDuration = 4.0f;
-	constexpr float RotateVolumeYawDuration = 4.0f;
-	constexpr float RotateVolumeRollDuration = 4.0f;
-		
-	constexpr float InitializationEnd = 1.0f;
-	constexpr float RecomputeTimeEnd = InitializationEnd + FirstRecomputeDuration;
-	constexpr float WindowCenterMovingEnd = RecomputeTimeEnd + WindowCenterMoveDuration;
-	constexpr float SecondRecomputeEnd = WindowCenterMovingEnd + SecondRecomputeDuration;
-	constexpr float RotateCameraEnd = SecondRecomputeEnd + RotateCameraDuration;
-	constexpr float RotateVolumeYawEnd = RotateCameraEnd + RotateVolumeYawDuration;
-	constexpr float RotateVolumeRollEnd = RotateVolumeYawEnd + RotateVolumeRollDuration;
+	static constexpr float FirstRecomputeDuration = 1.0f;
+	static constexpr float WindowCenterMoveDuration = 2.0f;
+	static constexpr float SecondRecomputeDuration = 1.0f;
+	static constexpr float RotateCameraDuration = 4.0f;
+	static constexpr float RotateVolumeYawDuration = 4.0f;
+	static constexpr float RotateVolumeRollDuration = 4.0f;
+	static constexpr float RotatePlaneRollDuration = 4.0f;
+	static constexpr float RotatePlaneYawDuration = 4.0f;
+	
+	static constexpr float InitializationEnd = 1.0f;
+	static constexpr float RecomputeTimeEnd = InitializationEnd + FirstRecomputeDuration;
+	static constexpr float WindowCenterMovingEnd = RecomputeTimeEnd + WindowCenterMoveDuration;
+	static constexpr float SecondRecomputeEnd = WindowCenterMovingEnd + SecondRecomputeDuration;
+	static constexpr float RotateCameraEnd = SecondRecomputeEnd + RotateCameraDuration;
+	static constexpr float RotateVolumeYawEnd = RotateCameraEnd + RotateVolumeYawDuration;
+	static constexpr float RotateVolumeRollEnd = RotateVolumeYawEnd + RotateVolumeRollDuration;
+	static constexpr float RotatePlaneRollEnd = RotateVolumeRollEnd + RotatePlaneRollDuration;
+	static constexpr float RotatePlaneYawEnd = RotatePlaneRollEnd + RotatePlaneYawDuration;
 
-	constexpr float DefaultWindowCenter = 300.0f;
-	constexpr float DefaultWindowWidth = 500.0f;
-	constexpr float WindowCenterChangeSpeed = -200.0f;
+	static constexpr float DefaultWindowCenter = 300.0f;
+	static constexpr float DefaultWindowWidth = 500.0f;
+	static constexpr float WindowCenterChangeSpeed = -200.0f;
 	
 	// Iterate the test. Each if case is played every frame in the TimeWindow.
 	if (CurrentTime < InitializationEnd)
 	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 SetWindowCenter1");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
 		SetWindowCenter(DefaultWindowCenter);
 		SetWindowWidth(DefaultWindowWidth);
 	}
 	else if (CurrentTime < RecomputeTimeEnd)
 	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 RecomputeLights1");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
 		for (auto* ListenerVolume : ListenerVolumes)
 		{
 			ListenerVolume->bRequestedRecompute = true;
@@ -55,10 +70,22 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	}
 	else if (CurrentTime < WindowCenterMovingEnd)
 	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 SetWindowCenter2");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
 		SetWindowCenter(DefaultWindowCenter + (CurrentTime - RecomputeTimeEnd) * WindowCenterChangeSpeed);
 	}
 	else if (CurrentTime < SecondRecomputeEnd)
 	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 RecomputeLights2");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
 		for (auto* ListenerVolume : ListenerVolumes)
 		{
 			ListenerVolume->bRequestedRecompute = true;
@@ -66,6 +93,12 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	}
 	else if (CurrentTime < RotateCameraEnd)
 	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 RotateCameraAroundVolume");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
 		// Rotate camera around the volume.
 		APawn* CurrentPlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
 		AActor* Target = RotateAroundVolume; 
@@ -88,8 +121,17 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	}
 	else if(CurrentTime < RotateVolumeYawEnd)
 	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 RotateVolumeYaw");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
 		// Change the rotation of the volume.
 		AActor* Target = RotateAroundVolume;
+		if (!Target)
+			return;
+		
 		FRotator Rotator = Target->GetActorRotation();
 		const float Angle = DeltaSeconds * (360 / RotateVolumeYawDuration);
 		Rotator.Yaw = Rotator.Yaw + Angle;
@@ -97,15 +139,62 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	}
 	else if(CurrentTime < RotateVolumeRollEnd)
 	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 RotateVolumeRoll");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
 		// Change the rotation of the volume.
 		AActor* Target = RotateAroundVolume;
+		if (!Target)
+			return;
+		
 		FRotator Rotator = Target->GetActorRotation();
 		const float Angle = DeltaSeconds * (360 / RotateVolumeRollDuration);
 		Rotator.Roll = Rotator.Roll + Angle;
 		Target->SetActorRotation(Rotator);
 	}
+	else if(CurrentTime < RotatePlaneRollEnd)
+	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 RotatePlaneRoll");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
+		// Change the rotation of the plane.
+		AActor* Plane = PlaneToRotate;
+		if (!Plane)
+			return;
+
+		FRotator Rotator = Plane->GetActorRotation();
+		const float Angle = DeltaSeconds * (360 / RotatePlaneRollDuration / 4);
+		Rotator.Roll = Rotator.Roll - Angle;
+		Plane->SetActorRotation(Rotator);
+	}
+	else if(CurrentTime < RotatePlaneYawEnd)
+	{
+		const FString CurrentTestName = TEXT("PerformanceTest1 RotatePlaneYaw");
+		if (IsBookmarkNew(CurrentTestName))
+		{
+			TRACE_BOOKMARK(*CurrentTestName);
+		}
+		
+		// Change the rotation of the plane.
+		AActor* Plane = PlaneToRotate;
+		if (!Plane)
+			return;
+
+		FRotator Rotator = Plane->GetActorRotation();
+		const float Angle = DeltaSeconds * (360 / RotatePlaneYawDuration / 2);
+		Rotator.Yaw = Rotator.Yaw - Angle;
+		Plane->SetActorRotation(Rotator);
+	}
 	else
 	{
+		TRACE_BOOKMARK(TEXT("PerformanceTest1 End"));
+		
 		// Report the numbers to the test output window in UE.
 		if (auto* StatRecord = PerformanceHelper->GetCurrentRecord())
 		{
@@ -118,6 +207,11 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 
 		PerformanceHelper->EndRecording();
 		PerformanceHelper->EndStatsFile();
+
+		if (UWorld* World = GetWorld())
+		{
+			GEngine->Exec(World, TEXT("Trace.Stop"));
+		}
 
 		FinishTest(EFunctionalTestResult::Succeeded, "PerformanceTest1 passed.");
 	}
@@ -144,6 +238,14 @@ bool APerformanceTest1::RunTest(const TArray<FString>& Params)
 
 	OriginalOffsetVector = RotateAroundVolume->GetActorLocation() - GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
 
+	if (UWorld* World = GetWorld())
+	{
+		GEngine->Exec(World, TEXT("Trace.Start"));
+		TRACE_BOOKMARK(TEXT("PerformanceTest1 Start."))
+	}
+
+	// Clear the bookmarks to log them properly this test run.
+	BookmarksApplied.Empty();
 	
 	return Super::RunTest(Params);
 }
@@ -163,4 +265,14 @@ void APerformanceTest1::SetWindowWidth(float Value)
 	{
 		ListenerVolume->SetWindowWidth(ListenerVolume->VolumeAsset->ImageInfo.NormalizeValue(Value));
 	}
+}
+
+bool APerformanceTest1::IsBookmarkNew(FString Name)
+{
+	if(!BookmarksApplied.Find(Name))
+	{
+		BookmarksApplied.Add(Name);
+		return true;
+	}
+	return false;
 }
