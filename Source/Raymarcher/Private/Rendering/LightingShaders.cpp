@@ -90,14 +90,6 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 	// Otherwise the renderer might touch our textures while we're writing to them.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 
-	// Set parameters, resources, LightAdded and ALightVolume
-	ComputeShader->SetRaymarchParameters(
-		RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
-	ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
-		Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
-	ComputeShader->SetLightAdded(RHICmdList, ShaderRHI, Added);
-	ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
-
 	for (unsigned i = 0; i < 2; i++)
 	{
 		// Break if the main axis weight == 1
@@ -133,9 +125,6 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 		UVWOffset.Normalize();
 		UVWOffset *= LongestVoxelSide;
 
-		ComputeShader->SetUVWOffset(RHICmdList, ShaderRHI, UVWOffset);
-		ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermutationMatrix);
-
 		uint32 GroupSizeX = FMath::DivideAndRoundUp(TransposedDimensions.X, NUM_THREADS_PER_GROUP_DIMENSION);
 		uint32 GroupSizeY = FMath::DivideAndRoundUp(TransposedDimensions.Y, NUM_THREADS_PER_GROUP_DIMENSION);
 
@@ -144,7 +133,17 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 
 		for (int j = Start; j != Stop; j += AxisDirection)
 		{
-			// TODO figure out why StepSize has to be set every iteration, otherwise the shader completely freaks out.
+			// Set all compute shader parameters
+			// TODO find out why this has to be set for every invocation when it was fine to just SetLoop before UE 5.3
+			ComputeShader->SetRaymarchParameters(
+				RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
+			ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+				Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
+			ComputeShader->SetLightAdded(RHICmdList, ShaderRHI, Added);
+			ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
+     		ComputeShader->SetUVOffset(RHICmdList, ShaderRHI, UVOffset);
+			ComputeShader->SetUVWOffset(RHICmdList, ShaderRHI, UVWOffset);
+			ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermutationMatrix);
 			ComputeShader->SetStepSize(RHICmdList, ShaderRHI, StepSize);
 
 			// Switch read and write buffers each row.
@@ -237,12 +236,6 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 	// accessible, otherwise the renderer might touch our textures while we're writing them.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 
-	ComputeShader->SetRaymarchParameters(
-		RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
-	ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
-		Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
-	ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
-
 	for (unsigned AxisIndex = 0; AxisIndex < 2; AxisIndex++)
 	{
 		// Get Color ints for texture borders.
@@ -285,13 +278,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 		RemovedUVWOffset.Normalize();
 		RemovedUVWOffset *= LongestVoxelSide;
 
-		ComputeShader->SetStepSizes(RHICmdList, ShaderRHI, AddedStepSize, RemovedStepSize);
-
-		ComputeShader->SetPixelOffsets(RHICmdList, ShaderRHI, AddedPixOffset, RemovedPixOffset);
-		ComputeShader->SetUVWOffsets(RHICmdList, ShaderRHI, AddedUVWOffset, RemovedUVWOffset);
-
 		FMatrix PermMatrix = GetPermutationMatrix(RemovedLocalMajorAxes, AxisIndex);
-		ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermMatrix);
 
 		// Get group sizes for compute shader
 		uint32 GroupSizeX = FMath::DivideAndRoundUp(TransposedDimensions.X, NUM_THREADS_PER_GROUP_DIMENSION);
@@ -302,6 +289,17 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 
 		for (int LoopIndex = Start; LoopIndex != Stop; LoopIndex += AxisDirection)
 		{	 // Switch read and write buffers each cycle.
+			ComputeShader->SetRaymarchParameters(
+				RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
+			ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+				Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
+			ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
+			ComputeShader->SetStepSizes(RHICmdList, ShaderRHI, AddedStepSize, RemovedStepSize);
+			ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermMatrix);
+
+			ComputeShader->SetPixelOffsets(RHICmdList, ShaderRHI, AddedPixOffset, RemovedPixOffset);
+			ComputeShader->SetUVWOffsets(RHICmdList, ShaderRHI, AddedUVWOffset, RemovedUVWOffset);
+
 			if (LoopIndex % 2 == 0)
 			{
 				TransitionBufferResources(RHICmdList, Buffers.Buffers[0], Buffers.UAVs[1]);

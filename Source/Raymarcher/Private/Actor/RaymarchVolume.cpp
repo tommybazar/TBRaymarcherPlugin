@@ -256,7 +256,6 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, bLightVolume32Bit))
 	{
 		InitializeRaymarchResources(RaymarchResources.DataVolumeTextureRef);
-		SetMaterialVolumeParameters();
 		if (bLitRaymarch)
 		{
 			bRequestedRecompute = true;
@@ -361,14 +360,19 @@ void ARaymarchVolume::Tick(float DeltaTime)
 				}
 			}
 
-			if (LightsToUpdate.Num() > 0)
+			// More than half lights need update -> full reset is quicker
+			if ((LightsToUpdate.Num() > 1) && LightsToUpdate.Num() >= (LightsArray.Num() / 2))
 			{
 				ResetAllLights();
 			}
-
-			for (ARaymarchLight* UpdatedLight : LightsToUpdate)
+			else
 			{
-				LightParametersMap[UpdatedLight] = UpdatedLight->GetCurrentParameters();
+				// Only update the lights that need it.
+				for (ARaymarchLight* UpdatedLight : LightsToUpdate)
+				{
+					UpdateSingleLight(UpdatedLight);
+					LightParametersMap[UpdatedLight] = UpdatedLight->GetCurrentParameters();
+				}
 			}
 		}
 	}
@@ -410,6 +414,20 @@ void ARaymarchVolume::ResetAllLights()
 
 	// False-out request recompute flag when we succeeded in resetting lights.
 	bRequestedRecompute = false;
+}
+
+void ARaymarchVolume::UpdateSingleLight(ARaymarchLight* UpdatedLight)
+{
+	bool bLightAddWasSuccessful = false;
+
+	URaymarchUtils::ChangeDirLightInSingleVolume(RaymarchResources, LightParametersMap[UpdatedLight],
+		UpdatedLight->GetCurrentParameters(), WorldParameters, bLightAddWasSuccessful);
+
+	if (!bLightAddWasSuccessful)
+	{
+		FString log = "Error. Could not change light " + UpdatedLight->GetName() + " in volume " + GetName() + " .";
+		UE_LOG(LogRaymarchVolume, Error, TEXT("%s"), *log, 3);
+	}
 }
 
 bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
@@ -819,6 +837,10 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 			RaymarchResources.bIsInitialized = true;
 		});
 	FlushRenderingCommands();
+	if (RaymarchResources.bIsInitialized)
+	{
+		SetMaterialVolumeParameters();
+	}
 }
 
 void ARaymarchVolume::FreeRaymarchResources()
