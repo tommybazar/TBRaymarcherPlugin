@@ -227,6 +227,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 }
 void APerformanceTest1::BeginPlay()
 {
+	RunTest();
 	
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
