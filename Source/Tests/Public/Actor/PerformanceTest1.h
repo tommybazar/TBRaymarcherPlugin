@@ -17,14 +17,16 @@
  * installed within python3). 
  */
 UCLASS()
-class TESTS_API APerformanceTest1 : public AFunctionalTest
+class TESTS_API APerformanceTest1 : public AActor
 {
 	GENERATED_BODY()
 
 	virtual void Tick(float DeltaSeconds) override;
 
+	virtual void BeginPlay() override;
+
 	// Called when the test is started.
-	virtual bool RunTest(const TArray<FString>& Params = TArray<FString>()) override;
+	void RunTest(const TArray<FString>& Params = TArray<FString>());
 
 	// Set the window center to each volume added to ListenerVolumes.
 	void SetWindowCenter(float Value);

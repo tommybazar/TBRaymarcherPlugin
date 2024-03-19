@@ -13,12 +13,19 @@
 
 void APerformanceTest1::Tick(float DeltaSeconds)
 {
+	CurrentTime += DeltaSeconds;
+	// Start the test on the first iteration.
 	if (!bRunning)
+	{
+		if (CurrentTime > 3.0f)
+		{
+			RunTest();
+		}
 		return;
+	}
 
 	PerformanceHelper->Tick(DeltaSeconds);
 
-	CurrentTime += DeltaSeconds;
 
 	static constexpr float FirstRecomputeDuration = 1.0f;
 	static constexpr float WindowCenterMoveDuration = 2.0f;
@@ -28,8 +35,8 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	static constexpr float RotateVolumeRollDuration = 4.0f;
 	static constexpr float RotatePlaneRollDuration = 4.0f;
 	static constexpr float RotatePlaneYawDuration = 4.0f;
-	
-	static constexpr float InitializationEnd = 1.0f;
+
+	static constexpr float InitializationEnd = 5.0f;
 	static constexpr float RecomputeTimeEnd = InitializationEnd + FirstRecomputeDuration;
 	static constexpr float WindowCenterMovingEnd = RecomputeTimeEnd + WindowCenterMoveDuration;
 	static constexpr float SecondRecomputeEnd = WindowCenterMovingEnd + SecondRecomputeDuration;
@@ -42,7 +49,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	static constexpr float DefaultWindowCenter = 300.0f;
 	static constexpr float DefaultWindowWidth = 500.0f;
 	static constexpr float WindowCenterChangeSpeed = -200.0f;
-	
+
 	// Iterate the test. Each if case is played every frame in the TimeWindow.
 	if (CurrentTime < InitializationEnd)
 	{
@@ -51,7 +58,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		SetWindowCenter(DefaultWindowCenter);
 		SetWindowWidth(DefaultWindowWidth);
 	}
@@ -62,7 +69,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		for (auto* ListenerVolume : ListenerVolumes)
 		{
 			ListenerVolume->bRequestedRecompute = true;
@@ -75,7 +82,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		SetWindowCenter(DefaultWindowCenter + (CurrentTime - RecomputeTimeEnd) * WindowCenterChangeSpeed);
 	}
 	else if (CurrentTime < SecondRecomputeEnd)
@@ -85,7 +92,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		for (auto* ListenerVolume : ListenerVolumes)
 		{
 			ListenerVolume->bRequestedRecompute = true;
@@ -98,10 +105,10 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		// Rotate camera around the volume.
 		APawn* CurrentPlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
-		AActor* Target = RotateAroundVolume; 
+		AActor* Target = RotateAroundVolume;
 
 		// Check for valid pawn and target
 		if (!CurrentPlayerPawn || !Target)
@@ -111,7 +118,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 
 		float AngleToSetDegrees = (CurrentTime - RotateCameraEnd) * (360 / RotateCameraDuration);
 		FVector OffsetVector = OriginalOffsetVector.RotateAngleAxis(AngleToSetDegrees, FVector::UpVector);
-	
+
 		FVector RotatedPosition = Target->GetActorLocation() - OffsetVector;
 		CurrentPlayerPawn->SetActorLocation(RotatedPosition);
 
@@ -119,50 +126,50 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		FRotator Rotator = UKismetMathLibrary::FindLookAtRotation(RotatedPosition, Target->GetActorLocation());
 		CurrentPlayerPawn->GetController()->SetControlRotation(Rotator);
 	}
-	else if(CurrentTime < RotateVolumeYawEnd)
+	else if (CurrentTime < RotateVolumeYawEnd)
 	{
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotateVolumeYaw");
 		if (IsBookmarkNew(CurrentTestName))
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		// Change the rotation of the volume.
 		AActor* Target = RotateAroundVolume;
 		if (!Target)
 			return;
-		
+
 		FRotator Rotator = Target->GetActorRotation();
 		const float Angle = DeltaSeconds * (360 / RotateVolumeYawDuration);
 		Rotator.Yaw = Rotator.Yaw + Angle;
 		Target->SetActorRotation(Rotator);
 	}
-	else if(CurrentTime < RotateVolumeRollEnd)
+	else if (CurrentTime < RotateVolumeRollEnd)
 	{
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotateVolumeRoll");
 		if (IsBookmarkNew(CurrentTestName))
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		// Change the rotation of the volume.
 		AActor* Target = RotateAroundVolume;
 		if (!Target)
 			return;
-		
+
 		FRotator Rotator = Target->GetActorRotation();
 		const float Angle = DeltaSeconds * (360 / RotateVolumeRollDuration);
 		Rotator.Roll = Rotator.Roll + Angle;
 		Target->SetActorRotation(Rotator);
 	}
-	else if(CurrentTime < RotatePlaneRollEnd)
+	else if (CurrentTime < RotatePlaneRollEnd)
 	{
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotatePlaneRoll");
 		if (IsBookmarkNew(CurrentTestName))
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		// Change the rotation of the plane.
 		AActor* Plane = PlaneToRotate;
 		if (!Plane)
@@ -173,14 +180,14 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		Rotator.Roll = Rotator.Roll - Angle;
 		Plane->SetActorRotation(Rotator);
 	}
-	else if(CurrentTime < RotatePlaneYawEnd)
+	else if (CurrentTime < RotatePlaneYawEnd)
 	{
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotatePlaneYaw");
 		if (IsBookmarkNew(CurrentTestName))
 		{
 			TRACE_BOOKMARK(*CurrentTestName);
 		}
-		
+
 		// Change the rotation of the plane.
 		AActor* Plane = PlaneToRotate;
 		if (!Plane)
@@ -194,12 +201,12 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	else
 	{
 		TRACE_BOOKMARK(TEXT("PerformanceTest1 End"));
-		
+
 		// Report the numbers to the test output window in UE.
 		if (auto* StatRecord = PerformanceHelper->GetCurrentRecord())
 		{
 			FString OutString = StatRecord->GetReportString();
-			LogStep(ELogVerbosity::Log, OutString);
+			//	LogStep(ELogVerbosity::Log, OutString);
 		}
 
 		// Write the log file with the csv data to plot.
@@ -213,13 +220,20 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 			GEngine->Exec(World, TEXT("Trace.Stop"));
 		}
 
-		FinishTest(EFunctionalTestResult::Succeeded, "PerformanceTest1 passed.");
+		// FinishTest(EFunctionalTestResult::Succeeded, "PerformanceTest1 passed.");
 	}
 
 	Super::Tick(DeltaSeconds);
 }
+void APerformanceTest1::BeginPlay()
+{
+	
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
+	Super::BeginPlay();
+}
 
-bool APerformanceTest1::RunTest(const TArray<FString>& Params)
+void APerformanceTest1::RunTest(const TArray<FString>& Params)
 {
 	bRunning = true;
 	GEngine->AddOnScreenDebugMessage(20, 20, FColor::Purple, "Performance test 1 started.");
@@ -246,8 +260,6 @@ bool APerformanceTest1::RunTest(const TArray<FString>& Params)
 
 	// Clear the bookmarks to log them properly this test run.
 	BookmarksApplied.Empty();
-	
-	return Super::RunTest(Params);
 }
 
 void APerformanceTest1::SetWindowCenter(float Value)
