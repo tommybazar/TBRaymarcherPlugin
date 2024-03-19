@@ -21,7 +21,6 @@ public class Tests : ModuleRules
                 "Engine",
                 "Slate",
                 "SlateCore",
-                "FunctionalTesting",
                 "VolumeTextureToolkit",
                 "TraceInsights"
             }

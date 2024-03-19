@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FunctionalTest.h"
 #include "Raymarcher/Public/Actor/RaymarchVolume.h"
 #include "PerformanceTest1.generated.h"
 
@@ -54,10 +53,6 @@ class TESTS_API APerformanceTest1 : public AActor
 	// Plane to rotate.
 	UPROPERTY(EditAnywhere)
 	ARaymarchClipPlane* PlaneToRotate;
-	
-	// Performance helper that captures the current performance. The performance is logged to csv file in
-	// <Engine>/Saved/Profiling. It also captures the .uestats file to <Engine>/Saved/Profiling/UnrealStats/.
-	UAutomationPerformaceHelper* PerformanceHelper;
 
 	FVector OriginalOffsetVector{};
 

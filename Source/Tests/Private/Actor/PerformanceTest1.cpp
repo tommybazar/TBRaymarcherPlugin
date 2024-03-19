@@ -23,10 +23,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		}
 		return;
 	}
-
-	PerformanceHelper->Tick(DeltaSeconds);
-
-
+	
 	static constexpr float FirstRecomputeDuration = 1.0f;
 	static constexpr float WindowCenterMoveDuration = 2.0f;
 	static constexpr float SecondRecomputeDuration = 1.0f;
@@ -202,19 +199,6 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 	{
 		TRACE_BOOKMARK(TEXT("PerformanceTest1 End"));
 
-		// Report the numbers to the test output window in UE.
-		if (auto* StatRecord = PerformanceHelper->GetCurrentRecord())
-		{
-			FString OutString = StatRecord->GetReportString();
-			//	LogStep(ELogVerbosity::Log, OutString);
-		}
-
-		// Write the log file with the csv data to plot.
-		PerformanceHelper->WriteLogFile("PerformanceTest1", ".csv");
-
-		PerformanceHelper->EndRecording();
-		PerformanceHelper->EndStatsFile();
-
 		if (UWorld* World = GetWorld())
 		{
 			GEngine->Exec(World, TEXT("Trace.Stop"));
@@ -238,12 +222,6 @@ void APerformanceTest1::RunTest(const TArray<FString>& Params)
 {
 	bRunning = true;
 	GEngine->AddOnScreenDebugMessage(20, 20, FColor::Purple, "Performance test 1 started.");
-
-	PerformanceHelper = NewObject<UAutomationPerformaceHelper>(this);
-	PerformanceHelper->BeginRecording(TEXT("PerformanceTest1"), 13.0f, 13.0f, 5.0f);
-
-	// Save also the stats file. The stats file are saved in <Engine>/Saved/Profiling/UnrealStats
-	PerformanceHelper->BeginStatsFile(TEXT("PerformanceTest1") + FDateTime::Now().ToString());
 
 	// Change the resolution to 4K.
 	UGameUserSettings* MyGameSettings = GEngine->GetGameUserSettings();
