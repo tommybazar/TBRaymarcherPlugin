@@ -634,6 +634,7 @@ void ARaymarchVolume::SetMaterialVolumeParameters()
 	{
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::DataVolume, RaymarchResources.DataVolumeTextureRef);
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::LightVolume, RaymarchResources.LightVolumeRenderTarget);
+		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::Octree, RaymarchResources.OctreeVolumeRenderTarget);
 	}
 }
 
@@ -805,13 +806,20 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	RaymarchResources.LightVolumeRenderTarget->bHDR = bLightVolume32Bit;
 	RaymarchResources.LightVolumeRenderTarget->Init(X, Y, Z, PixelFormat);
 
+
+	int32 x = Volume->GetSizeX();
+	int32 y = Volume->GetSizeY();
+	int32 z = Volume->GetSizeZ();
+	
 	RaymarchResources.OctreeVolumeRenderTarget = NewObject<URenderTargetVolumeMipped>(this, "Octree Render Target");
 	RaymarchResources.OctreeVolumeRenderTarget->bCanCreateUAV = true;
 	RaymarchResources.OctreeVolumeRenderTarget->bHDR = false;
-	RaymarchResources.OctreeVolumeRenderTarget->Init(FMath::RoundUpToPowerOfTwo(Volume->GetSizeX()),
-												FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()),
-												FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()),
+	RaymarchResources.OctreeVolumeRenderTarget->Init(	FMath::RoundUpToPowerOfTwo(x),
+														FMath::RoundUpToPowerOfTwo(y),
+														FMath::RoundUpToPowerOfTwo(z),
 												2, PF_G16);
+
+	
 
 	// Flush rendering commands so that all textures are definitely initialized with resources and we can create a UAV ref.
 	FlushRenderingCommands();
