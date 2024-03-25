@@ -23,13 +23,13 @@ DECLARE_FLOAT_COUNTER_STAT(TEXT("GeneratingOctree"), STAT_GPU_GeneratingOctree, 
 DECLARE_GPU_STAT_NAMED(GPUGeneratingOctree, TEXT("GeneratingOctree_"));
 
 // #TODO profile with different dimensions.
-#define NUM_THREADS_PER_GROUP_DIMENSION 8	  // This has to be the same as in the compute shader's spec [X, X, X]
-#define LEAF_NODE_SIZE 4					  // Provided to the shader as a uniform.
+#define OCTREE_NUM_THREADS_PER_GROUP_DIMENSION 1	  // This has to be the same as in the compute shader's spec [X, X, X]
+#define LEAF_NODE_SIZE 8							  // Provided to the shader as a uniform.
 
 void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, FBasicRaymarchRenderingResources Resources)
 {
 	check(IsInRenderingThread());
-	constexpr int32 GroupSizePerDimension = NUM_THREADS_PER_GROUP_DIMENSION * LEAF_NODE_SIZE;
+	constexpr int32 GroupSizePerDimension = OCTREE_NUM_THREADS_PER_GROUP_DIMENSION * LEAF_NODE_SIZE;
 
 	// For GPU profiling.
 	SCOPED_DRAW_EVENTF(RHICmdList, GenerateOctreeForVolume_RenderThread, TEXT("GeneratingOctree"));
@@ -41,7 +41,7 @@ void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, 
 	RHICmdList.Transition(FRHITransitionInfo(Resources.OctreeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 
 	ComputeShader->SetGeneratingResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
-		Resources.OctreeVolumeRenderTarget->MippedTexture3DRTResource, LEAF_NODE_SIZE);
+		Resources.OctreeVolumeRenderTarget->MippedTexture3DRTResource, LEAF_NODE_SIZE, Resources.OctreeVolumeRenderTarget->GetNumMips());
 
 	const uint32 GroupSizeX = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeX, GroupSizePerDimension);
 	const uint32 GroupSizeY = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeY, GroupSizePerDimension);

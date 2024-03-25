@@ -19,5 +19,7 @@ const static FName ClippingCenter = "ClippingCenter";
 const static FName ClippingDirection = "ClippingDirection";
 const static FName TransferFunction = "TransferFunction";
 const static FName Steps = "Steps";
+const static FName OctreeVolume = "OctreeVolume";
+const static FName OctreeMip = "OctreeMip";
 
 }	 // namespace RaymarchParams
