@@ -285,6 +285,15 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 			bRequestedRecompute = true;
 		}
 	}
+
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, OctreeMip))
+	{
+		if (RaymarchResources.bIsInitialized)
+		{
+			// Set default values for the lit and intensity raymarchers.
+			LitRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeMip);
+		}
+	}
 }
 
 bool ARaymarchVolume::ShouldTickIfViewportsOnly() const
@@ -644,6 +653,7 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 	{
 		LitRaymarchMaterial->SetVectorParameterValue(
 			RaymarchParams::WindowingParams, RaymarchResources.WindowingParameters.ToLinearColor());
+		
 	}
 	if (IntensityRaymarchMaterial)
 	{
@@ -817,7 +827,7 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	RaymarchResources.OctreeVolumeRenderTarget->Init(	FMath::RoundUpToPowerOfTwo(x),
 														FMath::RoundUpToPowerOfTwo(y),
 														FMath::RoundUpToPowerOfTwo(z),
-												2, PF_G16);
+												4, PF_G16);
 
 	
 

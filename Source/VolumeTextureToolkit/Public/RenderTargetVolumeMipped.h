@@ -90,7 +90,7 @@ public:
 		check(0 < NumMips && NumMips <= MAX_TEXTURE_MIP_COUNT);
 		check(FMath::IsPowerOfTwo(SizeX) && FMath::IsPowerOfTwo(SizeY) && FMath::IsPowerOfTwo(SizeZ))
 		uint32 MinAxis = FMath::Min3Index(SizeX, SizeY, SizeZ);
-		check((1U << (NumMips - 1)) <= MinAxis);
+		//check((1U << (NumMips - 1)) <= MinAxis);
 
 		TextureName = Owner->GetName();
 

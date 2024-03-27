@@ -31,6 +31,8 @@ public:
 		Volume.Bind(Initializer.ParameterMap, TEXT("Volume"), SPF_Mandatory);
 		OctreeVolume0.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip0"), SPF_Mandatory);
 		OctreeVolume1.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip1"), SPF_Mandatory);
+		OctreeVolume2.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip2"), SPF_Mandatory);
+		OctreeVolume3.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip3"), SPF_Mandatory);
 		MinMaxValues.Bind(Initializer.ParameterMap, TEXT("MinMaxValues"), SPF_Mandatory);
 		LeafNodeSize.Bind(Initializer.ParameterMap, TEXT("LeafNodeSize"), SPF_Mandatory);
 	}
@@ -41,6 +43,8 @@ public:
 		SetTextureParameter(RHICmdList, ShaderRHI, Volume, pVolume);
 		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, ComputeResource->UnorderedAccessViewRHIs[0]);
 		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume1, ComputeResource->UnorderedAccessViewRHIs[1]);
+		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume2, ComputeResource->UnorderedAccessViewRHIs[2]);
+		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume3, ComputeResource->UnorderedAccessViewRHIs[3]);
 		SetShaderValue(RHICmdList, ShaderRHI, MinMaxValues, FVector2f(0.0, 1.0));
 		SetShaderValue(RHICmdList, ShaderRHI, LeafNodeSize, InLeafNodeSize);
 	}
@@ -61,6 +65,9 @@ protected:
 
 	// OctreeVolume volume to modify.
 	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume1);
+
+	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume2);
+	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume3);
 
 	// Parameter for the added/removed multiplier.
 	LAYOUT_FIELD(FShaderParameter, MinMaxValues);
