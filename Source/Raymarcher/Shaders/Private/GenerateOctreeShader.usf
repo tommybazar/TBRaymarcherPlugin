@@ -23,66 +23,72 @@ float2 MinMaxValues;
 Texture3D Volume;
 
 int LeafNodeSize = 32;
+int NumberOfMips = 4;
 
 [numthreads(8, 8, 8)]
 void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 {
 	// Position in Leaf space (index of the leaf in the octree that this shader will generate)
-    int3 pos = int3(voxelLoc.x, voxelLoc.y, voxelLoc.z);
+    int3 Pos = int3(voxelLoc.x, voxelLoc.y, voxelLoc.z);
+	int3 ThreadOffset = Pos * LeafNodeSize;
 
-	int3 threadOffset = pos * LeafNodeSize;
-
+	// Copy the data from the input volume to maximal resolution mip first.
 	for (int x = 0; x < LeafNodeSize; x++)
 	{
 		for (int y = 0; y < LeafNodeSize; y++)
 		{
 			for (int z = 0; z < LeafNodeSize; z++)
 			{
-				int3 localPos = int3(x, y, z);
-				int3 actualPos = threadOffset + localPos;
+				int3 LocalPos = int3(x, y, z);
+				int3 ActualPos = ThreadOffset + LocalPos;
 				// For now, just copy volume value.
-				OctreeVolumeMip0[actualPos] = Volume.Load(int4(actualPos, 0), 0).r * MinMaxValues.y;
+				OctreeVolumeMip0[ActualPos] = Volume.Load(int4(ActualPos, 0), 0).r * MinMaxValues.y;
 			}
 		}
 	}
 
-	const int NumberOfMips = 4;
-	RWTexture3D<float> Mips[NumberOfMips] = { OctreeVolumeMip0, OctreeVolumeMip1, OctreeVolumeMip2, OctreeVolumeMip3};
-	for (int Mip = 1; Mip < NumberOfMips; Mip++)
+	// Make sure the number of mips defined equals the number of UAVs mips.
+	const int HardcodedNumberOfMips = 4;
+	if(HardcodedNumberOfMips != NumberOfMips)
+	{
+		return;
+	}
+	
+	// Generate the rest of mip levels (1 to NumberOfMips).
+	RWTexture3D<float> Mips[HardcodedNumberOfMips] = { OctreeVolumeMip0, OctreeVolumeMip1, OctreeVolumeMip2, OctreeVolumeMip3 };
+	for (int Mip = 1; Mip < HardcodedNumberOfMips; Mip++)
 	{
 		RWTexture3D<float> MipBuffer = Mips[Mip];
 		
-		// Start composing second mip
-		float divisor = pow(Mip,2);
-		for (int x = 0; x < LeafNodeSize/ divisor; x++)
+		float Divisor = pow(Mip,2);
+		for (int x = 0; x < LeafNodeSize / Divisor; x++)
 		{
-			for (int y = 0; y < LeafNodeSize/ divisor; y++)
+			for (int y = 0; y < LeafNodeSize / Divisor; y++)
 			{
-				for (int z = 0; z < LeafNodeSize/ divisor; z++)
+				for (int z = 0; z < LeafNodeSize / Divisor; z++)
 				{
-					int3 localPos = int3(x, y, z);
+					int3 LocalPos = int3(x, y, z);
 
-					// Sum all values in 8 texels to get avg
-					float avg = 0;
-					float max = 0;
+					// For now save only the maximal value from all 8 nodes.
+					float Max = 0;
 					for (int a = 0; a < 2; a ++)
 					{
 						for (int b = 0; b < 2; b ++)
 						{
 							for (int c = 0; c < 2; c ++)
 							{
-								int3 actualPos = threadOffset/(divisor*0.5) + (localPos * 2) + int3(a, b, c);
-								avg += Mips[Mip-1][actualPos];
-								if(max < Mips[Mip-1][actualPos])
+								int3 actualPos = ThreadOffset / (Divisor*0.5) + (LocalPos * 2) + int3(a, b, c);
+								float NodeValue = Mips[Mip-1][actualPos];
+								if(Max < NodeValue)
 								{
-									max = Mips[Mip-1][actualPos];
+									Max = NodeValue;
 								}
 							}
 						}
 					}
-					int3 mip1Pos = threadOffset/divisor + localPos;
-					// For now, just copy volume value.
-					MipBuffer[mip1Pos] = max;
+					int3 MipPos = ThreadOffset/Divisor + LocalPos;
+					// Insert the value to the Mip.
+					MipBuffer[MipPos] = Max;
 				}
 			}
 		}

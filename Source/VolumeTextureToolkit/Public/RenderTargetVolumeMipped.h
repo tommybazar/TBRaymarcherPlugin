@@ -15,6 +15,8 @@ class VOLUMETEXTURETOOLKIT_API URenderTargetVolumeMipped : public UTextureRender
 public:
 	void Init(uint32 InSizeX, uint32 InSizeY, uint32 InSizeZ, int32 InMips, EPixelFormat InFormat);
 
+	// Define the number of Mips.
+	// @warning: Make sure the number of mips defined here is the same as number of mips generated in shader.
 	int32 NumMips;
 
 	// The only thing we need to override so that a FTexture3DResource gets created with UAV flag.

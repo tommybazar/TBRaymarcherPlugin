@@ -35,10 +35,11 @@ public:
 		OctreeVolume3.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip3"), SPF_Mandatory);
 		MinMaxValues.Bind(Initializer.ParameterMap, TEXT("MinMaxValues"), SPF_Mandatory);
 		LeafNodeSize.Bind(Initializer.ParameterMap, TEXT("LeafNodeSize"), SPF_Mandatory);
+		NumberOfMips.Bind(Initializer.ParameterMap, TEXT("NumberOfMips"), SPF_Mandatory);
 	}
 		
 	void SetGeneratingResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTexture3DRHIRef pVolume,
-		const FTexture3DComputeResource* ComputeResource, int InLeafNodeSize)
+		const FTexture3DComputeResource* ComputeResource, int InLeafNodeSize, int InNumberOfMips)
 	{
 		SetTextureParameter(RHICmdList, ShaderRHI, Volume, pVolume);
 		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, ComputeResource->UnorderedAccessViewRHIs[0]);
@@ -47,6 +48,7 @@ public:
 		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume3, ComputeResource->UnorderedAccessViewRHIs[3]);
 		SetShaderValue(RHICmdList, ShaderRHI, MinMaxValues, FVector2f(0.0, 1.0));
 		SetShaderValue(RHICmdList, ShaderRHI, LeafNodeSize, InLeafNodeSize);
+		SetShaderValue(RHICmdList, ShaderRHI, NumberOfMips, InNumberOfMips);
 	}
 
 	void UnbindResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
@@ -54,6 +56,8 @@ public:
 		SetTextureParameter(RHICmdList, ShaderRHI, Volume, nullptr);
 		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, nullptr);
 		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume1, nullptr);
+		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume2, nullptr);
+		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume3, nullptr);
 	}
 
 protected:
@@ -74,4 +78,7 @@ protected:
 	
 	// Length of the size of the cube that creates a single leaf. (Each leaf node will have LeafNodeSize^3 voxels)
 	LAYOUT_FIELD(FShaderParameter, LeafNodeSize);
+
+	// Number of mips to generate.
+	LAYOUT_FIELD(FShaderParameter, NumberOfMips)
 };
