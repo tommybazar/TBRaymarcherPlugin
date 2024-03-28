@@ -906,8 +906,9 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	// Flush rendering commands so that all textures are definitely initialized with resources and we can create a UAV ref.
 	FlushRenderingCommands();
 
-	if (!RaymarchResources.LightVolumeRenderTarget || !RaymarchResources.LightVolumeRenderTarget->GetResource() ||
-		!RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI)
+	if (!RaymarchResources.LightVolumeRenderTarget
+		|| !RaymarchResources.LightVolumeRenderTarget->GetResource()
+		|| !RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI)
 	{
 		// Return if anything was not initialized.
 		return;
@@ -915,6 +916,14 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 
 	RaymarchResources.LightVolumeUAVRef =
 		RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
+
+	if (!RaymarchResources.OctreeVolumeRenderTarget
+		|| !RaymarchResources.OctreeVolumeRenderTarget->GetResource()
+		|| !RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI)
+	{
+		// Return if anything was not initialized.
+		return;
+	}
 
 	RaymarchResources.OctreeUAVRef =
 		RHICreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
