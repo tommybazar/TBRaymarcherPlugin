@@ -19,6 +19,14 @@ DECLARE_LOG_CATEGORY_EXTERN(LogRaymarchVolume, Log, All);
 
 DECLARE_DYNAMIC_DELEGATE(FOnVolumeLoaded);
 
+UENUM(BlueprintType)
+enum class ERaymarchMaterial : uint8
+{
+	Lit,
+	Intensity,
+	Octree
+};
+
 UCLASS()
 class RAYMARCHER_API ARaymarchVolume : public AActor, public IGrabbable
 {
@@ -125,6 +133,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	UMaterial* IntensityRaymarchMaterialBase;
 
+	/** The base material for intensity rendering.*/
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	UMaterial* OctreeRaymarchMaterialBase;
+
 	/** Dynamic material instance for Lit rendering **/
 	UPROPERTY(BlueprintReadOnly, Transient)
 	UMaterialInstanceDynamic* LitRaymarchMaterial = nullptr;
@@ -132,6 +144,10 @@ public:
 	/** Dynamic material instance for Intensity rendering**/
 	UPROPERTY(BlueprintReadOnly, Transient)
 	UMaterialInstanceDynamic* IntensityRaymarchMaterial = nullptr;
+	
+	/** Dynamic material instance for Intensity rendering**/
+	UPROPERTY(BlueprintReadOnly, Transient)
+	UMaterialInstanceDynamic* OctreeRaymarchMaterial = nullptr;
 
 	/** Cube border mesh - this is just a cube with wireframe borders.**/
 	UPROPERTY(VisibleAnywhere)
@@ -148,10 +164,13 @@ public:
 	/** If set to true, lights will be recomputed on next tick.**/
 	bool bRequestedRecompute = false;
 
-	/** If set to true, volume will be raymarched with lit raymarching. If false, it will show Pure Intensity Raymarch only.**/
-	UPROPERTY(EditAnywhere)
-	bool bLitRaymarch = true;
+	/** If set to true, octree will be recomputed on next tick.**/
+	bool bRequestedOctreeRebuild = false;
 
+	/** Raymarch the volume based on defined material. **/
+	UPROPERTY(EditAnywhere)
+	ERaymarchMaterial SelectRaymarchMaterial;
+	
 	/** Raymarch Rendering resources. These contain references to the volume texture currently used, the light volume
 		currently used, as well as buffers to fasten the light propagation.	**/
 	UPROPERTY(EditAnywhere)
@@ -241,7 +260,7 @@ public:
 
 	/** Switches between Lit and Intensity raymarching.**/
 	UFUNCTION(BlueprintCallable)
-	void SwitchRenderer(bool bInLitRaymarch);
+	void SwitchRenderer(ERaymarchMaterial bInLitRaymarch);
 
 	/** Sets the maximum amount of steps to be taken when raymarching.**/
 	UFUNCTION(BlueprintCallable)

@@ -20,7 +20,7 @@ float GetTransferFuncPosition(float Value, float WindowCenter, float WindowWidth
 float4 SampleWindowedVolumeStep(float3 CurPos, float StepSize, Texture3D Volume, SamplerState VolumeSampler, Texture2D TF, SamplerState TFSampler, float4 WindowingParams, float MipLevel)
 {
 	const float DataValue = Volume.SampleLevel(VolumeSampler, CurPos, MipLevel).r;
-  
+	
     // WindowingParams.x == Center, WindowingParams.y = Width
     float TFPos = GetTransferFuncPosition(DataValue, WindowingParams.x, WindowingParams.y);
 

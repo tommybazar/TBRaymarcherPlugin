@@ -64,6 +64,7 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 
 					// Sum all values in 8 texels to get avg
 					float avg = 0;
+					float max = 0;
 					for (int a = 0; a < 2; a ++)
 					{
 						for (int b = 0; b < 2; b ++)
@@ -71,76 +72,19 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 							for (int c = 0; c < 2; c ++)
 							{
 								int3 actualPos = threadOffset/(divisor*0.5) + (localPos * 2) + int3(a, b, c);
-								avg += Mips[Mip-1][actualPos];					
+								avg += Mips[Mip-1][actualPos];
+								if(max < Mips[Mip-1][actualPos])
+								{
+									max = Mips[Mip-1][actualPos];
+								}
 							}
 						}
 					}
 					int3 mip1Pos = threadOffset/divisor + localPos;
 					// For now, just copy volume value.
-					MipBuffer[mip1Pos] = avg / 8;
+					MipBuffer[mip1Pos] = max;
 				}
 			}
 		}
 	}
-
-	
-
-	// Start composing second mip
-	//for (int x = 0; x < LeafNodeSize/2; x++)
-	//{
-	//	for (int y = 0; y < LeafNodeSize/2; y++)
-	//	{
-	//		for (int z = 0; z < LeafNodeSize/2; z++)
-	//		{
-	//			int3 localPos = int3(x, y, z);
-
-	//			// Sum all values in 8 texels to get avg
-	//			float avg = 0;
-	//			for (int a = 0; a < 2; a ++)
-	//			{
-	//				for (int b = 0; b < 2; b ++)
-	//				{
-	//					for (int c = 0; c < 2; c ++)
-	//					{
-	//						int3 actualPos = threadOffset + (localPos * 2) + int3(a, b, c);
-	//						avg += OctreeVolumeMip0[actualPos];					
-	//					}
-	//				}
-	//			}
-	//			int3 mip1Pos = threadOffset/2 + localPos;
-	//			// For now, just copy volume value.
-	//			OctreeVolumeMip1[mip1Pos] = avg / 8;
-	//		}
-	//	}
-	//}
-	//
-	//for (int x = 0; x < LeafNodeSize/4; x++)
-	//{
-	//	for (int y = 0; y < LeafNodeSize/4; y++)
-	//	{
-	//		for (int z = 0; z < LeafNodeSize/4; z++)
-	//		{
-	//			int3 localPos = int3(x, y, z);
-
-	//			// Sum all values in 8 texels to get avg
-	//			float avg = 0;
-	//			for (int a = 0; a < 2; a ++)
-	//			{
-	//				for (int b = 0; b < 2; b ++)
-	//				{
-	//					for (int c = 0; c < 2; c ++)
-	//					{
-	//						int3 actualPos = threadOffset/2 + (localPos * 2) + int3(a, b, c);
-	//						avg += OctreeVolumeMip1[actualPos];					
-	//					}
-	//				}
-	//			}
-	//			int3 mip2Pos = threadOffset/4 + localPos;
-	//			// For now, just copy volume value.
-	//			//OctreeVolumeMip2[mip2Pos] = avg / 8;
-	//			Mips[2][mip2Pos] = avg / 8;
-	//		}
-	//	}
-	//}
-	
 }
