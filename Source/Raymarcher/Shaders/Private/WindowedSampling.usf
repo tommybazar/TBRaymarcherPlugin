@@ -22,12 +22,17 @@ float4 SampleWindowedTransferFunction(float VolumeDataValue, float StepSize, Tex
     // WindowingParams.x == Center, WindowingParams.y = Width
     float TFPos = GetTransferFuncPosition(VolumeDataValue, WindowingParams.x, WindowingParams.y);
 
+	if (TFPos < 0.0 || TFPos > 1.0)
+	{
+		return float4(1.0,0.0,0.0,0.1);
+	}
+	
     // If TF position is above 1 and high cutoff is enabled or TF position is below 0 and low cutoff is enabled,
     // return zero (value is not in the Transfer function range and we're cutting off values above or below the TF).
 	// @TODO This if could be eliminated by adding a fully transparent pixel to the correct side of the TF Texture. 
     if ((TFPos < 0.0 && WindowingParams.z > 0.0) || (TFPos > 1.0 && WindowingParams.w > 0.0))
     {
-        return float4(0, 0, 0, 0);
+        return float4(0.0, 0, 0, 0.0);
     }
 
     float4 ColorSample = TF.SampleLevel(TFSampler, float2(TFPos, 0.5), 0);
@@ -49,4 +54,27 @@ float4 SampleWindowedVolumeOctreeStep(int3 CurPos, float StepSize, Texture3D Vol
 	int4 MipLevelPos = int4(CurPos.x, CurPos.y, CurPos.z, MipLevel);
 	const float DataValue = Volume.Load(MipLevelPos, 0).r;
 	return SampleWindowedTransferFunction(DataValue, StepSize, TF, TFSampler, WindowingParams);
+}
+
+uint GetWindowingParamsBitNumber(float WindowCenter, float WindowWidth)
+{
+	// TFPos == 1 => Value = WindowWidth - WindowWidth/2 + WindowCenter
+	// TFPos == 0 => Value = WindowCenter - (WindowWidth/2);
+    
+	float Value0 = WindowCenter - (WindowWidth / 2.0);
+	float Value1 = WindowWidth - WindowWidth / 2.0 + WindowCenter;
+    
+	const float Factor = 1.0/32.0;
+	uint Value0Bit = uint(Value0/Factor);
+	uint Value1Bit = uint(Value1/Factor);
+    
+	uint Result = 0;
+	for(uint i = Value0Bit; i <= Value1Bit; i++)
+	//for(uint i = 0; i <= 31; i++)
+	{
+		uint n = (1 << i);
+		Result |= n;
+	}
+	
+	return Result;
 }

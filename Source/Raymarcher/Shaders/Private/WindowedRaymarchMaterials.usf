@@ -27,7 +27,7 @@ void AccumulateWindowedRaymarchStep(inout float4 AccumulatedLightEnergy, float3 
     
     // Get lighting information from illumination volume for current position and
     // Multiply sampled color with light color to adjust intensity according to light strength.
-    ColorSample.rgb = ColorSample.rgb * LightVolume.SampleLevel(Material.Wrap_WorldGroupSettings, saturate(CurPos), 0).r;
+    //ColorSample.rgb = ColorSample.rgb * LightVolume.SampleLevel(Material.Wrap_WorldGroupSettings, saturate(CurPos), 0).r;
 	// Accumulate current colored sample to the final values.
     AccumulateLightEnergy(AccumulatedLightEnergy, ColorSample);
 }
@@ -95,6 +95,13 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
     return LightEnergy;
 }
 
+
+uint GetBitNumber(float InValue)
+{
+	float Factor = 1.0/32.0;
+	return asuint(InValue/Factor);
+}
+
 // Performs octree raymarch for the current pixel.
 float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume 
                               SamplerState DataVolumeSampler,
@@ -138,46 +145,51 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	// Get the size of the volume on requested mip. Used to recalculate coordinates to correct format.
 	OctreeVolume.GetDimensions(OctreeMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
 
+	uint WindowNumber = GetWindowingParamsBitNumber(WindowingParams.x, WindowingParams.y);
+	
 	// Values from the previous iteration.
     for (int i = 0; i < MaxSteps; i++)
     {
         CurPos += LocalCamVec;
     	// Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
 	    // Any position that is clipped by the clipping plane shall be ignored.
-        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-        {
-        	// Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
+        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection)) {
+	        // Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
         	// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
         	int3 VoxelPos = float3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
+        	const uint BitNumber = asuint(OctreeVolume.Load(int4(VoxelPos, OctreeMip), 0).r);
+        	if(!(BitNumber & WindowNumber))
+        		continue;
 
-        	float4 ColorSample = SampleWindowedVolumeOctreeStep(VoxelPos, StepSizeWorld, OctreeVolume,
-                                               TF, Material.Clamp_WorldGroupSettings, WindowingParams, OctreeMip);
+        	
+        	float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSizeWorld, DataVolume, DataVolumeSampler,
+													TF, Material.Clamp_WorldGroupSettings, WindowingParams);
 
         	AccumulateLightEnergy(LightEnergy, ColorSample);
 
         	// Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
-            if (LightEnergy.a > 0.95f)
-            {
-                LightEnergy.a = 1.0f;
-                break;
-            };
+        	if (LightEnergy.a > 0.95f)
+        	{
+        		LightEnergy.a = 1.0f;
+        		break;
+        	};
         }
     }
 
      // Handle FinalStep (only if we went through all the previous steps and the final step size is above zero)
-    if (i == MaxSteps && FinalStep > 0.0f)
-    {
-        CurPos += LocalCamVec * FinalStep;
-        // If the final step is clipped, don't do anything.
-        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-        {
-        	float3 VoxelPos = float3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
-        	float4 ColorSample = SampleWindowedVolumeOctreeStep(VoxelPos, StepSizeWorld, OctreeVolume,
-                                               TF, Material.Clamp_WorldGroupSettings, WindowingParams, OctreeMip);
+    //if (i == MaxSteps && FinalStep > 0.0f)
+    //{
+    //    CurPos += LocalCamVec * FinalStep;
+    //    // If the final step is clipped, don't do anything.
+    //    if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
+    //    {
+    //    	float3 VoxelPos = float3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
+    //    	float4 ColorSample = SampleWindowedVolumeOctreeStep(VoxelPos, StepSizeWorld, OctreeVolume,
+    //                                           TF, Material.Clamp_WorldGroupSettings, WindowingParams, OctreeMip);
 
-        	AccumulateLightEnergy(LightEnergy, ColorSample);
-        }
-    }
+    //    	AccumulateLightEnergy(LightEnergy, ColorSample);
+    //    }
+    //}
 
     return LightEnergy;
 }
