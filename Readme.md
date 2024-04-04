@@ -4,7 +4,9 @@
 Allows volume rendering of volumetric data with Unreal Engine.
 
 # UE Version
-Plugin is updated for UE 5.1, for older engine versions, check out the appropriately named branch.
+Plugin is updated for UE 5.3, for older engine versions, check out the appropriately named branch.
+
+For a bleeding-edge version, checkout the `master` branch.
 
 # Working project
 For a project that works out of the box, see example project at https://github.com/tommybazar/TBRaymarchProject.
