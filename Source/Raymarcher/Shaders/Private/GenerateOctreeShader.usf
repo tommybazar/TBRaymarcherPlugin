@@ -13,6 +13,8 @@
 // The Octree Volume texture we're creating in this shader.
 RWTexture3D<float> OctreeVolumeMip0;
 RWTexture3D<float> OctreeVolumeMip1;
+RWTexture3D<float> OctreeVolumeMip2;
+RWTexture3D<float> OctreeVolumeMip3;
 
 // The minimum and maximum values found in the volume.
 float2 MinMaxValues;
@@ -20,58 +22,86 @@ float2 MinMaxValues;
 // The Volume we're propagating light through.
 Texture3D Volume;
 
-int LeafNodeSize = 32;
+int LeafNodeSize = 8;
+int NumberOfMips = 4;
 
-[numthreads(8, 8, 8)]
+[numthreads(1, 1, 1)]
 void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 {
 	// Position in Leaf space (index of the leaf in the octree that this shader will generate)
-    int3 pos = int3(voxelLoc.x, voxelLoc.y, voxelLoc.z);
+	int3 Pos = int3(voxelLoc.x, voxelLoc.y, voxelLoc.z);
+	int3 ThreadOffset = Pos * LeafNodeSize;
 
-	int3 threadOffset = pos * LeafNodeSize;
-
+	// Copy the data from the input volume to maximal resolution mip first.
 	for (int x = 0; x < LeafNodeSize; x++)
 	{
 		for (int y = 0; y < LeafNodeSize; y++)
 		{
 			for (int z = 0; z < LeafNodeSize; z++)
 			{
-				int3 localPos = int3(x, y, z);
-				int3 actualPos = threadOffset + localPos;
+				int3 LocalPos = int3(x, y, z);
+				int3 ActualPos = ThreadOffset + LocalPos;
 				// For now, just copy volume value.
-				OctreeVolumeMip0[actualPos] = Volume.Load(int4(actualPos, 0), 0).r * MinMaxValues.y;
+				OctreeVolumeMip0[ActualPos] = Volume.Load(int4(ActualPos, 0), 0).r * MinMaxValues.y;
 			}
 		}
 	}
 
-	// Start composing second mip
-	
-	for (int x = 0; x < LeafNodeSize/2; x++)
+	// Make sure the number of mips defined equals the number of UAVs mips.
+	const int HardcodedNumberOfMips = 4;
+	if(HardcodedNumberOfMips != NumberOfMips)
 	{
-		for (int y = 0; y < LeafNodeSize/2; y++)
-		{
-			for (int z = 0; z < LeafNodeSize/2; z++)
-			{
-				int3 localPos = int3(x, y, z);
+		return;
+	}
+	
+	// Generate the rest of mip levels (1 to NumberOfMips).
+	RWTexture3D<float> Mips[HardcodedNumberOfMips] = { OctreeVolumeMip0, OctreeVolumeMip1, OctreeVolumeMip2, OctreeVolumeMip3 };
+	for (int Mip = 1; Mip < HardcodedNumberOfMips; Mip++)
+	{
+		RWTexture3D<float> MipBuffer = Mips[Mip];
 
-				// Sum all values in 8 texels to get avg
-				float avg = 0;
-				for (int a = 0; a < 2; a ++)
+		int Divisor = 1;
+		for (int i = 0; i < Mip; i++)
+		{
+			Divisor *= 2;
+		}
+
+		// Offset that declare the starting position of the mip we load data from (Mip - 1).
+		int3 LowerMipOffset = (2 * ThreadOffset) / Divisor;
+		for (int x = 0; x < LeafNodeSize / Divisor; x++)
+		{
+			for (int y = 0; y < LeafNodeSize / Divisor; y++)
+			{
+				for (int z = 0; z < LeafNodeSize / Divisor; z++)
 				{
-					for (int b = 0; b < 2; b ++)
+					int3 LocalPos = int3(x, y, z);
+					
+					// Multiply LocalPos by two to get the correct position we can load data from in range <0,1>.
+					int3 CurrentPositionOffset = LowerMipOffset + LocalPos * 2;		
+
+					// For now save only the maximal value from all 8 nodes.
+					float Max = 0;
+					for (int a = 0; a < 2; a ++)
 					{
-						for (int c = 0; c < 2; c ++)
+						for (int b = 0; b < 2; b ++)
 						{
-							int3 actualPos = threadOffset + (localPos * 2) + int3(a, b, c);
-							avg += OctreeVolumeMip0[actualPos];					
+							for (int c = 0; c < 2; c ++)
+							{
+								// Take current offset and append the final offset value to get the correct data position.  
+								int3 FinalPos = CurrentPositionOffset + int3(a, b, c);
+								float NodeValue = Mips[Mip-1][FinalPos];
+								if(Max < NodeValue)
+								{
+									Max = NodeValue;
+								}
+							}
 						}
 					}
+					int3 MipPos = ThreadOffset/Divisor + LocalPos;
+					// Insert the value to the Mip.
+					MipBuffer[MipPos] = Max;
 				}
-				int3 mip1Pos = threadOffset/2 + localPos;
-				// For now, just copy volume value.
-				OctreeVolumeMip1[mip1Pos] = avg;
 			}
 		}
 	}
-	
 }

@@ -19,6 +19,15 @@ DECLARE_LOG_CATEGORY_EXTERN(LogRaymarchVolume, Log, All);
 
 DECLARE_DYNAMIC_DELEGATE(FOnVolumeLoaded);
 
+/** Enum used to distinguish which material the volume should use to render data. */
+UENUM(BlueprintType)
+enum class ERaymarchMaterial : uint8
+{
+	Lit,
+	Intensity,
+	Octree
+};
+
 UCLASS()
 class RAYMARCHER_API ARaymarchVolume : public AActor, public IGrabbable
 {
@@ -125,13 +134,21 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	UMaterial* IntensityRaymarchMaterialBase;
 
-	/** Dynamic material instance for Lit rendering **/
+	/** The base material for intensity rendering.*/
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	UMaterial* OctreeRaymarchMaterialBase;
+
+	/** Dynamic material instance for Lit rendering*/
 	UPROPERTY(BlueprintReadOnly, Transient)
 	UMaterialInstanceDynamic* LitRaymarchMaterial = nullptr;
 
-	/** Dynamic material instance for Intensity rendering**/
+	/** Dynamic material instance for intensity rendering*/
 	UPROPERTY(BlueprintReadOnly, Transient)
 	UMaterialInstanceDynamic* IntensityRaymarchMaterial = nullptr;
+	
+	/** Dynamic material instance for octree rendering*/
+	UPROPERTY(BlueprintReadOnly, Transient)
+	UMaterialInstanceDynamic* OctreeRaymarchMaterial = nullptr;
 
 	/** Cube border mesh - this is just a cube with wireframe borders.**/
 	UPROPERTY(VisibleAnywhere)
@@ -148,10 +165,13 @@ public:
 	/** If set to true, lights will be recomputed on next tick.**/
 	bool bRequestedRecompute = false;
 
-	/** If set to true, volume will be raymarched with lit raymarching. If false, it will show Pure Intensity Raymarch only.**/
-	UPROPERTY(EditAnywhere)
-	bool bLitRaymarch = true;
+	/** If set to true, octree will be recomputed on next tick.**/
+	bool bRequestedOctreeRebuild = false;
 
+	/** Raymarch the volume based on defined material. **/
+	UPROPERTY(EditAnywhere)
+	ERaymarchMaterial SelectRaymarchMaterial;
+	
 	/** Raymarch Rendering resources. These contain references to the volume texture currently used, the light volume
 		currently used, as well as buffers to fasten the light propagation.	**/
 	UPROPERTY(EditAnywhere)
@@ -167,6 +187,10 @@ public:
 	 * equal to the lenght of it's side. **/
 	UPROPERTY(EditAnywhere)
 	float RaymarchingSteps = 150;
+
+	/** Define mip level that octree raymarch material will render.**/
+	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
+	uint32 OctreeVolumeMip = 0;
 
 	/** If true, the light volume texture will be created using R32F format instead of the standard G8. This allows
 		Illumination values greater than 1 (over-lighted) to be visible. Comes at the cost of 4x memory consumption and
@@ -235,7 +259,7 @@ public:
 
 	/** Switches between Lit and Intensity raymarching.**/
 	UFUNCTION(BlueprintCallable)
-	void SwitchRenderer(bool bInLitRaymarch);
+	void SwitchRenderer(ERaymarchMaterial bInLitRaymarch);
 
 	/** Sets the maximum amount of steps to be taken when raymarching.**/
 	UFUNCTION(BlueprintCallable)

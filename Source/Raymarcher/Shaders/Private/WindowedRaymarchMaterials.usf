@@ -28,7 +28,7 @@ void AccumulateWindowedRaymarchStep(inout float4 AccumulatedLightEnergy, float3 
     // Get lighting information from illumination volume for current position and
     // Multiply sampled color with light color to adjust intensity according to light strength.
     ColorSample.rgb = ColorSample.rgb * LightVolume.SampleLevel(Material.Wrap_WorldGroupSettings, saturate(CurPos), 0).r;
-        // Accumulate current colored sample to the final values.
+	// Accumulate current colored sample to the final values.
     AccumulateLightEnergy(AccumulatedLightEnergy, ColorSample);
 }
 
@@ -69,7 +69,7 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
         if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
         {
             AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler,
-            TF, LightVolume, StepSizeWorld, WindowingParams);
+				TF, LightVolume, StepSizeWorld, WindowingParams);
 
             // Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
             if (LightEnergy.a > 0.95f)
@@ -89,6 +89,93 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
         {
             AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler,
             TF, LightVolume, VOLUME_DENSITY * FinalStep, WindowingParams);
+        }
+    }
+
+    return LightEnergy;
+}
+
+// Performs octree raymarch for the current pixel.
+float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume 
+                              SamplerState DataVolumeSampler,
+                              Texture2D TF, // Transfer function texture.
+                              float3 CurPos, float Thickness, // CurPos = Entry Position, Thickness is thickness of cube along the ray. Both in UVW space.
+                              float StepCount, // How many steps we should take. Actual number of steps taken is StepCount * Thickness.
+                              float3 ClippingCenter, float3 ClippingDirection, // Clipping plane position and direction of clipped away region
+                              float4 WindowingParams,
+                              Texture3D OctreeVolume,
+                              SamplerState OctreeVolumeSampler,
+                              uint OctreeMip,
+                              FMaterialPixelParameters MaterialParameters) // Material Parameters provided by UE.
+{
+	// StepSize in UVW is inverse to StepCount.
+	float StepSize = 1 / StepCount;
+	// Actual number of steps to take to march through the full thickness of the cube at the ray position.
+	float FloatActualSteps = StepCount * Thickness;
+	// Number of full steps to take.
+	int MaxSteps = floor(FloatActualSteps);
+	// Size of the last (not a full-sized) step.
+	float FinalStep = frac(FloatActualSteps);
+	
+	// Get camera vector in local space and multiply it by step size.
+	float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
+	// Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
+	 float StepSizeWorld = VOLUME_DENSITY * StepSize;
+	// Initialize accumulated light energy.
+	float4 LightEnergy = 0;
+	// Jitter Entry position to avoid artifacts.
+	JitterEntryPos(CurPos, LocalCamVec, MaterialParameters);
+
+	// Get the volume depth for later use when recalculating coordinates.
+	float DataVolumeWidth = 0, DataVolumeHeight = 0, DataVolumeDepth = 0;
+	DataVolume.GetDimensions(DataVolumeWidth, DataVolumeHeight, DataVolumeDepth);
+	
+	float OctreeWidth = 0, OctreeHeight = 0, OctreeDepth = 0, OctreeMipCount = 0;
+	OctreeVolume.GetDimensions(OctreeWidth, OctreeHeight, OctreeDepth);
+	// Copy the octree depth on mip level 0 for use when recalculating to correct texture coordinates.
+	float OctreeDepthConst = OctreeDepth;
+
+	// Get the size of the volume on requested mip. Used to recalculate coordinates to correct format.
+	OctreeVolume.GetDimensions(OctreeMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
+
+	// Values from the previous iteration.
+    for (int i = 0; i < MaxSteps; i++)
+    {
+        CurPos += LocalCamVec;
+    	// Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
+	    // Any position that is clipped by the clipping plane shall be ignored.
+        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
+        {
+        	// Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
+        	// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
+        	int3 VoxelPos = float3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
+
+        	float4 ColorSample = SampleWindowedVolumeOctreeStep(VoxelPos, StepSizeWorld, OctreeVolume,
+                                               TF, Material.Clamp_WorldGroupSettings, WindowingParams, OctreeMip);
+
+        	AccumulateLightEnergy(LightEnergy, ColorSample);
+
+        	// Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
+            if (LightEnergy.a > 0.95f)
+            {
+                LightEnergy.a = 1.0f;
+                break;
+            };
+        }
+    }
+
+     // Handle FinalStep (only if we went through all the previous steps and the final step size is above zero)
+    if (i == MaxSteps && FinalStep > 0.0f)
+    {
+        CurPos += LocalCamVec * FinalStep;
+        // If the final step is clipped, don't do anything.
+        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
+        {
+        	float3 VoxelPos = float3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
+        	float4 ColorSample = SampleWindowedVolumeOctreeStep(VoxelPos, StepSizeWorld, OctreeVolume,
+                                               TF, Material.Clamp_WorldGroupSettings, WindowingParams, OctreeMip);
+
+        	AccumulateLightEnergy(LightEnergy, ColorSample);
         }
     }
 

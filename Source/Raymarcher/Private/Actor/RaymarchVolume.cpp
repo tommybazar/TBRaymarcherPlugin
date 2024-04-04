@@ -71,6 +71,7 @@ ARaymarchVolume::ARaymarchVolume() : AActor()
 	static ConstructorHelpers::FObjectFinder<UMaterial> LitMaterial(TEXT("/TBRaymarcherPlugin/Materials/M_Raymarch"));
 	static ConstructorHelpers::FObjectFinder<UMaterial> IntensityMaterial(
 		TEXT("/TBRaymarcherPlugin/Materials/M_Intensity_Raymarch"));
+	static ConstructorHelpers::FObjectFinder<UMaterial> OctreeMaterial(TEXT("/TBRaymarcherPlugin/Materials/M_Octree_Raymarch"));
 
 	if (LitMaterial.Succeeded())
 	{
@@ -80,6 +81,11 @@ ARaymarchVolume::ARaymarchVolume() : AActor()
 	if (IntensityMaterial.Succeeded())
 	{
 		IntensityRaymarchMaterialBase = IntensityMaterial.Object;
+	}
+
+	if (OctreeMaterial.Succeeded())
+	{
+		OctreeRaymarchMaterialBase = OctreeMaterial.Object;
 	}
 
 	// Set default values for steps and half-res.
@@ -121,15 +127,28 @@ void ARaymarchVolume::PostRegisterAllComponents()
 		IntensityRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
 	}
 
+	if (OctreeRaymarchMaterialBase)
+	{
+		OctreeRaymarchMaterial =
+			UMaterialInstanceDynamic::Create(OctreeRaymarchMaterialBase, this, "Octree Raymarch Mat Dynamic Inst");
+		// Set default valuees for the octree raymarch material.
+		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
+		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeVolumeMip);
+	}
+
 	if (StaticMeshComponent)
 	{
-		if (bLitRaymarch && LitRaymarchMaterial)
+		if (LitRaymarchMaterial && SelectRaymarchMaterial == ERaymarchMaterial::Lit)
 		{
 			StaticMeshComponent->SetMaterial(0, LitRaymarchMaterial);
 		}
-		else if (IntensityRaymarchMaterial)
+		else if (IntensityRaymarchMaterial && SelectRaymarchMaterial == ERaymarchMaterial::Intensity)
 		{
 			StaticMeshComponent->SetMaterial(0, IntensityRaymarchMaterial);
+		}
+		else if (OctreeRaymarchMaterial && SelectRaymarchMaterial == ERaymarchMaterial::Octree)
+		{
+			StaticMeshComponent->SetMaterial(0, OctreeRaymarchMaterial);
 		}
 	}
 
@@ -187,7 +206,7 @@ void ARaymarchVolume::OnImageInfoChangedInEditor()
 	SetMaterialWindowingParameters();
 
 	static double LastTimeReset = 0.0f;
-	if (bLitRaymarch)
+	if (SelectRaymarchMaterial == ERaymarchMaterial::Lit)
 	{
 		// Don't wait for recompute for next frame.
 
@@ -222,7 +241,7 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, LightsArray))
 	{
-		if (bLitRaymarch)
+		if (SelectRaymarchMaterial == ERaymarchMaterial::Lit)
 		{
 			bRequestedRecompute = true;
 		}
@@ -231,7 +250,7 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, ClippingPlane))
 	{
-		if (bLitRaymarch)
+		if (SelectRaymarchMaterial == ERaymarchMaterial::Lit)
 		{
 			bRequestedRecompute = true;
 		}
@@ -244,7 +263,7 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		PropertyName == GET_MEMBER_NAME_CHECKED(FWindowingParameters, HighCutoff) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(FWindowingParameters, LowCutoff))
 	{
-		if (bLitRaymarch)
+		if (SelectRaymarchMaterial == ERaymarchMaterial::Lit)
 		{
 			bRequestedRecompute = true;
 		}
@@ -256,7 +275,8 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, bLightVolume32Bit))
 	{
 		InitializeRaymarchResources(RaymarchResources.DataVolumeTextureRef);
-		if (bLitRaymarch)
+		SetMaterialVolumeParameters();
+		if (SelectRaymarchMaterial == ERaymarchMaterial::Lit)
 		{
 			bRequestedRecompute = true;
 		}
@@ -267,21 +287,31 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 	{
 		if (RaymarchResources.bIsInitialized)
 		{
-			// Set default values for the lit and intensity raymarchers.
 			LitRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
-
-			// Intensity Raymarch doesn't have a LightVolume or transfer function.
 			IntensityRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
+			OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
 		}
 		return;
 	}
 
-	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, bLitRaymarch))
+	if (PropertyName == GET_ENUMERATOR_NAME_CHECKED(ARaymarchVolume, SelectRaymarchMaterial))
 	{
-		SwitchRenderer(bLitRaymarch);
-		if (bLitRaymarch)
+		SwitchRenderer(SelectRaymarchMaterial);
+		if (SelectRaymarchMaterial == ERaymarchMaterial::Lit)
 		{
 			bRequestedRecompute = true;
+		}
+		if (SelectRaymarchMaterial == ERaymarchMaterial::Octree)
+		{
+			bRequestedOctreeRebuild = true;
+		}
+	}
+
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, OctreeVolumeMip))
+	{
+		if (RaymarchResources.bIsInitialized)
+		{
+			OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeVolumeMip);
 		}
 	}
 }
@@ -325,9 +355,16 @@ void ARaymarchVolume::Tick(float DeltaTime)
 		SetMaterialClippingParameters();
 	}
 
+	if (bRequestedOctreeRebuild && SelectRaymarchMaterial == ERaymarchMaterial::Octree)
+	{
+		URaymarchUtils::GenerateOctree(RaymarchResources);
+		// We rebuild the octree. Set to false to prevent additional unwanted rebuild.
+		bRequestedOctreeRebuild = false;
+	}
+
 	// Only check if we need to update lights if we're using Lit raymarch material.
 	// (No point in recalculating a light volume that's not currently being used anyways).
-	if (bLitRaymarch)
+	if (SelectRaymarchMaterial == ERaymarchMaterial::Lit)
 	{
 		// For testing light calculation shader speed - comment out when not testing! (otherwise lights get recalculated every tick
 		// for no reason).
@@ -387,9 +424,6 @@ void ARaymarchVolume::ResetAllLights()
 
 	// Clear Light volume to zero.
 	UVolumeTextureToolkit::ClearVolumeTexture(RaymarchResources.LightVolumeRenderTarget, 0);
-
-	// Experimental
-	// URaymarchUtils::GenerateOctree(RaymarchResources);
 
 	// Add all lights.
 	bool bResetWasSuccessful = true;
@@ -502,6 +536,11 @@ bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
 	}
 
+	if (OctreeRaymarchMaterial)
+	{
+		OctreeRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
+	}
+
 	RaymarchResources.WindowingParameters = VolumeAsset->ImageInfo.DefaultWindowingParameters;
 
 	// Unreal units are in cm, MHD and Dicoms both have sizes in mm -> divide by 10.
@@ -511,9 +550,12 @@ bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 	UpdateWorldParameters();
 	SetAllMaterialParameters();
 	bRequestedRecompute = true;
+	// Update the octree.
+	bRequestedOctreeRebuild = true;
 
 	// Notify listeners that we've loaded a new volume.
 	OnVolumeLoaded.ExecuteIfBound();
+
 	return true;
 }
 
@@ -527,8 +569,9 @@ void ARaymarchVolume::SetTFCurve(UCurveLinearColor* InTFCurve)
 		// for the texture parameter to be set.
 		// e.g. render-thread promise and game-thread future?
 		FlushRenderingCommands();
-		// Set TF Texture in the lit material.
+		// Set TF Texture to the lit and octree material.
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
+		OctreeRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
 		bRequestedRecompute = true;
 	}
 }
@@ -636,6 +679,11 @@ void ARaymarchVolume::SetMaterialVolumeParameters()
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::DataVolume, RaymarchResources.DataVolumeTextureRef);
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::LightVolume, RaymarchResources.LightVolumeRenderTarget);
 	}
+	if (OctreeRaymarchMaterial)
+	{
+		OctreeRaymarchMaterial->SetTextureParameterValue(RaymarchParams::DataVolume, RaymarchResources.DataVolumeTextureRef);
+		OctreeRaymarchMaterial->SetTextureParameterValue(RaymarchParams::OctreeVolume, RaymarchResources.OctreeVolumeRenderTarget);
+	}
 }
 
 void ARaymarchVolume::SetMaterialWindowingParameters()
@@ -648,6 +696,11 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 	if (IntensityRaymarchMaterial)
 	{
 		IntensityRaymarchMaterial->SetVectorParameterValue(
+			RaymarchParams::WindowingParams, RaymarchResources.WindowingParameters.ToLinearColor());
+	}
+	if (OctreeRaymarchMaterial)
+	{
+		OctreeRaymarchMaterial->SetVectorParameterValue(
 			RaymarchParams::WindowingParams, RaymarchResources.WindowingParameters.ToLinearColor());
 	}
 }
@@ -666,6 +719,11 @@ void ARaymarchVolume::SetMaterialClippingParameters()
 	{
 		IntensityRaymarchMaterial->SetVectorParameterValue(RaymarchParams::ClippingCenter, LocalClippingparameters.Center);
 		IntensityRaymarchMaterial->SetVectorParameterValue(RaymarchParams::ClippingDirection, LocalClippingparameters.Direction);
+	}
+	if (OctreeRaymarchMaterial)
+	{
+		OctreeRaymarchMaterial->SetVectorParameterValue(RaymarchParams::ClippingCenter, LocalClippingparameters.Center);
+		OctreeRaymarchMaterial->SetVectorParameterValue(RaymarchParams::ClippingDirection, LocalClippingparameters.Direction);
 	}
 }
 
@@ -725,15 +783,19 @@ void ARaymarchVolume::SetHighCutoff(const bool& HighCutoff)
 	bRequestedRecompute = true;
 }
 
-void ARaymarchVolume::SwitchRenderer(bool bInLitRaymarch)
+void ARaymarchVolume::SwitchRenderer(ERaymarchMaterial InSelectRaymarchMaterial)
 {
-	if (bInLitRaymarch)
+	switch (InSelectRaymarchMaterial)
 	{
-		StaticMeshComponent->SetMaterial(0, LitRaymarchMaterial);
-	}
-	else
-	{
-		StaticMeshComponent->SetMaterial(0, IntensityRaymarchMaterial);
+		case ERaymarchMaterial::Lit:
+			StaticMeshComponent->SetMaterial(0, LitRaymarchMaterial);
+			break;
+		case ERaymarchMaterial::Intensity:
+			StaticMeshComponent->SetMaterial(0, IntensityRaymarchMaterial);
+			break;
+		case ERaymarchMaterial::Octree:
+			StaticMeshComponent->SetMaterial(0, OctreeRaymarchMaterial);
+			break;
 	}
 }
 
@@ -749,6 +811,11 @@ void ARaymarchVolume::SetRaymarchSteps(float InRaymarchingSteps)
 	{
 		IntensityRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
 	}
+
+	if (OctreeRaymarchMaterial)
+	{
+		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
+	}
 }
 
 void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
@@ -757,6 +824,23 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	{
 		FreeRaymarchResources();
 	}
+
+	if (!Volume)
+	{
+		UE_LOG(LogRaymarchVolume, Error, TEXT("Tried to initialize Raymarch resources with no data volume!"));
+		return;
+	}
+	else if (!Volume->GetPlatformData() || Volume->GetSizeX() == 0 || Volume->GetSizeY() == 0 || Volume->GetSizeZ() == 0)
+	{
+		// Happens in cooking stage where per-platform data isn't initalized. Return.
+		UE_LOG(LogRaymarchVolume, Warning,
+			TEXT("Following is safe to ignore during cooking :\nTried to initialize Raymarch resources with an unitialized data "
+				 "volume with size 0!\nRaymarch volume name = %s, VolumeTexture name = %s"),
+			*(GetName()), *(Volume->GetName()));
+		return;
+	};
+
+	RaymarchResources.DataVolumeTextureRef = Volume;
 
 	int X = Volume->GetSizeX();
 	int Y = Volume->GetSizeY();
@@ -784,15 +868,16 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	RaymarchResources.LightVolumeRenderTarget = NewObject<UTextureRenderTargetVolume>(this, "Light Volume Render Target");
 	RaymarchResources.LightVolumeRenderTarget->bCanCreateUAV = true;
 	RaymarchResources.LightVolumeRenderTarget->bHDR = bLightVolume32Bit;
-	RaymarchResources.LightVolumeRenderTarget->ClearColor = FLinearColor(1.0, 0, 0, 0);
 	RaymarchResources.LightVolumeRenderTarget->Init(X, Y, Z, PixelFormat);
 
-	// Experimental
-	// RaymarchResources.OctreeVolumeRenderTarget = NewObject<URenderTargetVolumeMipped>(this, "Octree Render Target");
-	// RaymarchResources.OctreeVolumeRenderTarget->bCanCreateUAV = true;
-	// RaymarchResources.OctreeVolumeRenderTarget->bHDR = false;
-	// RaymarchResources.OctreeVolumeRenderTarget->Init(FMath::RoundUpToPowerOfTwo(Volume->GetSizeX()),
-	// 	FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()), FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()), 2, PF_G16);
+	RaymarchResources.OctreeVolumeRenderTarget = NewObject<URenderTargetVolumeMipped>(this, "Octree Render Target");
+	RaymarchResources.OctreeVolumeRenderTarget->bCanCreateUAV = true;
+	RaymarchResources.OctreeVolumeRenderTarget->bHDR = false;
+	RaymarchResources.OctreeVolumeRenderTarget->Init(FMath::RoundUpToPowerOfTwo(Volume->GetSizeX()),
+		FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()), FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()), 4, PF_G16);
+
+	// Flush rendering commands so that all textures are definitely initialized with resources and we can create a UAV ref.
+	FlushRenderingCommands();
 
 	ENQUEUE_RENDER_COMMAND(CaptureCommand)
 	(
@@ -828,11 +913,18 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 				return;
 			}
 
-			RaymarchResources.LightVolumeUAVRef = URaymarchUtils::GetCmdList().CreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
+			RaymarchResources.LightVolumeUAVRef =
+				RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
 
-			// Experimental
-			// RaymarchResources.OctreeUAVRef =
-			// 	RHICreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
+			if (!RaymarchResources.OctreeVolumeRenderTarget || !RaymarchResources.OctreeVolumeRenderTarget->GetResource() ||
+				!RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI)
+			{
+				// Return if anything was not initialized.
+				return;
+			}
+
+			RaymarchResources.OctreeUAVRef =
+				RHICreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
 
 			RaymarchResources.bIsInitialized = true;
 		});
@@ -853,8 +945,14 @@ void ARaymarchVolume::FreeRaymarchResources()
 			if (RaymarchResources.LightVolumeRenderTarget)
 			{
 				RaymarchResources.LightVolumeRenderTarget->MarkAsGarbage();
+				RaymarchResources.LightVolumeRenderTarget = nullptr;
 			}
-			RaymarchResources.LightVolumeRenderTarget = nullptr;
+
+			if (RaymarchResources.OctreeVolumeRenderTarget)
+			{
+				RaymarchResources.OctreeVolumeRenderTarget->MarkAsGarbage();
+				RaymarchResources.OctreeVolumeRenderTarget = nullptr;
+			}
 
 			for (OneAxisReadWriteBufferResources& Buffer : RaymarchResources.XYZReadWriteBuffers)
 			{
@@ -862,9 +960,9 @@ void ARaymarchVolume::FreeRaymarchResources()
 			}
 
 			RaymarchResources.bIsInitialized = false;
+			RaymarchResources.bIsInitialized = false;
 		});
 	FlushRenderingCommands();
-
 }
 
 #if !UE_BUILD_SHIPPING

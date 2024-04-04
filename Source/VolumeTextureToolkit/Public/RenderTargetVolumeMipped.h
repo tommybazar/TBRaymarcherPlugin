@@ -15,6 +15,8 @@ class VOLUMETEXTURETOOLKIT_API URenderTargetVolumeMipped : public UTextureRender
 public:
 	void Init(uint32 InSizeX, uint32 InSizeY, uint32 InSizeZ, int32 InMips, EPixelFormat InFormat);
 
+	// Define the number of Mips.
+	// @warning: Make sure the number of mips defined here is the same as number of mips generated in shader.
 	int32 NumMips;
 
 	// The only thing we need to override so that a FTexture3DResource gets created with UAV flag.
@@ -89,7 +91,7 @@ public:
 	{
 		check(0 < NumMips && NumMips <= MAX_TEXTURE_MIP_COUNT);
 		check(FMath::IsPowerOfTwo(SizeX) && FMath::IsPowerOfTwo(SizeY) && FMath::IsPowerOfTwo(SizeZ))
-		uint32 MinAxis = FMath::Min3Index(SizeX, SizeY, SizeZ);
+		uint32 MinAxis = FMath::Min3(SizeX, SizeY, SizeZ);
 		check((1U << (NumMips - 1)) <= MinAxis);
 
 		TextureName = Owner->GetName();
