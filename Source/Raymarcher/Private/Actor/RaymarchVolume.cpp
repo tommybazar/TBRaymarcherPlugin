@@ -917,9 +917,14 @@ void ARaymarchVolume::FreeRaymarchResources()
 	if (RaymarchResources.LightVolumeRenderTarget)
 	{
 		RaymarchResources.LightVolumeRenderTarget->MarkAsGarbage();
+		RaymarchResources.LightVolumeRenderTarget = nullptr;
 	}
-	RaymarchResources.LightVolumeRenderTarget = nullptr;
 
+	if (RaymarchResources.OctreeVolumeRenderTarget)
+	{
+		RaymarchResources.OctreeVolumeRenderTarget->MarkAsGarbage();
+		RaymarchResources.OctreeVolumeRenderTarget = nullptr;
+	}
 	for (OneAxisReadWriteBufferResources& Buffer : RaymarchResources.XYZReadWriteBuffers)
 	{
 		URaymarchUtils::ReleaseOneAxisReadWriteBufferResources(Buffer);
