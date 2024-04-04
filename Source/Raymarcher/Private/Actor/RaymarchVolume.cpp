@@ -883,22 +883,6 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	(
 		[&](FRHICommandListImmediate& RHICmdList)
 		{
-			if (!Volume)
-			{
-				UE_LOG(LogRaymarchVolume, Error, TEXT("Tried to initialize Raymarch resources with no data volume!"));
-				return;
-			}
-			else if (!Volume->GetPlatformData() || Volume->GetSizeX() == 0 || Volume->GetSizeY() == 0 || Volume->GetSizeZ() == 0)
-			{
-				// Happens in cooking stage where per-platform data isn't initialized. Return.
-				UE_LOG(LogRaymarchVolume, Warning,
-					TEXT("Following is safe to ignore during cooking :\nTried to initialize Raymarch resources with an unitialized "
-						 "data "
-						 "volume with size 0!\nRaymarch volume name = %s, VolumeTexture name = %s"),
-					*(GetName()), *(Volume->GetName()));
-				return;
-			};
-
 			RaymarchResources.DataVolumeTextureRef = Volume;
 
 			// Make buffers fully colored if we need to support colored lights.
@@ -959,7 +943,6 @@ void ARaymarchVolume::FreeRaymarchResources()
 				URaymarchUtils::ReleaseOneAxisReadWriteBufferResources(Buffer);
 			}
 
-			RaymarchResources.bIsInitialized = false;
 			RaymarchResources.bIsInitialized = false;
 		});
 	FlushRenderingCommands();
