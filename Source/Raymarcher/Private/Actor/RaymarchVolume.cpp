@@ -874,7 +874,7 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	RaymarchResources.OctreeVolumeRenderTarget->bCanCreateUAV = true;
 	RaymarchResources.OctreeVolumeRenderTarget->bHDR = false;
 	RaymarchResources.OctreeVolumeRenderTarget->Init(FMath::RoundUpToPowerOfTwo(Volume->GetSizeX()),
-		FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()), FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()), 4, PF_G16);
+		FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()), FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()), 4, PF_R32_UINT);
 
 	// Flush rendering commands so that all textures are definitely initialized with resources and we can create a UAV ref.
 	FlushRenderingCommands();
