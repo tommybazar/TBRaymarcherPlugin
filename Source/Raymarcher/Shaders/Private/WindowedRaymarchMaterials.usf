@@ -151,77 +151,84 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	float3 StartPos = CurPos;
 	// Values from the previous iteration.
     //for (int i = 0; i < MaxSteps; i++)
-	while(true)
-    {
-        //CurPos += LocalCamVec;
-    	// Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
-	    // Any position that is clipped by the clipping plane shall be ignored.
-        //if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-        {
-			OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
+	int StepsCount = 0;
 
-        	// Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
-        	// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
-        	int3 VoxelPos = int3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
+	float3 IntersectionPos;
+	bool IsPlaneIntersection = LinePlaneIntersection(ClippingCenter, ClippingDirection, StartPos, LocalCamVec, IntersectionPos);
+	if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
+	{
+		CurPos = IntersectionPos;
+	}
+	
+	while(StepsCount++ < MaxSteps)
+	{
+		//CurPos += LocalCamVec;
+		// Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
+		// Any position that is clipped by the clipping plane shall be ignored.
+		// if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
+		//  {
+		OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
 
-        	const uint BitNumber = asuint(OctreeVolume.Load(int4(VoxelPos, CurrentMip), 0).r);
-        	if(!(BitNumber & WindowNumber))
-        	{
-        		float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, VoxelPos.z / OctreeDepth);
-        		float3 BoxMax = float3((VoxelPos.x + 1) / OctreeWidth, (VoxelPos.y + 1) / OctreeHeight, ((CurPos.z * OctreeDepth) + 1)/ OctreeDepth);
-        		float2 EntryTimes = float2(0,0);
-        		if (CheckedRayAABBIntersection(CurPos, LocalCamVec, BoxMin, BoxMax, EntryTimes))
-        		{
-        			//CurPos = StartPos + (LocalCamVec * EntryTimes.y);
-        			CurPos += (LocalCamVec * EntryTimes.y) + LocalCamVec/100.0;
-        			if(CurPos.x >= 1.0 || CurPos.y >= 1.0 || CurPos.z >= 1.0 ||
-        				CurPos.x < 0 || CurPos.y < 0 || CurPos.z < 0)
-        			{
-        				break;
-        			}
-        			//i = EntryTimes.y;
-        			CurrentMip = 3;
-        			continue;
-        		}
-        		
-				//return float4(0.0, 1.0, 0.0, 1.0);
-        		break;
-        	}
+		// Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
+		// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
+		int3 VoxelPos = int3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
 
-        	if (CurrentMip == 0)
-        	{
-        		float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSizeWorld, DataVolume, DataVolumeSampler,
-														TF, Material.Clamp_WorldGroupSettings, WindowingParams);
-
-        		AccumulateLightEnergy(LightEnergy, ColorSample);
-
-        		CurPos += LocalCamVec;
-        		
-        		if(CurPos.x >= 1.0 || CurPos.y >= 1.0 || CurPos.z >= 1.0 ||
-					CurPos.x < 0 || CurPos.y < 0 || CurPos.z < 0)
-        		{
-        			break;
-        		}
-        	}
-			else
+		const uint BitNumber = asuint(OctreeVolume.Load(int4(VoxelPos, CurrentMip), 0).r);
+		if(!(BitNumber & WindowNumber))
+		{
+			float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, VoxelPos.z / OctreeDepth);
+			float3 BoxMax = float3((VoxelPos.x + 1) / OctreeWidth, (VoxelPos.y + 1) / OctreeHeight, ((CurPos.z * OctreeDepth) + 1)/ OctreeDepth);
+			float2 EntryTimes = float2(0,0);
+			if (CheckedRayAABBIntersection(CurPos, LocalCamVec, BoxMin, BoxMax, EntryTimes))
 			{
-				CurrentMip -= 1;
+				//CurPos = StartPos + (LocalCamVec * EntryTimes.y);
+				CurPos += (LocalCamVec * EntryTimes.y) + LocalCamVec/100.0;
+				if(CurPos.x >= 1.0 || CurPos.y >= 1.0 || CurPos.z >= 1.0 ||
+					CurPos.x < 0 || CurPos.y < 0 || CurPos.z < 0)
+				{
+					break;
+				}
+
+				CurrentMip = 3;
+				continue;
 			}
+			break;
+		}
+
+		if (CurrentMip == 0)
+		{
+			float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSizeWorld, DataVolume, DataVolumeSampler,
+													TF, Material.Clamp_WorldGroupSettings, WindowingParams);
+
+			AccumulateLightEnergy(LightEnergy, ColorSample);
+
+			CurPos += LocalCamVec;
+        		
+			if(CurPos.x >= 1.0 || CurPos.y >= 1.0 || CurPos.z >= 1.0 ||
+				CurPos.x < 0 || CurPos.y < 0 || CurPos.z < 0)
+			{
+				break;
+			}
+		}
+		else
+		{
+			CurrentMip -= 1;
+		}
         	
 
-        	// Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
-        	if (LightEnergy.a > 0.95f)
-        	{
-        		LightEnergy.a = 1.0f;
-        		break;
-        	};
-        }
-		//else
-		//{
+		// Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
+		if (LightEnergy.a > 0.95f)
+		{
+			LightEnergy.a = 1.0f;
+			break;
+		};
+	}
+	//	else
+	//	{
 			// Move the vector so we get over the cutting plane.
-			CurPos += LocalCamVec;
-		//}
-    }
+	//		CurPos += LocalCamVec;
+	//	}
+    //}
 
      // Handle FinalStep (only if we went through all the previous steps and the final step size is above zero)
     //if (i == MaxSteps && FinalStep > 0.0f)

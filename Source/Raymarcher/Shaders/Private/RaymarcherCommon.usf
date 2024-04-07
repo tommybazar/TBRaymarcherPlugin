@@ -93,3 +93,29 @@ bool CheckedRayAABBIntersection(float3 RayOrigin, float3 RayDir, float3 BoxMin, 
 	EntryExitTimes = RayAABBIntersection(RayOrigin, RayDir, BoxMin, BoxMax);
 	return EntryExitTimes.y > max(EntryExitTimes.x, 0.0);
 }
+
+bool LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePoint, float3 LineDirection, out float3 Intersection)
+{
+	// Check for parallel lines
+	float Dot = dot(PlaneNormal, LineDirection);
+	if (abs(Dot) < 0.0000001) {
+		return false; // Lines are parallel
+	}
+
+	// Calculate distance parameter 't'
+	float numerator = dot(PlaneNormal, PlanePoint - LinePoint);
+	float denominator = dot(PlaneNormal, LineDirection);
+	float t = numerator / denominator;
+
+	// Check if the intersection point is on the line segment (avoid overshoot)
+	if (t < 0.0) {
+		return false; // Intersection behind line starting point
+	}
+
+	// Calculate intersection point
+	Intersection = LinePoint + t * LineDirection;
+
+	// Check if the intersection point is on the positive side of the plane
+	Dot = dot(PlaneNormal, Intersection - PlanePoint);
+	return Dot > 0.0; // Point on positive side if dot product is positive
+}
