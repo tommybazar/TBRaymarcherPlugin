@@ -142,26 +142,13 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	const int MaxPossibleMip = 3;
 	int CurrentMip = OctreeMip;
 
-	// Check if the entry position should be visible over plane. 
-	if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-	{
-		// Find the intersection point between the ray and the plane and use it as a starting point for raymarch algorithm.
-		float Multiplier = LinePlaneIntersection(ClippingCenter, ClippingDirection, CurPos, LocalCamVec);
-		// Use ceil to align position with the requested step size.
-		CurPos = CurPos + (LocalCamVec * ceil(Multiplier));
-		// There are few views where the calculated position is behind the plane and direction vector does not direct to front of the plane. Does not calculate anything
-		// in that case.
-		if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection) || !IsPositionInsideOctree(CurPos))
-		{
-			return LightEnergy;
-		}
-	}
 
 	int StepsCount = 0;
 	do
 	{
 		if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
 		{
+			CurPos += LocalCamVec;
 			break;
 		}
 		// Get the correct width, height and depth for current mip.
