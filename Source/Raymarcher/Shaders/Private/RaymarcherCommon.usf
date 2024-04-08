@@ -94,6 +94,8 @@ bool CheckedRayAABBIntersection(float3 RayOrigin, float3 RayDir, float3 BoxMin, 
 	return EntryExitTimes.y > max(EntryExitTimes.x, 0.0);
 }
 
+// Returns the multiplier where the line defined by point and vector crosses the plane. In case the plane is behind the direction
+// of the vector, returns zero. 
 float LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePoint, float3 LineDirection)
 {
 	// Check for parallel lines
@@ -105,14 +107,7 @@ float LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePo
 	// Calculate distance parameter 't'
 	float numerator = dot(PlaneNormal, PlanePoint - LinePoint);
 	float denominator = dot(PlaneNormal, LineDirection);
-	float t = numerator / denominator;
+	float Multiplier = numerator / denominator;
 
-	// Check if the intersection point is on the line segment (avoid overshoot)
-	if (t < 0.0) {
-		return false; // Intersection behind line starting point
-	}
-
-	// Calculate intersection point
-	//return LinePoint + t * LineDirection;
-	return t;
+	return Multiplier;
 }

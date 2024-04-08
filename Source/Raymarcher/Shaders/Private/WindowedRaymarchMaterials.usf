@@ -145,31 +145,31 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	// Get the bit number based on window center and window width.s 
 	uint WindowNumber = GetWindowingParamsBitNumber(WindowingParams.x, WindowingParams.y);
 
+	// Set to the mip number with worst detail.
+	const int MaxPossibleMip = 3;
 	int CurrentMip = OctreeMip;
-	int StepsCount = 0;
 
-	// Check if the entry position is behind the plane. If yes, find the intersection point between the ray and the plane and
-	// use it as a starting point for out algorithm.
+	// Check if the entry position should be visible over plane. 
 	if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
 	{
-		float t = LinePlaneIntersection(ClippingCenter, ClippingDirection, CurPos, LocalCamVec);
-		CurPos = CurPos + (LocalCamVec * t) + (ceil(t) - t)* LocalCamVec;
-		if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
+		// Find the intersection point between the ray and the plane and use it as a starting point for raymarch algorithm.
+		float Multiplier = LinePlaneIntersection(ClippingCenter, ClippingDirection, CurPos, LocalCamVec);
+		// Use ceil to align position with the requested step size.
+		CurPos = CurPos + (LocalCamVec * ceil(Multiplier));
+		// There are few views where the calculated position is behind the plane and direction vector does not direct to front of the plane. Does not calculate anything
+		// in that case.
+		if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection) || !IsPositionInsideOctree(CurPos))
 		{
 			return LightEnergy;
 		}
 	}
 
-	// Octree raymarch algorithm usually exits way before this condition fails. But let it here just to be sure it will not break anything. 
-	while(StepsCount++ < MaxSteps)
+	int StepsCount = 0;
+	do
 	{
-		if(StepsCount > 2)
+		if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
 		{
-			// We reached the end of the cube.
-			if(CurPos.x > 1.0 || CurPos.y > 1.0 || CurPos.z > 1.0 || CurPos.x < 0 || CurPos.y < 0 || CurPos.z < 0)
-			{
-				break;
-			}
+			break;
 		}
 		// Get the correct width, height and depth for current mip.
 		OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
@@ -178,39 +178,46 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 		// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
 		int3 VoxelPos = int3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
 
-		// Get the bit number saved in octree volume and check it against current window. In case the and operator results in true, the
+		// Get the bit number saved in octree volume and check it against current window. In case the and operator results is true, the
 		// value in the volume should be used. If not, find the next position in volume upper mip and starts again. 
 		const uint BitNumber = asuint(OctreeVolume.Load(int4(VoxelPos, CurrentMip), 0).r);
 		if ((BitNumber & WindowNumber) == 0)
 		{
-			float ZRealDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
-			float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, int(CurPos.z * ZRealDepth) / ZRealDepth);
-			float3 BoxMax = float3((VoxelPos.x + 1) / OctreeWidth, (VoxelPos.y + 1) / OctreeHeight, (int(CurPos.z * ZRealDepth) + 1) / ZRealDepth);
+			// Because of the volume texture mip properties, we need to calculate actual octree mip width.
+			float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
+			// Get the box min values calculated in UV coordinates.
+			float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, int(CurPos.z * AdjustedDepth) / AdjustedDepth);
+			// Get the box max values calculated in UV coordinates.
+			float3 BoxMax = float3((VoxelPos.x + 1) / OctreeWidth, (VoxelPos.y + 1) / OctreeHeight, (int(CurPos.z * AdjustedDepth) + 1) / AdjustedDepth);
 			float2 EntryTimes = float2(0,0);
 			if (CheckedRayAABBIntersection(CurPos, LocalCamVec, BoxMin, BoxMax, EntryTimes))
 			{
-				float Rest = ceil(EntryTimes.y) - EntryTimes.y;
-				CurPos += (LocalCamVec * EntryTimes.y) + (LocalCamVec * Rest);
+				// Use ceil to align with the requested step size.
+				CurPos += LocalCamVec * ceil(EntryTimes.y);
 
+				// Current mip does not have useful data, move to upper mip.
 				CurrentMip += 1;
-				CurrentMip = clamp(CurrentMip,CurrentMip, 3);
+				CurrentMip = clamp(CurrentMip,CurrentMip, MaxPossibleMip);
 				continue;
 			}
-			//	 The ray gets out from the area it is supposed to be. Exit the loop.
+			// The ray gets out from the area it is supposed to be. Exit the loop.
 			break;
 		}
 
 		if (CurrentMip == 0)
 		{
+			// We found a mip with required data. Gather the actuall color sample from data volume.
 			float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSizeWorld, DataVolume, DataVolumeSampler,
 													TF, Material.Clamp_WorldGroupSettings, WindowingParams);
 
 			AccumulateLightEnergy(LightEnergy, ColorSample);
 
+			// Move to the next step.
 			CurPos += LocalCamVec;
 		}
 		else
 		{
+			// Step down to controll mip with better resolution in next iteration.
 			CurrentMip -= 1;
 		}
         	
@@ -220,22 +227,23 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 			LightEnergy.a = 1.0f;
 			break;
 		};
-	}
+	// Exit from the algorithm in case the current position is outside of octree or in case the number of steps is more than number of
+	// allowed steps (for integrity reasons).	
+	} while(IsPositionInsideOctree(CurPos) && StepsCount++ < MaxSteps);
 
-     // Handle FinalStep (only if we went through all the previous steps and the final step size is above zero)
-    //if (i == MaxSteps && FinalStep > 0.0f)
-    //{
-    //    CurPos += LocalCamVec * FinalStep;
-    //    // If the final step is clipped, don't do anything.
-    //    if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-    //    {
-    //    	float3 VoxelPos = float3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
-    //    	float4 ColorSample = SampleWindowedVolumeOctreeStep(VoxelPos, StepSizeWorld, OctreeVolume,
-    //                                           TF, Material.Clamp_WorldGroupSettings, WindowingParams, OctreeMip);
+	// Handle FinalStep (only if the final step size is above zero).
+    if (FinalStep > 0.0f)
+    {
+        CurPos += LocalCamVec * (FinalStep);
+        // If the final step is clipped, don't do anything.
+        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
+        {
+			float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSizeWorld, DataVolume, DataVolumeSampler,
+													TF, Material.Clamp_WorldGroupSettings, WindowingParams);
 
-    //    	AccumulateLightEnergy(LightEnergy, ColorSample);
-    //    }
-    //}
+			AccumulateLightEnergy(LightEnergy, ColorSample);
+        }
+    }
 
     return LightEnergy;
 }
