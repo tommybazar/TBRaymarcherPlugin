@@ -149,7 +149,7 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 		if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
 		{
 			CurPos += LocalCamVec;
-			break;
+			continue;
 		}
 		// Get the correct width, height and depth for current mip.
 		OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
@@ -209,7 +209,7 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 		};
 	// Exit from the algorithm in case the current position is outside of octree or in case the number of steps is more than number of
 	// allowed steps (for integrity reasons).	
-	} while(IsPositionInsideOctree(CurPos) && StepsCount++ < MaxSteps);
+	} while(IsPositionInsideOctree(CurPos));
 
 	// Handle FinalStep (only if the final step size is above zero).
     if (FinalStep > 0.0f)
