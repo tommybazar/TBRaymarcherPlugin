@@ -152,17 +152,17 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	// use it as a starting point for out algorithm.
 	if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
 	{
-		CurPos = LinePlaneIntersection(ClippingCenter, ClippingDirection, CurPos, LocalCamVec);
+		float t = LinePlaneIntersection(ClippingCenter, ClippingDirection, CurPos, LocalCamVec);
+		CurPos = CurPos + (LocalCamVec * t) + (ceil(t) - t)* LocalCamVec;
+		if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
+		{
+			return LightEnergy;
+		}
 	}
 
 	// Octree raymarch algorithm usually exits way before this condition fails. But let it here just to be sure it will not break anything. 
 	while(StepsCount++ < MaxSteps)
 	{
-		if(IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-		{
-			CurPos += LocalCamVec;
-			continue;
-		}
 		if(StepsCount > 2)
 		{
 			// We reached the end of the cube.
@@ -181,7 +181,7 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 		// Get the bit number saved in octree volume and check it against current window. In case the and operator results in true, the
 		// value in the volume should be used. If not, find the next position in volume upper mip and starts again. 
 		const uint BitNumber = asuint(OctreeVolume.Load(int4(VoxelPos, CurrentMip), 0).r);
-		if (!(BitNumber & WindowNumber))
+		if ((BitNumber & WindowNumber) == 0)
 		{
 			float ZRealDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
 			float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, int(CurPos.z * ZRealDepth) / ZRealDepth);
@@ -192,10 +192,11 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 				float Rest = ceil(EntryTimes.y) - EntryTimes.y;
 				CurPos += (LocalCamVec * EntryTimes.y) + (LocalCamVec * Rest);
 
-				CurrentMip = 3;
+				CurrentMip += 1;
+				CurrentMip = clamp(CurrentMip,CurrentMip, 3);
 				continue;
 			}
-			// The ray gets out from the area it is supposed to be. Exit the loop.
+			//	 The ray gets out from the area it is supposed to be. Exit the loop.
 			break;
 		}
 
