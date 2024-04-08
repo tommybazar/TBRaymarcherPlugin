@@ -23,7 +23,7 @@ int LeafNodeSize = 8;
 int NumberOfMips = 4;
 
 // Calculate the bit interpretation of the value by getting the number of bits and divide the in number by it. Then
-// move the bit to the correct position in number .
+// move the bit to the correct bit possition.
 uint GetBitNumber(float InValue)
 {
 	const float Factor = 1.0/32.0;

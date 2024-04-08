@@ -22,17 +22,12 @@ float4 SampleWindowedTransferFunction(float VolumeDataValue, float StepSize, Tex
     // WindowingParams.x == Center, WindowingParams.y = Width
     float TFPos = GetTransferFuncPosition(VolumeDataValue, WindowingParams.x, WindowingParams.y);
 
-	//if (TFPos < 0.0 || TFPos > 1.0)
-	//{
-	//	return float4(1.0,0.0,0.0,0.1);
-	//}
-	
     // If TF position is above 1 and high cutoff is enabled or TF position is below 0 and low cutoff is enabled,
     // return zero (value is not in the Transfer function range and we're cutting off values above or below the TF).
 	// @TODO This if could be eliminated by adding a fully transparent pixel to the correct side of the TF Texture. 
     if ((TFPos < 0.0 && WindowingParams.z > 0.0) || (TFPos > 1.0 && WindowingParams.w > 0.0))
     {
-        return float4(0.0, 0, 0, 0.0);
+        return float4(0, 0, 0, 0);
     }
 
     float4 ColorSample = TF.SampleLevel(TFSampler, float2(TFPos, 0.5), 0);

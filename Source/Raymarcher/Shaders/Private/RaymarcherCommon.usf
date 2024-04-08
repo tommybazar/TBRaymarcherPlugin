@@ -94,8 +94,7 @@ bool CheckedRayAABBIntersection(float3 RayOrigin, float3 RayDir, float3 BoxMin, 
 	return EntryExitTimes.y > max(EntryExitTimes.x, 0.0);
 }
 
-// Returns the multiplier where the line defined by point and vector crosses the plane. In case the plane is behind the direction
-// of the vector, returns zero. 
+// Returns the multiplier where the line defined by point and vector crosses the plane.
 float LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePoint, float3 LineDirection)
 {
 	// Check for parallel lines
