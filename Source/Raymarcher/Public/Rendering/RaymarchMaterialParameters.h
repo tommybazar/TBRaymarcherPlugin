@@ -21,5 +21,6 @@ const static FName TransferFunction = "TransferFunction";
 const static FName Steps = "Steps";
 const static FName OctreeVolume = "OctreeVolume";
 const static FName OctreeMip = "OctreeMip";
+const static FName WindowMask = "WindowMask";
 
 }	 // namespace RaymarchParams

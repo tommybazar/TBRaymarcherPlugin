@@ -100,7 +100,7 @@ float LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePo
 	// Check for parallel lines
 	float Dot = dot(PlaneNormal, LineDirection);
 	if (abs(Dot) < 0.0000001) {
-		return float3(1.0,1.0,1.0); // Lines are parallel
+		return 0.0; // Lines are parallel
 	}
 
 	// Calculate distance parameter 't'
@@ -110,3 +110,4 @@ float LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePo
 
 	return Multiplier;
 }
+

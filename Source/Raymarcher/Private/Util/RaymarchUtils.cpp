@@ -101,6 +101,36 @@ void URaymarchUtils::GenerateOctree(FBasicRaymarchRenderingResources& Resources)
 	});
 }
 
+FVector4 URaymarchUtils::GetWindowingParamsBitNumber(float WindowCenter, float WindowWidth, int EdgeBites)
+{
+	// TFPos == 1 => Value = WindowWidth - WindowWidth/2 + WindowCenter
+	// TFPos == 0 => Value = WindowCenter - (WindowWidth/2);
+	using uint = unsigned int;
+    
+	float Value0 = WindowCenter - (WindowWidth / 2.0);
+	float Value1 = WindowCenter + (WindowWidth / 2.0);
+    
+	const float Factor = 1.0/31.0;
+	uint Value0Bit = uint(ceil(Value0/Factor));
+	uint Value1Bit = uint(ceil(Value1/Factor));
+
+	uint Result = 0;
+	for(uint i = Value0Bit; i <= Value1Bit; i++)
+	{
+		uint n = (1 << i);
+		Result |= n;
+	}
+
+	for(int k = 0; k < EdgeBites; k++)
+	{
+		Result |= (Result << 1);
+		Result |= (Result >> 1);
+	}
+	GEngine->AddOnScreenDebugMessage(54,10,FColor::Orange, FString::Printf(TEXT("%u"),Result));
+	return FVector4(static_cast<float>(Result),0,0,0 );
+}
+
+
 void URaymarchUtils::ClearResourceLightVolumes(const FBasicRaymarchRenderingResources Resources, float ClearValue)
 {
 	if (!Resources.LightVolumeRenderTarget)

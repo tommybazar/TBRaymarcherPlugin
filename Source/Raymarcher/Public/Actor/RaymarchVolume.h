@@ -192,6 +192,9 @@ public:
 	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
 	uint32 OctreeVolumeMip = 0;
 
+	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
+	uint32 WindowMaskEdgeBitesCount = 0;
+
 	/** If true, the light volume texture will be created using R32F format instead of the standard G8. This allows
 		Illumination values greater than 1 (over-lighted) to be visible. Comes at the cost of 4x memory consumption and
 		noticeably (but not significantly, in the ballpark of 10%) slower illumination calculation and materials.	**/

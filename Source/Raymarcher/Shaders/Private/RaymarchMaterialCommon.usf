@@ -65,7 +65,7 @@ float4 PerformRaymarchCubeSetup(FMaterialPixelParameters MaterialParameters)
     // Get entry position in UVW space.
     float3 EntryPos = LocalCamPos + (EntryExitTimes.x * LocalCamVec);
     
-    return float4(EntryPos, BoxThickness);
+	return float4(EntryPos, BoxThickness);
 }
 
 

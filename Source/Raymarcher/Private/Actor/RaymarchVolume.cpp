@@ -17,6 +17,8 @@
 #include <Curves/CurveLinearColor.h>
 #include <Engine/TextureRenderTargetVolume.h>
 
+#include <bitset>
+
 DEFINE_LOG_CATEGORY(LogRaymarchVolume)
 
 #if !UE_BUILD_SHIPPING
@@ -312,6 +314,14 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		if (RaymarchResources.bIsInitialized)
 		{
 			OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeVolumeMip);
+		}
+	}
+
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, WindowMaskEdgeBitesCount))
+	{
+		if (RaymarchResources.bIsInitialized)
+		{
+			SetMaterialWindowingParameters();
 		}
 	}
 }
@@ -702,6 +712,11 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 	{
 		OctreeRaymarchMaterial->SetVectorParameterValue(
 			RaymarchParams::WindowingParams, RaymarchResources.WindowingParameters.ToLinearColor());
+
+		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitNumber(RaymarchResources.WindowingParameters.Center, RaymarchResources.WindowingParameters.Width, WindowMaskEdgeBitesCount);
+		FLinearColor LinearColor(WindowMask.X, WindowMask.Y, WindowMask.Z, WindowMask.W);
+		OctreeRaymarchMaterial->SetVectorParameterValue( RaymarchParams::WindowMask, LinearColor);
+		GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<32>(LinearColor.R).to_string().c_str());
 	}
 }
 

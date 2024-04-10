@@ -27,7 +27,11 @@ int NumberOfMips = 4;
 uint GetBitNumber(float InValue)
 {
 	const float Factor = 1.0/31.0;
-	return (1 << uint(InValue/Factor));
+	uint Result = (1 << uint(ceil(InValue/Factor)));
+	//Result |= (1 << Result);
+	//Result |= (1 >> Result);
+		
+	return (Result);
 }
 
 [numthreads(1, 1, 1)]
@@ -96,7 +100,7 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 							{
 								// Take current offset and append the final offset value to get the correct data position.  
 								int3 FinalPos = CurrentPositionOffset + int3(a, b, c);
-								uint NodeValue = Mips[Mip-1][FinalPos];
+								uint NodeValue = asuint(Mips[Mip-1][FinalPos]);
 								Xor |= NodeValue;
 							}
 						}
