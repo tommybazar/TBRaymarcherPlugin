@@ -101,7 +101,40 @@ void URaymarchUtils::GenerateOctree(FBasicRaymarchRenderingResources& Resources)
 	});
 }
 
-FVector4 URaymarchUtils::GetWindowingParamsBitNumber(float WindowCenter, float WindowWidth, int EdgeBites)
+
+// Function to sample from the Texture2D
+FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
+{
+	// Ensure the Texture2D is valid
+	if (TF == nullptr)
+	{
+		return {};
+	}
+	
+	int32 TextureWidth = TF->GetSizeX();
+	int32 TextureHeight = TF->GetSizeY();
+	int32 X = FMath::Clamp(FMath::RoundToInt(U * TextureWidth), 0, TextureWidth - 1);
+	int32 Y = FMath::Clamp(FMath::RoundToInt(V * TextureHeight), 0, TextureHeight - 1);
+
+	
+	// Get the texture data
+	FTexture2DMipMap* MipMap = &TF->GetPlatformData()->Mips[0];
+	const void* TextureData = MipMap->BulkData.LockReadOnly();
+
+	// Calculate the index in the texture data
+	int32 TextureDataIndex = (Y * MipMap->SizeX) + X;
+
+	// Sample the color
+	const FFloat16Color* ColorData = static_cast<const FFloat16Color*>(TextureData);
+	FFloat16Color SampleColor = ColorData[TextureDataIndex];
+
+	// Unlock the texture data
+	MipMap->BulkData.Unlock();
+
+	return SampleColor;
+}
+
+FVector4 URaymarchUtils::GetWindowingParamsBitNumber(float WindowCenter, float WindowWidth, int EdgeBites, UTexture2D* TF)
 {
 	// TFPos == 1 => Value = WindowWidth - WindowWidth/2 + WindowCenter
 	// TFPos == 0 => Value = WindowCenter - (WindowWidth/2);
@@ -111,14 +144,20 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(float WindowCenter, float W
 	float Value1 = WindowCenter + (WindowWidth / 2.0);
     
 	const float Factor = 1.0/31.0;
-	uint Value0Bit = uint(ceil(Value0/Factor));
-	uint Value1Bit = uint(ceil(Value1/Factor));
+	uint Value0Bit = uint(Value0/Factor);
+	uint Value1Bit = uint(Value1/Factor);
 
+	check(Value0Bit <= Value1Bit);
+	
 	uint Result = 0;
 	for(uint i = Value0Bit; i <= Value1Bit; i++)
 	{
-		uint n = (1 << i);
-		Result |= n;
+		FFloat16Color TFColor = SampleFromTexture(Factor * i, 0.5, TF);
+		if (TFColor.A != 0)
+		{
+			uint n = (1 << i);
+			Result |= n;
+		}
 	}
 
 	for(int k = 0; k < EdgeBites; k++)

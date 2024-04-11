@@ -117,7 +117,7 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	// Initialize accumulated light energy.
 	float4 LightEnergy = 0;
 	// Jitter Entry position to avoid artifacts.
-	//JitterEntryPos(CurPos, LocalCamVec, MaterialParameters);
+	JitterEntryPos(CurPos, LocalCamVec, MaterialParameters);
 
 	// Get the volume depth for later use when recalculating coordinates.
 	float DataVolumeWidth = 0, DataVolumeHeight = 0, DataVolumeDepth = 0;
@@ -129,14 +129,14 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	float OctreeDepthConst = OctreeDepth;
 
 	// Get the bit number based on window center and window width.
-	uint WindowNumber = WindowMask.r; //GetWindowingParamsBitNumber(WindowingParams.x, WindowingParams.y);
+	uint UintWindowMask = WindowMask.r; //GetWindowingParamsBitNumber(WindowingParams.x, WindowingParams.y);
 	// Set to the mip number with worst detail.
 	const int MaxPossibleMip = 3;
 	int CurrentMip = OctreeMip;
 
 	float NeededLength = length(EntryPosition - ExitPosition);
-	CurPos = float3(clamp(CurPos.x,0.0,1.0), clamp(CurPos.y, 0.0, 1.0), clamp(CurPos.z, 0.0, 1.0));
-	int StepsCount = 0;
+
+	CurPos += LocalCamVec;
 	do
 	{
 		// Get the correct width, height and depth for current mip.
@@ -149,7 +149,7 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 		// Get the bit number saved in octree volume and check it against current window. In case the and operator results is true, the
 		// value in the volume should be used. If not, find the next position in volume upper mip and starts again. 
 		const uint BitNumber = asuint(OctreeVolume.Load(int4(VoxelPos, CurrentMip), 0).r);
-		if ((BitNumber & WindowNumber) == 0)
+		if ((BitNumber & UintWindowMask) == 0)
 		{
 			// Because of the volume texture mip properties, we need to calculate actual octree mip width.
 			float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
@@ -168,18 +168,10 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 				CurrentMip = clamp(CurrentMip,CurrentMip, MaxPossibleMip);
 				continue;
 			}
-			if(IsPositionInsideOctree(CurPos))
-			{
-				CurPos += LocalCamVec;
-				continue;
-			}
-			//else
-			//	return float4(0,0,1,1);
-			//The ray gets out from the area it is supposed to be. Exit the loop.
 			break;
 		}
 
-		if (CurrentMip == 1)
+		if (CurrentMip == OctreeMip)
 		{
 			// We found a mip with required data. Gather the actuall color sample from data volume.
 			float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSizeWorld, DataVolume, DataVolumeSampler,

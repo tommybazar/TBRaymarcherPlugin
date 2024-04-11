@@ -24,7 +24,7 @@ int NumberOfMips = 4;
 
 // Calculate the bit interpretation of the value by getting the number of bits and divide the in number by it. Then
 // move the bit to the correct bit possition.
-uint GetBitNumber(float InValue)
+uint GetBitMask(float InValue)
 {
 	const float Factor = 1.0/31.0;
 	return (1 << uint(InValue/Factor));
@@ -49,7 +49,7 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 				// For now, just copy volume value.
 				float Value = Volume.Load(int4(ActualPos, 0), 0).r;
 				
-				OctreeVolumeMip0[ActualPos] = GetBitNumber(Value);
+				OctreeVolumeMip0[ActualPos] = GetBitMask(Value);
 			}
 		}
 	}

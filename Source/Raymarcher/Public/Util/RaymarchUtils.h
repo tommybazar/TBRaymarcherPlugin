@@ -45,7 +45,7 @@ public:
 	static RAYMARCHER_API void GenerateOctree(FBasicRaymarchRenderingResources& Resources);
 	
 	// Returns a bit number where all the bits between the window center and window width are ones.
-	static FVector4 GetWindowingParamsBitNumber(float WindowCenter, float WindowWidth, int EdgeBites);
+	static FVector4 GetWindowingParamsBitNumber(float WindowCenter, float WindowWidth, int EdgeBites, UTexture2D* TF);
 	
 	/** Clears a light volume in provided raymarch resources. */
 	UFUNCTION(BlueprintCallable, Category = "Raymarcher")

@@ -582,6 +582,7 @@ void ARaymarchVolume::SetTFCurve(UCurveLinearColor* InTFCurve)
 		// Set TF Texture to the lit and octree material.
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
 		OctreeRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
+		SetMaterialWindowingParameters();
 		bRequestedRecompute = true;
 	}
 }
@@ -713,10 +714,13 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 		OctreeRaymarchMaterial->SetVectorParameterValue(
 			RaymarchParams::WindowingParams, RaymarchResources.WindowingParameters.ToLinearColor());
 
-		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitNumber(RaymarchResources.WindowingParameters.Center, RaymarchResources.WindowingParameters.Width, WindowMaskEdgeBitesCount);
+		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitNumber(RaymarchResources.WindowingParameters.Center,
+			RaymarchResources.WindowingParameters.Width, WindowMaskEdgeBitesCount, RaymarchResources.TFTextureRef);
 		FLinearColor LinearColor(WindowMask.X, WindowMask.Y, WindowMask.Z, WindowMask.W);
 		OctreeRaymarchMaterial->SetVectorParameterValue( RaymarchParams::WindowMask, LinearColor);
-		GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<32>(LinearColor.R).to_string().c_str());
+
+
+		GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<31>(LinearColor.R).to_string().c_str());
 	}
 }
 
