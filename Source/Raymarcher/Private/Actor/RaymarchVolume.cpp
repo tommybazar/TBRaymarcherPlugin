@@ -714,8 +714,7 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 		OctreeRaymarchMaterial->SetVectorParameterValue(
 			RaymarchParams::WindowingParams, RaymarchResources.WindowingParameters.ToLinearColor());
 
-		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitNumber(RaymarchResources.WindowingParameters.Center,
-			RaymarchResources.WindowingParameters.Width, WindowMaskEdgeBitesCount, RaymarchResources.TFTextureRef);
+		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitNumber(RaymarchResources.WindowingParameters, WindowMaskEdgeBitesCount, RaymarchResources.TFTextureRef);
 		FLinearColor LinearColor(WindowMask.X, WindowMask.Y, WindowMask.Z, WindowMask.W);
 		OctreeRaymarchMaterial->SetVectorParameterValue( RaymarchParams::WindowMask, LinearColor);
 

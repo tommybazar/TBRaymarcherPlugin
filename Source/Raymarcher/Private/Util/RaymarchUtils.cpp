@@ -134,20 +134,36 @@ FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
 	return SampleColor;
 }
 
-FVector4 URaymarchUtils::GetWindowingParamsBitNumber(float WindowCenter, float WindowWidth, int EdgeBites, UTexture2D* TF)
+FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters WindowingParams, int EdgeBites, UTexture2D* TF)
 {
 	// TFPos == 1 => Value = WindowWidth - WindowWidth/2 + WindowCenter
 	// TFPos == 0 => Value = WindowCenter - (WindowWidth/2);
 	using uint = unsigned int;
-    
-	float Value0 = WindowCenter - (WindowWidth / 2.0);
-	float Value1 = WindowCenter + (WindowWidth / 2.0);
+	
+	float Value0 = WindowingParams.Center - (WindowingParams.Width / 2.0);
+	float Value1 = WindowingParams.Center + (WindowingParams.Width / 2.0);
     
 	const float Factor = 1.0/31.0;
 	uint Value0Bit = uint(Value0/Factor);
 	uint Value1Bit = uint(Value1/Factor);
 
-	check(Value0Bit <= Value1Bit);
+	//check(Value0Bit > Value1Bit);
+	if(Value0Bit > Value1Bit)
+	{
+		Swap(Value0Bit, Value1Bit);
+	}
+
+	if (!WindowingParams.LowCutoff)
+	{
+		Value0Bit = 0;
+	}
+
+	if(!WindowingParams.HighCutoff)
+	{
+		Value1Bit = 31;
+	}
+	
+	
 	
 	uint Result = 0;
 	for(uint i = Value0Bit; i <= Value1Bit; i++)

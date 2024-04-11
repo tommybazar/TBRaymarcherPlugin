@@ -137,6 +137,7 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	float NeededLength = length(EntryPosition - ExitPosition);
 
 	CurPos += LocalCamVec;
+	int StepsCount = 0;
 	do
 	{
 		// Get the correct width, height and depth for current mip.
@@ -181,6 +182,8 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 
 			// Move to the next step.
 			CurPos += LocalCamVec;
+
+		//	StepsCount++;
 		}
 		else
 		{
@@ -198,6 +201,8 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	// allowed steps (for integrity reasons).	
 	} while(length((CurPos - EntryPosition)) < NeededLength);
 
+	//return float4(StepsCount/StepCount, 0,0,1);
+	
     return LightEnergy;
 }
 

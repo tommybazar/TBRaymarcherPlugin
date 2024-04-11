@@ -48,7 +48,6 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 				int3 ActualPos = ThreadOffset + LocalPos;
 				// For now, just copy volume value.
 				float Value = Volume.Load(int4(ActualPos, 0), 0).r;
-				
 				OctreeVolumeMip0[ActualPos] = GetBitMask(Value);
 			}
 		}
@@ -96,8 +95,11 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 							{
 								// Take current offset and append the final offset value to get the correct data position.  
 								int3 FinalPos = CurrentPositionOffset + int3(a, b, c);
-								uint NodeValue = asuint(Mips[Mip-1][FinalPos]);
+								uint NodeValue = Mips[Mip-1][FinalPos];
+								//NodeValue |= NodeValue << 1;
+								//NodeValue |= NodeValue >> 1;
 								Xor |= NodeValue;
+								
 							}
 						}
 					}
