@@ -74,22 +74,21 @@ float4 PerformRaymarchCubeSetup(float3 ClippingCenter,
     // Calculate box thickness at this pixel (in local space).
     float BoxThickness = max(0, EntryExitTimes.y - EntryExitTimes.x);
 
-	// Both entry point and exit point is clipped. Nothing to show.
 	if(IsCurPosClipped(EntryPosition, ClippingCenter, ClippingDirection) && IsCurPosClipped(ExitPosition, ClippingCenter, ClippingDirection))
 	{
-		return float4(EntryPosition, 0);
+		// Both entry point and exit point is clipped. Nothing to show. Set the thickness to zero.
+		BoxThickness = 0;
 	}
-	// Entry position is clipped, start from the plane intersection position.
-	if(IsCurPosClipped(EntryPosition, ClippingCenter, ClippingDirection))
+	else if(IsCurPosClipped(EntryPosition, ClippingCenter, ClippingDirection))
 	{
-		// Get exact point of intersection.
+		// Entry position is clipped, start from the plane intersection position.
 		float3 PlaneIntersectionPoint = EntryPosition + (LocalCamVec * PlaneHitTime);
 		EntryPosition = PlaneIntersectionPoint;
 		BoxThickness = max(0, BoxThickness - PlaneHitTime);
 	}
-	// Exit position is clipped. Adjust the thickness.
-	if(IsCurPosClipped(ExitPosition, ClippingCenter, ClippingDirection))
+	else if(IsCurPosClipped(ExitPosition, ClippingCenter, ClippingDirection))
 	{
+		// Exit position is clipped. Adjust the thickness.
 		BoxThickness = max(0, PlaneHitTime);
 	}
     

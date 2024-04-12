@@ -102,10 +102,10 @@ void URaymarchUtils::GenerateOctree(FBasicRaymarchRenderingResources& Resources)
 }
 
 
-// Function to sample from the Texture2D
+// Function to sample from the Texture2D. The U and V coordinate are normalized texture coodinates.
 FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
 {
-	// Ensure the Texture2D is valid
+	// Ensure the Texture2D is valid.
 	if (TF == nullptr)
 	{
 		return {};
@@ -117,18 +117,18 @@ FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
 	int32 Y = FMath::Clamp(FMath::RoundToInt(V * TextureHeight), 0, TextureHeight - 1);
 
 	
-	// Get the texture data
+	// Get the texture data.
 	FTexture2DMipMap* MipMap = &TF->GetPlatformData()->Mips[0];
 	const void* TextureData = MipMap->BulkData.LockReadOnly();
 
-	// Calculate the index in the texture data
+	// Calculate the index in the texture data.
 	int32 TextureDataIndex = (Y * MipMap->SizeX) + X;
 
-	// Sample the color
+	// Sample the color.
 	const FFloat16Color* ColorData = static_cast<const FFloat16Color*>(TextureData);
 	FFloat16Color SampleColor = ColorData[TextureDataIndex];
 
-	// Unlock the texture data
+	// Unlock the texture data.
 	MipMap->BulkData.Unlock();
 
 	return SampleColor;
@@ -140,18 +140,13 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 	// TFPos == 0 => Value = WindowCenter - (WindowWidth/2);
 	using uint = unsigned int;
 	
-	float Value0 = WindowingParams.Center - (WindowingParams.Width / 2.0);
-	float Value1 = WindowingParams.Center + (WindowingParams.Width / 2.0);
+	float Value0 = (WindowingParams.Center - (WindowingParams.Width / 2.0));
+	float Value1 = (WindowingParams.Center + (WindowingParams.Width / 2.0));
     
 	const float Factor = 1.0/31.0;
-	uint Value0Bit = uint(Value0/Factor);
-	uint Value1Bit = uint(Value1/Factor);
+	uint Value0Bit = FMath::Clamp(uint(Value0/Factor), 0, 31);
+	uint Value1Bit = FMath::Clamp(uint(Value1/Factor),0,31);
 
-	//check(Value0Bit > Value1Bit);
-	if(Value0Bit > Value1Bit)
-	{
-		Swap(Value0Bit, Value1Bit);
-	}
 
 	if (!WindowingParams.LowCutoff)
 	{
@@ -162,8 +157,11 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 	{
 		Value1Bit = 31;
 	}
-	
-	
+
+	if(Value0Bit > Value1Bit)
+	{
+		Swap(Value0Bit, Value1Bit);
+	}
 	
 	uint Result = 0;
 	for(uint i = Value0Bit; i <= Value1Bit; i++)
@@ -181,7 +179,7 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 		Result |= (Result << 1);
 		Result |= (Result >> 1);
 	}
-	GEngine->AddOnScreenDebugMessage(54,10,FColor::Orange, FString::Printf(TEXT("%u"),Result));
+	GEngine->AddOnScreenDebugMessage(54,10,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
 	return FVector4(static_cast<float>(Result),0,0,0 );
 }
 
