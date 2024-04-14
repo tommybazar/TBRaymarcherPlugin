@@ -192,6 +192,10 @@ public:
 	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
 	uint32 OctreeVolumeMip = 0;
 
+	/** Define mip level that octree raymarch material will render.**/
+	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
+	uint32 OctreeStartingMip = 0;
+
 	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
 	uint32 WindowMaskEdgeBitesCount = 0;
 

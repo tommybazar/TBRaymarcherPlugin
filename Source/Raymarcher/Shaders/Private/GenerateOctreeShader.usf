@@ -26,7 +26,7 @@ int NumberOfMips = 4;
 // move the bit to the correct bit possition.
 uint GetBitMask(float InValue)
 {
-	const float Factor = 1.0/31.0;
+	const float Factor = 1.0/23.0;
 	return (1 << uint(InValue/Factor));
 }
 
@@ -95,9 +95,8 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 							{
 								// Take current offset and append the final offset value to get the correct data position.  
 								int3 FinalPos = CurrentPositionOffset + int3(a, b, c);
-								uint NodeValue = Mips[Mip-1][FinalPos];
+								uint NodeValue = asuint(Mips[Mip-1][FinalPos]);
 								Xor |= NodeValue;
-								
 							}
 						}
 					}

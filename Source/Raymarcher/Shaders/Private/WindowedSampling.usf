@@ -51,32 +51,6 @@ float4 SampleWindowedVolumeOctreeStep(int3 CurPos, float StepSize, Texture3D Vol
 	return SampleWindowedTransferFunction(DataValue, StepSize, TF, TFSampler, WindowingParams);
 }
 
-// Returns a bit number where all the bits between the window center and window width are ones.
-uint GetWindowingParamsBitNumber(float WindowCenter, float WindowWidth)
-{
-	// TFPos == 1 => Value = WindowWidth - WindowWidth/2 + WindowCenter
-	// TFPos == 0 => Value = WindowCenter - (WindowWidth/2);
-    
-	float Value0 = WindowCenter - (WindowWidth / 2.0);
-	float Value1 = WindowWidth / 2.0 + WindowCenter;
-    
-	const float Factor = 1.0/31.0;
-	uint Value0Bit = uint(Value0/Factor);
-	uint Value1Bit = uint(Value1/Factor);
-
-	uint Result = 0;
-	for(uint i = Value0Bit; i <= Value1Bit; i++)
-	{
-		uint n = (1 << i);
-		Result |= n;
-	}
-
-	Result |= (Result << 1);
-	Result |= (Result >> 1);
-	
-	return Result;
-}
-
 bool IsPositionInsideOctree(float3 Position)
 {
 	return Position.x <= 1.0 && Position.y <= 1.0 && Position.z <= 1.0 && Position.x >= 0 && Position.y >= 0 && Position.z >= 0;

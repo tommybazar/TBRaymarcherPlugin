@@ -136,6 +136,7 @@ void ARaymarchVolume::PostRegisterAllComponents()
 		// Set default valuees for the octree raymarch material.
 		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
 		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeVolumeMip);
+		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeStartingMip, OctreeStartingMip);
 	}
 
 	if (StaticMeshComponent)
@@ -314,6 +315,14 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		if (RaymarchResources.bIsInitialized)
 		{
 			OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeVolumeMip);
+		}
+	}
+
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, OctreeStartingMip))
+	{
+		if (RaymarchResources.bIsInitialized)
+		{
+			OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeStartingMip, OctreeStartingMip);
 		}
 	}
 
@@ -719,7 +728,7 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 		OctreeRaymarchMaterial->SetVectorParameterValue( RaymarchParams::WindowMask, LinearColor);
 
 
-		GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<31>(LinearColor.R).to_string().c_str());
+		GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<32>(LinearColor.R).to_string().c_str());
 	}
 }
 

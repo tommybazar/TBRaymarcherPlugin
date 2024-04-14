@@ -142,10 +142,13 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 	
 	float Value0 = (WindowingParams.Center - (WindowingParams.Width / 2.0));
 	float Value1 = (WindowingParams.Center + (WindowingParams.Width / 2.0));
-    
-	const float Factor = 1.0/31.0;
-	uint Value0Bit = FMath::Clamp(uint(Value0/Factor), 0, 31);
-	uint Value1Bit = FMath::Clamp(uint(Value1/Factor),0,31);
+
+	Value0 = FMath::Clamp(Value0, 0.0f, 1.0f);
+	Value1 = FMath::Clamp(Value1, 0.0f, 1.0f);
+	
+	const float Factor = 1.0/23.0;
+	uint Value0Bit = FMath::Clamp(uint(Value0/Factor), 0, 23);
+	uint Value1Bit = FMath::Clamp(uint(Value1/Factor),0,23);
 
 
 	if (!WindowingParams.LowCutoff)
@@ -155,7 +158,7 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 
 	if(!WindowingParams.HighCutoff)
 	{
-		Value1Bit = 31;
+		Value1Bit = 23;
 	}
 
 	if(Value0Bit > Value1Bit)
@@ -179,8 +182,8 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 		Result |= (Result << 1);
 		Result |= (Result >> 1);
 	}
-	GEngine->AddOnScreenDebugMessage(54,10,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
-	return FVector4(static_cast<float>(Result),0,0,0 );
+	GEngine->AddOnScreenDebugMessage(54,100,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
+	return FVector4(Result,0,0,0 );
 }
 
 

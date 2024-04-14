@@ -93,12 +93,12 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
                               Texture2D TF, // Transfer function texture.
                               float3 CurPos, float Thickness, // CurPos = Entry Position, Thickness is thickness of cube along the ray. Both in UVW space.
                               float StepCount, // How many steps we should take. Actual number of steps taken is StepCount * Thickness.
-                              //float3 ClippingCenter, float3 ClippingDirection, // Clipping plane position and direction of clipped away region
                               float4 WindowingParams,
                               Texture3D OctreeVolume,
                               SamplerState OctreeVolumeSampler,
                               uint OctreeMip,
                               float4 WindowMask,
+                              uint StartingMip,
                               FMaterialPixelParameters MaterialParameters) // Material Parameters provided by UE.
 {
 	const float3 EntryPosition = CurPos;
@@ -134,16 +134,11 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	// Set to the mip number with worst detail.
 	const int MaxPossibleMip = 3;
 	// Current mip where the algorithm raymarch data in octree.
-	int CurrentMip = OctreeMip;
+	int CurrentMip = StartingMip;
 	// The distance the raymarch must pass to calculate required data.
 	float MaxDistance = length(EntryPosition - ExitPosition);
 	// Move the CurPos to the inside of the octree in case it is outside.  
-	if (!IsPositionInsideOctree(EntryPosition))
-	{
-		// Append just the direction vector to get to the octree since we know the CurPos passed to this function is always closer to the
-		// octree than the length of direction vector.
-		CurPos += LocalCamVec;
-	}
+	CurPos += LocalCamVec;
 	do
 	{
 		// Get the correct width, height and depth for current mip.
@@ -163,12 +158,12 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 			// Get the box min values calculated in UV coordinates.
 			float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, int(CurPos.z * AdjustedDepth) / AdjustedDepth);
 			// Get the box max values calculated in UV coordinates.
-			float3 BoxMax = float3((VoxelPos.x + 1) / OctreeWidth, (VoxelPos.y + 1) / OctreeHeight, (int(CurPos.z * AdjustedDepth) + 1) / AdjustedDepth);
+			float3 BoxMax = float3((VoxelPos.x + 1.0) / OctreeWidth, (VoxelPos.y + 1.0) / OctreeHeight, (int(CurPos.z * AdjustedDepth) + 1.0) / AdjustedDepth);
 			float2 EntryTimes = float2(0,0);
 			if (CheckedRayAABBIntersection(CurPos, LocalCamVec, BoxMin, BoxMax, EntryTimes))
 			{
 				// Use ceil to align with the requested step size.
-				CurPos += LocalCamVec * ceil(EntryTimes.y);
+				CurPos += LocalCamVec * ceil(EntryTimes.y);	// LocalCamVec * (EntryTimes.y + 0.01);
 
 				// Current mip does not have useful data, move to upper mip (bidirectional traversal).
 				CurrentMip += 1;
