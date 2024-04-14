@@ -115,7 +115,6 @@ FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
 	int32 TextureHeight = TF->GetSizeY();
 	int32 X = FMath::Clamp(FMath::RoundToInt(U * TextureWidth), 0, TextureWidth - 1);
 	int32 Y = FMath::Clamp(FMath::RoundToInt(V * TextureHeight), 0, TextureHeight - 1);
-
 	
 	// Get the texture data.
 	FTexture2DMipMap* MipMap = &TF->GetPlatformData()->Mips[0];

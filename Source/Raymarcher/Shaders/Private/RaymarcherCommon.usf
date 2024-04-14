@@ -103,7 +103,7 @@ float LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePo
 		return 0.0; // Lines are parallel
 	}
 
-	// Calculate distance parameter 't'
+	// Calculate distance parameter 'Multiplier'.
 	float numerator = dot(PlaneNormal, PlanePoint - LinePoint);
 	float denominator = dot(PlaneNormal, LineDirection);
 	float Multiplier = numerator / denominator;

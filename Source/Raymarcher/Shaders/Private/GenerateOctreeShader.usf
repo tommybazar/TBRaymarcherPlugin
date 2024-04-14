@@ -85,7 +85,6 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 					// Multiply LocalPos by two to get the correct position we can load data from in range <0,1>.
 					int3 CurrentPositionOffset = LowerMipOffset + LocalPos * 2;		
 
-					// For now save only the maximal value from all 8 nodes.
 					uint Xor = 0;
 					for (int a = 0; a < 2; a ++)
 					{

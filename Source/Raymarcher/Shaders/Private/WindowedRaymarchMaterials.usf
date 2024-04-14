@@ -164,7 +164,6 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 			{
 				// Use ceil to align with the requested step size.
 				CurPos += LocalCamVec * ceil(EntryTimes.y);
-				//CurPos += LocalCamVec * (EntryTimes.y + 0.01);
 
 				// Current mip does not have useful data, move to upper mip (bidirectional traversal).
 				CurrentMip += 1;
