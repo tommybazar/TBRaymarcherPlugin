@@ -725,10 +725,10 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 
 		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitNumber(RaymarchResources.WindowingParameters, WindowMaskEdgeBitesCount, RaymarchResources.TFTextureRef);
 		FLinearColor LinearColor(WindowMask.X, WindowMask.Y, WindowMask.Z, WindowMask.W);
-		OctreeRaymarchMaterial->SetVectorParameterValue( RaymarchParams::WindowMask, LinearColor);
+		OctreeRaymarchMaterial->SetVectorParameterValue(RaymarchParams::WindowMask, LinearColor);
 
-
-		GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<32>(LinearColor.R).to_string().c_str());
+		// Uncomment to debug window bit mask.
+		//GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<32>(LinearColor.R).to_string().c_str());
 	}
 }
 

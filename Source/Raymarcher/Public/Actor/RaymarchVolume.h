@@ -188,14 +188,15 @@ public:
 	UPROPERTY(EditAnywhere)
 	float RaymarchingSteps = 150;
 
-	/** Define mip level that octree raymarch material will render.**/
+	/** Define minimal octree raymarch mip that will be used to collect data. **/
 	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
 	uint32 OctreeVolumeMip = 0;
 
-	/** Define mip level that octree raymarch material will render.**/
+	/** Define the mip from which the octree raymarch algorithm starts raymarching. **/
 	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
 	uint32 OctreeStartingMip = 0;
 
+	/** Adds one bite to the each side of the window. Use for debugging purposes. **/
 	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
 	uint32 WindowMaskEdgeBitesCount = 0;
 

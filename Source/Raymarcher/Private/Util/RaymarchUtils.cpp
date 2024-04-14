@@ -136,16 +136,18 @@ FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
 
 FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters WindowingParams, int EdgeBites, UTexture2D* TF)
 {
-	// TFPos == 1 => Value = WindowWidth - WindowWidth/2 + WindowCenter
-	// TFPos == 0 => Value = WindowCenter - (WindowWidth/2);
+	// TFPos == 1.0 => Value = WindowCenter + WindowWidth/2
+	// TFPos == 0.0 => Value = WindowCenter - WindowWidth/2;
 	using uint = unsigned int;
 	
 	float Value0 = (WindowingParams.Center - (WindowingParams.Width / 2.0));
 	float Value1 = (WindowingParams.Center + (WindowingParams.Width / 2.0));
 
+	// Clamp the values since we do not expect negative value in currently rendered volume.
 	Value0 = FMath::Clamp(Value0, 0.0f, 1.0f);
 	Value1 = FMath::Clamp(Value1, 0.0f, 1.0f);
-	
+
+	// TODO: Change this whole logic to be calculated using other number type than float (23 is here because of mantisa).
 	const float Factor = 1.0/23.0;
 	uint Value0Bit = FMath::Clamp(uint(Value0/Factor), 0, 23);
 	uint Value1Bit = FMath::Clamp(uint(Value1/Factor),0,23);
@@ -169,6 +171,7 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 	uint Result = 0;
 	for(uint i = Value0Bit; i <= Value1Bit; i++)
 	{
+		// Sample the current value from texture. In case the alpha is zero, do not use it.
 		FFloat16Color TFColor = SampleFromTexture(Factor * i, 0.5, TF);
 		if (TFColor.A != 0)
 		{
@@ -177,12 +180,14 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 		}
 	}
 
+	// Make the window mask bigger based on the edge bites.
 	for(int k = 0; k < EdgeBites; k++)
 	{
 		Result |= (Result << 1);
 		Result |= (Result >> 1);
 	}
-	GEngine->AddOnScreenDebugMessage(54,100,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
+	// Use for debug purpose.
+	//GEngine->AddOnScreenDebugMessage(54,100,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
 	return FVector4(Result,0,0,0 );
 }
 
