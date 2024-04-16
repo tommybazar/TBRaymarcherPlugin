@@ -143,22 +143,22 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	{
 		// Get the correct width, height and depth for current mip.
 		OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
+		// Because of the volume texture mip properties, we need to calculate actual octree mip width.
+		float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
 
 		// Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
 		// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
-		int3 VoxelPos = int3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
+		int3 VoxelPos = int3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, CurPos.z * AdjustedDepth);
 
 		// Get the bit number saved in octree volume and check it against current window. In case the and operator results is true, the
 		// value in the volume should be used. If not, find the next position in volume upper mip and starts again. 
 		const uint BitNumber = asuint(OctreeVolume.Load(int4(VoxelPos, CurrentMip), 0).r);
 		if ((BitNumber & UintWindowMask) == 0)
 		{
-			// Because of the volume texture mip properties, we need to calculate actual octree mip width.
-			float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
 			// Get the box min values calculated in UV coordinates.
-			float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, int(CurPos.z * AdjustedDepth) / AdjustedDepth);
+			float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, VoxelPos.z / AdjustedDepth);
 			// Get the box max values calculated in UV coordinates.
-			float3 BoxMax = float3((VoxelPos.x + 1.0) / OctreeWidth, (VoxelPos.y + 1.0) / OctreeHeight, (int(CurPos.z * AdjustedDepth) + 1.0) / AdjustedDepth);
+			float3 BoxMax = float3((VoxelPos.x + 1.0) / OctreeWidth, (VoxelPos.y + 1.0) / OctreeHeight, (VoxelPos.z + 1.0) / AdjustedDepth);
 			float2 EntryTimes = float2(0,0);
 			if (CheckedRayAABBIntersection(CurPos, LocalCamVec, BoxMin, BoxMax, EntryTimes))
 			{

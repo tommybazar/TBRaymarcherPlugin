@@ -26,8 +26,18 @@ int NumberOfMips = 4;
 // move the bit to the correct bit possition.
 uint GetBitMask(float InValue)
 {
-	const float Factor = 1.0/23.0;
-	return (1 << uint(InValue/Factor));
+	const uint MaxBits = 16;
+	const float Factor = 1.0/float(MaxBits);
+	float Add = 0;
+	for(uint i = 0; i <= MaxBits; i++)
+	{
+		if(Add + Factor > InValue)
+		{
+			return (1 << i);
+		}
+		Add += Factor;
+	}
+	return (1 << MaxBits);
 }
 
 [numthreads(1, 1, 1)]
@@ -47,8 +57,18 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 				int3 LocalPos = int3(x, y, z);
 				int3 ActualPos = ThreadOffset + LocalPos;
 
-				float Value = Volume.Load(int4(ActualPos, 0), 0).r;
-				OctreeVolumeMip0[ActualPos] = GetBitMask(Value);
+				// We want to have the leaf node composed from minimum of 4 nearest values.
+				for (int a = 0; a < 4; a ++)
+				{
+					for (int b = 0; b < 4; b ++)
+					{
+						for (int c = 0; c < 4; c ++)
+						{
+							float Value = Volume.Load(int4(ActualPos + int3(a,b,c), 0), 0).r;
+							OctreeVolumeMip0[ActualPos] |= GetBitMask(Value);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -94,14 +114,14 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 							{
 								// Take current offset and append the final offset value to get the correct data position.  
 								int3 FinalPos = CurrentPositionOffset + int3(a, b, c);
-								uint NodeValue = asuint(Mips[Mip-1][FinalPos]);
+								uint NodeValue = Mips[Mip-1][FinalPos];
 								Xor |= NodeValue;
 							}
 						}
 					}
 					int3 MipPos = ThreadOffset/Divisor + LocalPos;
 					// Insert the value to the Mip.
-					MipBuffer[MipPos] = Xor;
+					MipBuffer[MipPos] |= Xor;
 				}
 			}
 		}
