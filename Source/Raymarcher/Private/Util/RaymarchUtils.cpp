@@ -146,11 +146,12 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 	Value0 = FMath::Clamp(Value0, 0.0f, 1.0f);
 	Value1 = FMath::Clamp(Value1, 0.0f, 1.0f);
 
+	// Define the maximal number of bits in bitmask window.
 	static constexpr uint MaxNumberOfBits = 16;
 	// TODO: Change this whole logic to be calculated using other number type than float (23 is here because of mantisa).
 	const float Factor = 1.0/static_cast<float>(MaxNumberOfBits);
 
-	auto GetBitNumber = [&](float Val) -> uint
+	auto GetBitMask = [&](float Val) -> uint
 	{
 		float Add = 0.0f;
 		for (uint i = 0; i <= MaxNumberOfBits; i++)
@@ -164,8 +165,8 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 		return MaxNumberOfBits;
 	};
 	
-	uint Value0Bit = FMath::Clamp(GetBitNumber(Value0), 0, MaxNumberOfBits);
-	uint Value1Bit = FMath::Clamp(GetBitNumber(Value1), 0, MaxNumberOfBits);
+	uint Value0Bit = FMath::Clamp(GetBitMask(Value0), 0, MaxNumberOfBits);
+	uint Value1Bit = FMath::Clamp(GetBitMask(Value1), 0, MaxNumberOfBits);
 
 
 	if (!WindowingParams.LowCutoff)

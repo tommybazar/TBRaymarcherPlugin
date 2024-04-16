@@ -57,7 +57,7 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 				int3 LocalPos = int3(x, y, z);
 				int3 ActualPos = ThreadOffset + LocalPos;
 
-				// We want to have the leaf node composed from minimum of 4 nearest values.
+				// We want to have the leaf node composed from minimum of 4 nearest values for each axis.
 				for (int a = 0; a < 4; a ++)
 				{
 					for (int b = 0; b < 4; b ++)
@@ -121,7 +121,7 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 					}
 					int3 MipPos = ThreadOffset/Divisor + LocalPos;
 					// Insert the value to the Mip.
-					MipBuffer[MipPos] |= Xor;
+					MipBuffer[MipPos] = Xor;
 				}
 			}
 		}
