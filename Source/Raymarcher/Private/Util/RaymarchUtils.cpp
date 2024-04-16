@@ -133,7 +133,7 @@ FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
 	return SampleColor;
 }
 
-FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters WindowingParams, int EdgeBites, UTexture2D* TF)
+FVector4 URaymarchUtils::GetWindowingParamsBitMask(FWindowingParameters WindowingParams, int EdgeBits, UTexture2D* TF)
 {
 	// TFPos == 1.0 => Value = WindowCenter + WindowWidth/2
 	// TFPos == 0.0 => Value = WindowCenter - WindowWidth/2;
@@ -145,10 +145,9 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 	// Clamp the values since we do not expect negative value in currently rendered volume.
 	Value0 = FMath::Clamp(Value0, 0.0f, 1.0f);
 	Value1 = FMath::Clamp(Value1, 0.0f, 1.0f);
-
+	
 	// Define the maximal number of bits in bitmask window.
-	static constexpr uint MaxNumberOfBits = 16;
-	// TODO: Change this whole logic to be calculated using other number type than float (23 is here because of mantisa).
+	static constexpr uint MaxNumberOfBits = 31;
 	const float Factor = 1.0/static_cast<float>(MaxNumberOfBits);
 
 	auto GetBitMask = [&](float Val) -> uint
@@ -196,15 +195,44 @@ FVector4 URaymarchUtils::GetWindowingParamsBitNumber(FWindowingParameters Window
 		}
 	}
 
-	// Make the window mask bigger based on the edge bites.
-	for(int k = 0; k < EdgeBites; k++)
+	// Make the window mask bigger based on the edge Bits.
+	for(int k = 0; k < EdgeBits; k++)
 	{
 		Result |= (Result << 1);
 		Result |= (Result >> 1);
 	}
 	// Use for debug purpose.
-	//GEngine->AddOnScreenDebugMessage(54,100,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
-	return FVector4(Result,0,0,0 );
+	GEngine->AddOnScreenDebugMessage(54,100,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
+
+	union FloatFromUint
+	{
+		uint32_t uintValue;
+		float floatValue;
+	};
+
+	FloatFromUint convert;
+
+	convert.uintValue = 0b01111111110000000000000000000000;
+	UE_LOG(LogTemp, Warning, TEXT("+nan = %f"), convert.floatValue);
+
+	convert.uintValue = 0b11111111110000000000000000000000;
+	UE_LOG(LogTemp, Warning, TEXT("-nan = %f"), convert.floatValue);
+
+	convert.uintValue = 0b01111111100000000000000000000000;
+	UE_LOG(LogTemp, Warning, TEXT("+inf = %f"), convert.floatValue);
+
+	convert.uintValue = 0b11111111100000000000000000000000;
+	UE_LOG(LogTemp, Warning, TEXT("-inf = %f"), convert.floatValue);
+
+	// 52.5 from https://www.h-schmidt.net/FloatConverter/IEEE754.html
+	convert.uintValue = 0b01000010010100100000000000000000;
+	UE_LOG(LogTemp, Warning, TEXT("52.5 = %f"), convert.floatValue);
+	
+	// We need to pack the uint bits into a float value to pass it to the shader.
+	// In the shader, this HAS to be read with asuint(value). Otherwise, it will be garbage.
+	FloatFromUint FloatResult;
+	FloatResult.uintValue = Result;
+	return FVector4(FloatResult.floatValue,0,0,0 );
 }
 
 

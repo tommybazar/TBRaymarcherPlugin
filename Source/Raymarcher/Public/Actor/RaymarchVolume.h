@@ -198,7 +198,7 @@ public:
 
 	/** Adds one bite to the each side of the window. Use for debugging purposes. **/
 	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
-	uint32 WindowMaskEdgeBitesCount = 0;
+	uint32 WindowMaskEdgeBitsCount = 0;
 
 	/** If true, the light volume texture will be created using R32F format instead of the standard G8. This allows
 		Illumination values greater than 1 (over-lighted) to be visible. Comes at the cost of 4x memory consumption and

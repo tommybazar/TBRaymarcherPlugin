@@ -26,7 +26,7 @@ int NumberOfMips = 4;
 // move the bit to the correct bit possition.
 uint GetBitMask(float InValue)
 {
-	const uint MaxBits = 16;
+	const uint MaxBits = 31;
 	const float Factor = 1.0/float(MaxBits);
 	float Add = 0;
 	for(uint i = 0; i <= MaxBits; i++)
@@ -58,11 +58,11 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 				int3 ActualPos = ThreadOffset + LocalPos;
 
 				// We want to have the leaf node composed from minimum of 4 nearest values for each axis.
-				for (int a = -2; a <= 2; a++)
+				for (int a = -1; a <= 1; a++)
 				{
-					for (int b = -2; b <= 2; b++)
+					for (int b = -1; b <= 1; b++)
 					{
-						for (int c = -2; c <= 2; c++)
+						for (int c = -1; c <= 1; c++)
 						{
 							
 							int3 FPos = ActualPos + int3(a,b,c);

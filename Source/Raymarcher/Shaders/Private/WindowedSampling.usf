@@ -42,21 +42,3 @@ float4 SampleWindowedVolumeStep(float3 CurPos, float StepSize, Texture3D Volume,
 	const float DataValue = Volume.SampleLevel(VolumeSampler, CurPos, 0).r;
 	return SampleWindowedTransferFunction(DataValue, StepSize, TF, TFSampler, WindowingParams);
 }
-
-// Samples the data volume based on actual texel coordinate, transforms it to fit the Windowing parameters and then transforms it by the TF. Corrects the opacity to account for StepSize (in Unreal units) 
-float4 SampleWindowedVolumeOctreeStep(int3 CurPos, float StepSize, Texture3D Volume, Texture2D TF, SamplerState TFSampler, float4 WindowingParams, float MipLevel = 0)
-{
-	int4 MipLevelPos = int4(CurPos.x, CurPos.y, CurPos.z, MipLevel);
-	const float DataValue = Volume.Load(MipLevelPos, 0).r;
-	return SampleWindowedTransferFunction(DataValue, StepSize, TF, TFSampler, WindowingParams);
-}
-
-bool IsPositionInsideOctree(float3 Position)
-{
-	return Position.x <= 1.0 && Position.y <= 1.0 && Position.z <= 1.0 && Position.x >= 0 && Position.y >= 0 && Position.z >= 0;
-}
-
-bool Equals(float3 Vector1, float3 Vector2)
-{
-	return abs(Vector1.x - Vector2.x) < 0.00001 && abs(Vector1.y - Vector2.y) < 0.00001 && abs(Vector1.z - Vector2.z) < 0.00001;
-}

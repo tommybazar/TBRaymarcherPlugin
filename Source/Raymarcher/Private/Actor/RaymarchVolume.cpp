@@ -326,7 +326,7 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		}
 	}
 
-	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, WindowMaskEdgeBitesCount))
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, WindowMaskEdgeBitsCount))
 	{
 		if (RaymarchResources.bIsInitialized)
 		{
@@ -723,12 +723,12 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 		OctreeRaymarchMaterial->SetVectorParameterValue(
 			RaymarchParams::WindowingParams, RaymarchResources.WindowingParameters.ToLinearColor());
 
-		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitNumber(RaymarchResources.WindowingParameters, WindowMaskEdgeBitesCount, RaymarchResources.TFTextureRef);
+		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitMask(RaymarchResources.WindowingParameters, WindowMaskEdgeBitsCount, RaymarchResources.TFTextureRef);
 		FLinearColor LinearColor(WindowMask.X, WindowMask.Y, WindowMask.Z, WindowMask.W);
 		OctreeRaymarchMaterial->SetVectorParameterValue(RaymarchParams::WindowMask, LinearColor);
 
 		// Uncomment to debug window bit mask.
-		//GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<32>(LinearColor.R).to_string().c_str());
+		GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<32>(LinearColor.R).to_string().c_str());
 	}
 }
 
