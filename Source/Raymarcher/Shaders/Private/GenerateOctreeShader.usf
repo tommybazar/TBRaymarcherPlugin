@@ -57,6 +57,7 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 				int3 LocalPos = int3(x, y, z);
 				int3 ActualPos = ThreadOffset + LocalPos;
 
+				uint XorredNeighborhood = 0;
 				// We want to have the leaf node composed from minimum of 4 nearest values for each axis.
 				for (int a = -1; a <= 1; a++)
 				{
@@ -65,12 +66,13 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 						for (int c = -1; c <= 1; c++)
 						{
 							
-							int3 FPos = ActualPos + int3(a,b,c);
-							float Value = Volume.Load(int4(FPos, 0), 0).r;
-							OctreeVolumeMip0[ActualPos] |= GetBitMask(Value);
+							int3 NeighborhoodPosition = ActualPos + int3(a,b,c);
+							float Value = Volume.Load(int4(NeighborhoodPosition, 0), 0).r;
+							XorredNeighborhood |= GetBitMask(Value);
 						}
 					}
 				}
+				OctreeVolumeMip0[ActualPos] = XorredNeighborhood;
 			}
 		}
 	}
