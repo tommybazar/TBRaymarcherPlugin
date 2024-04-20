@@ -22,22 +22,20 @@ Texture3D Volume;
 int LeafNodeSize = 8;
 int NumberOfMips = 4;
 
-// Calculate the bit interpretation of the value by getting the number of bits and divide the in number by it. Then
-// move the bit to the correct bit possition.
-uint GetBitMask(float InValue)
+uint GetValueIndexInBitMask(float InValue)
 {
-	const uint MaxBits = 31;
-	const float Factor = 1.0/float(MaxBits);
-	float Add = 0;
-	for(uint i = 0; i <= MaxBits; i++)
-	{
-		if(Add + Factor > InValue)
-		{
-			return (1 << i);
-		}
-		Add += Factor;
-	}
-	return (1 << MaxBits);
+    const uint MaxBits = 31;
+    const float Factor = 1.0/float(MaxBits);
+    float Add = 0;
+    for(uint i = 0; i <= MaxBits; i++)
+    {
+        if(Add + Factor > InValue)
+        {
+            return i;
+        }
+        Add += Factor;
+    }
+    return MaxBits;
 }
 
 [numthreads(1, 1, 1)]
@@ -58,6 +56,8 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 				int3 ActualPos = ThreadOffset + LocalPos;
 
 				uint XorredNeighborhood = 0;
+			    float Min = 1.0;
+			    float Max = 0.0;
 				// We want to have the leaf node composed from minimum of 4 nearest values for each axis.
 				for (int a = -1; a <= 1; a++)
 				{
@@ -68,10 +68,20 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 							
 							int3 NeighborhoodPosition = ActualPos + int3(a,b,c);
 							float Value = Volume.Load(int4(NeighborhoodPosition, 0), 0).r;
-							XorredNeighborhood |= GetBitMask(Value);
+                            Min = min(Min, Value);
+                            Max = max(Max, Value);
 						}
 					}
 				}
+
+			    uint BitMax = GetValueIndexInBitMask(Max);
+			    uint BitMin = GetValueIndexInBitMask(Min);
+
+			    for(uint i = BitMin; i <= BitMax; i++)
+			    {
+			        XorredNeighborhood |= (1 << i);    
+			    }
+			    
 				OctreeVolumeMip0[ActualPos] = XorredNeighborhood;
 			}
 		}
