@@ -93,3 +93,21 @@ bool CheckedRayAABBIntersection(float3 RayOrigin, float3 RayDir, float3 BoxMin, 
 	EntryExitTimes = RayAABBIntersection(RayOrigin, RayDir, BoxMin, BoxMax);
 	return EntryExitTimes.y > max(EntryExitTimes.x, 0.0);
 }
+
+// Returns the multiplier where the line defined by point and vector crosses the plane.
+float LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePoint, float3 LineDirection)
+{
+	// Check for parallel lines
+	float Dot = dot(PlaneNormal, LineDirection);
+	if (abs(Dot) < 0.0000001) {
+		return 0.0; // Lines are parallel
+	}
+
+	// Calculate distance parameter 'Multiplier'.
+	float numerator = dot(PlaneNormal, PlanePoint - LinePoint);
+	float denominator = dot(PlaneNormal, LineDirection);
+	float Multiplier = numerator / denominator;
+
+	return Multiplier;
+}
+

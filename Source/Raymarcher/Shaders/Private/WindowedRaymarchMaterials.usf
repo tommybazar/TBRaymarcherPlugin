@@ -27,7 +27,7 @@ void AccumulateWindowedRaymarchStep(inout float4 AccumulatedLightEnergy, float3 
     
     // Get lighting information from illumination volume for current position and
     // Multiply sampled color with light color to adjust intensity according to light strength.
-    ColorSample.rgb = ColorSample.rgb * LightVolume.SampleLevel(Material.Wrap_WorldGroupSettings, saturate(CurPos), 0).r;
+	ColorSample.rgb = ColorSample.rgb * LightVolume.SampleLevel(Material.Wrap_WorldGroupSettings, saturate(CurPos), 0).r;
 	// Accumulate current colored sample to the final values.
     AccumulateLightEnergy(AccumulatedLightEnergy, ColorSample);
 }
@@ -39,7 +39,6 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
                               Texture3D LightVolume, // Light Volume  
                               float3 CurPos, float Thickness, // CurPos = Entry Position, Thickness is thickness of cube along the ray. Both in UVW space.
                               float StepCount, // How many steps we should take. Actual number of steps taken is StepCount * Thickness.
-                              float3 ClippingCenter, float3 ClippingDirection, // Clipping plane position and direction of clipped away region
                               float4 WindowingParams,
                               FMaterialPixelParameters MaterialParameters) // Material Parameters provided by UE.
 {
@@ -64,32 +63,25 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
     int i = 0;
     for (i = 0; i < MaxSteps; i++)
     {
-        CurPos += LocalCamVec; // Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
-	    // Any position that is clipped by the clipping plane shall be ignored.
-        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-        {
-            AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler,
-				TF, LightVolume, StepSizeWorld, WindowingParams);
+	    CurPos += LocalCamVec; // Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
+    	AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler,
+			TF, LightVolume, StepSizeWorld, WindowingParams);
 
-            // Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
-            if (LightEnergy.a > 0.95f)
-            {
-                LightEnergy.a = 1.0f;
-                break;
-            };
-        }
+    	// Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
+    	if (LightEnergy.a > 0.95f)
+    	{
+    		LightEnergy.a = 1.0f;
+    		break;
+    	};
     }
 
     // Handle FinalStep (only if we went through all the previous steps and the final step size is above zero)
     if (i == MaxSteps && FinalStep > 0.0f)
     {
-        CurPos += LocalCamVec * (FinalStep);
-        // If the final step is clipped, don't do anything.
-        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-        {
-            AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler,
-            TF, LightVolume, VOLUME_DENSITY * FinalStep, WindowingParams);
-        }
+	    CurPos += LocalCamVec * (FinalStep);
+    	// If the final step is clipped, don't do anything.
+    	AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler,
+		TF, LightVolume, VOLUME_DENSITY * FinalStep, WindowingParams);
     }
 
     return LightEnergy;
@@ -101,26 +93,28 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
                               Texture2D TF, // Transfer function texture.
                               float3 CurPos, float Thickness, // CurPos = Entry Position, Thickness is thickness of cube along the ray. Both in UVW space.
                               float StepCount, // How many steps we should take. Actual number of steps taken is StepCount * Thickness.
-                              float3 ClippingCenter, float3 ClippingDirection, // Clipping plane position and direction of clipped away region
                               float4 WindowingParams,
                               Texture3D OctreeVolume,
                               SamplerState OctreeVolumeSampler,
                               uint OctreeMip,
+                              float4 WindowMask,
+                              uint StartingMip,
                               FMaterialPixelParameters MaterialParameters) // Material Parameters provided by UE.
 {
+	const float3 EntryPosition = CurPos;
 	// StepSize in UVW is inverse to StepCount.
 	float StepSize = 1 / StepCount;
 	// Actual number of steps to take to march through the full thickness of the cube at the ray position.
 	float FloatActualSteps = StepCount * Thickness;
-	// Number of full steps to take.
-	int MaxSteps = floor(FloatActualSteps);
-	// Size of the last (not a full-sized) step.
-	float FinalStep = frac(FloatActualSteps);
-	
+
 	// Get camera vector in local space and multiply it by step size.
 	float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
+
+	// Exit position in UV coordinates where the ray exits the volume.
+	float3 ExitPosition = EntryPosition + FloatActualSteps * LocalCamVec;
+	
 	// Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
-	 float StepSizeWorld = VOLUME_DENSITY * StepSize;
+    float StepSizeWorld = VOLUME_DENSITY * StepSize;
 	// Initialize accumulated light energy.
 	float4 LightEnergy = 0;
 	// Jitter Entry position to avoid artifacts.
@@ -134,50 +128,77 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	OctreeVolume.GetDimensions(OctreeWidth, OctreeHeight, OctreeDepth);
 	// Copy the octree depth on mip level 0 for use when recalculating to correct texture coordinates.
 	float OctreeDepthConst = OctreeDepth;
+	
+	// Get the bit mask for the current TransferFunction with the current window width/center.
+	uint UintWindowMask = asuint(WindowMask.r);
+    // Set to the mip number with worst detail.
+	const int MaxPossibleMip = 3;
+	// Current mip where the algorithm raymarch data in octree.
+	int CurrentMip = StartingMip;
+	// The distance the raymarch must pass to calculate required data.
+	float MaxDistance = length(EntryPosition - ExitPosition);
+	// Move the CurPos to the inside of the octree.  
+	CurPos += LocalCamVec;
+	do
+	{
+		// Get the correct width, height and depth for current mip.
+		OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
+		// Because of different sizes of Volume vs Octree, need to adjust where we sample from.
+        // TODO do this for other dimensions too! Depth is not the only one that can be different
+	    float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
+	    
+		// Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
+		// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
+		int3 VoxelPos = int3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, CurPos.z * AdjustedDepth);
 
-	// Get the size of the volume on requested mip. Used to recalculate coordinates to correct format.
-	OctreeVolume.GetDimensions(OctreeMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
+		// Get the bit mask saved in octree volume and check it against current window. In case the and operator results is true, the
+		// value in the volume should be used. If not, find the next position in volume upper mip and starts again. 
+		const uint BitMask = asuint(OctreeVolume.Load(int4(VoxelPos, CurrentMip), 0).r);
+		if ((BitMask & UintWindowMask) == 0)
+		{
+			// Get the box min values calculated in UV coordinates.
+			float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, VoxelPos.z / AdjustedDepth);
+			// Get the box max values calculated in UV coordinates.
+			float3 BoxMax = float3((VoxelPos.x + 1.0) / OctreeWidth, (VoxelPos.y + 1.0) / OctreeHeight, (VoxelPos.z + 1.0) / AdjustedDepth);
+			float2 EntryTimes = float2(0,0);
+			if (CheckedRayAABBIntersection(CurPos, LocalCamVec, BoxMin, BoxMax, EntryTimes))
+			{
+				// Use ceil to align with the requested step size.
+				CurPos += LocalCamVec * ceil(EntryTimes.y);
 
-	// Values from the previous iteration.
-    for (int i = 0; i < MaxSteps; i++)
-    {
-        CurPos += LocalCamVec;
-    	// Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
-	    // Any position that is clipped by the clipping plane shall be ignored.
-        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-        {
-        	// Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
-        	// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
-        	int3 VoxelPos = float3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
+				// Current mip does not have useful data, move to upper mip (bidirectional traversal).
+				CurrentMip += 1;
+				CurrentMip = clamp(CurrentMip,CurrentMip, MaxPossibleMip);
+				continue;
+			}
+			break;
+		}
 
-        	float4 ColorSample = SampleWindowedVolumeOctreeStep(VoxelPos, StepSizeWorld, OctreeVolume,
-                                               TF, Material.Clamp_WorldGroupSettings, WindowingParams, OctreeMip);
+		if (CurrentMip == OctreeMip)
+		{
+			// We found a mip with required data. Gather the actual color sample from data volume.
+			float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSizeWorld, DataVolume, DataVolumeSampler,
+													TF, Material.Clamp_WorldGroupSettings, WindowingParams);
 
-        	AccumulateLightEnergy(LightEnergy, ColorSample);
+			AccumulateLightEnergy(LightEnergy, ColorSample);
 
-        	// Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
-            if (LightEnergy.a > 0.95f)
-            {
-                LightEnergy.a = 1.0f;
-                break;
-            };
-        }
-    }
-
-     // Handle FinalStep (only if we went through all the previous steps and the final step size is above zero)
-    if (i == MaxSteps && FinalStep > 0.0f)
-    {
-        CurPos += LocalCamVec * FinalStep;
-        // If the final step is clipped, don't do anything.
-        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-        {
-        	float3 VoxelPos = float3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, (CurPos.z * DataVolumeDepth / OctreeDepthConst) * OctreeDepth);
-        	float4 ColorSample = SampleWindowedVolumeOctreeStep(VoxelPos, StepSizeWorld, OctreeVolume,
-                                               TF, Material.Clamp_WorldGroupSettings, WindowingParams, OctreeMip);
-
-        	AccumulateLightEnergy(LightEnergy, ColorSample);
-        }
-    }
+			// Move to the next step.
+			CurPos += LocalCamVec;
+		}
+		else
+		{
+			// Step down to us mip with better resolution in next iteration.
+			CurrentMip -= 1;
+		}
+        	
+		// Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
+		if (LightEnergy.a > 0.95f)
+		{
+			LightEnergy.a = 1.0f;
+			break;
+		};
+		// Exit from current loop in case the distance we have covered is bigger than the max distance.
+	} while(length((CurPos - EntryPosition)) < MaxDistance);
 
     return LightEnergy;
 }
@@ -187,7 +208,6 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 float4 PerformWindowedIntensityRaymarch(Texture3D DataVolume, // Data Volume 
                               float3 CurPos, float Thickness, // Position of ray entry to cube and thickness in UVW coords.
                               float StepCount, // Number of steps to take if Thickness is 1. 
-                              float3 ClippingCenter, float3 ClippingDirection, // Clipping plane position and direction of clipped away region
                               float4 WindowingParams,
                               FMaterialPixelParameters MaterialParameters)                      // Material Parameters
 {
@@ -208,33 +228,25 @@ float4 PerformWindowedIntensityRaymarch(Texture3D DataVolume, // Data Volume
     int i = 0;
     for (i = 0; i < MaxSteps; i++)
     {
-        CurPos += LocalCamVec; // Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
-	    // Any position that is clipped by the clipping plane shall be ignored.
-        if (!IsCurPosClipped(saturate(CurPos), ClippingCenter, ClippingDirection))
-        {
-            float DataValue = DataVolume.SampleLevel(Material.Clamp_WorldGroupSettings, saturate(CurPos), 0).r;
+	    CurPos += LocalCamVec; // Because we jitter only "against" the direction of LocalCamVec, start marching before first sample.
+    	float DataValue = DataVolume.SampleLevel(Material.Clamp_WorldGroupSettings, saturate(CurPos), 0).r;
   
-            // WindowingParams.x == Center, WindowingParams.y = Width
-            float TFPos = clamp(GetTransferFuncPosition(DataValue, WindowingParams.x, WindowingParams.y), 0, 1);
+    	// WindowingParams.x == Center, WindowingParams.y = Width
+    	float TFPos = clamp(GetTransferFuncPosition(DataValue, WindowingParams.x, WindowingParams.y), 0, 1);
 
-            return float4(TFPos, TFPos, TFPos, 1);
-        }
+    	return float4(TFPos, TFPos, TFPos, 1);
     }
 
     // Handle FinalStep (if the final step size is above zero).
     if (FinalStep > 0.0f)
     {
-        CurPos += LocalCamVec * (FinalStep);
-        // If the final step is clipped, don't do anything.
-        if (!IsCurPosClipped(CurPos, ClippingCenter, ClippingDirection))
-        {
-            float DataValue = DataVolume.SampleLevel(Material.Clamp_WorldGroupSettings, CurPos, 0).r;
+	    CurPos += LocalCamVec * (FinalStep);
+    	float DataValue = DataVolume.SampleLevel(Material.Clamp_WorldGroupSettings, CurPos, 0).r;
   
-            // WindowingParams.x == Center, WindowingParams.y = Width
-            float TFPos = clamp(GetTransferFuncPosition(DataValue, WindowingParams.x, WindowingParams.y), 0, 1);
+    	// WindowingParams.x == Center, WindowingParams.y = Width
+    	float TFPos = clamp(GetTransferFuncPosition(DataValue, WindowingParams.x, WindowingParams.y), 0, 1);
 
-            return float4(TFPos, TFPos, TFPos, 1);
-        }
+    	return float4(TFPos, TFPos, TFPos, 1);
     }
     
     // Didn't hit anything

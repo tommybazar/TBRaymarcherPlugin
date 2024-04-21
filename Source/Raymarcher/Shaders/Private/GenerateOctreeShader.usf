@@ -11,19 +11,23 @@
 #include "OctreeCommon.usf"
 
 // The Octree Volume texture we're creating in this shader.
-RWTexture3D<float> OctreeVolumeMip0;
-RWTexture3D<float> OctreeVolumeMip1;
-RWTexture3D<float> OctreeVolumeMip2;
-RWTexture3D<float> OctreeVolumeMip3;
-
-// The minimum and maximum values found in the volume.
-float2 MinMaxValues;
+RWTexture3D<uint> OctreeVolumeMip0;
+RWTexture3D<uint> OctreeVolumeMip1;
+RWTexture3D<uint> OctreeVolumeMip2;
+RWTexture3D<uint> OctreeVolumeMip3;
 
 // The Volume we're propagating light through.
 Texture3D Volume;
 
 int LeafNodeSize = 8;
 int NumberOfMips = 4;
+
+uint GetValueIndexInBitMask(float Val)
+{
+    const uint MaxBits = 31;
+    const float Factor = 1.0/float(MaxBits);
+    return uint(Val / Factor);
+}
 
 [numthreads(1, 1, 1)]
 void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
@@ -41,8 +45,34 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 			{
 				int3 LocalPos = int3(x, y, z);
 				int3 ActualPos = ThreadOffset + LocalPos;
-				// For now, just copy volume value.
-				OctreeVolumeMip0[ActualPos] = Volume.Load(int4(ActualPos, 0), 0).r * MinMaxValues.y;
+
+				uint XorredNeighborhood = 0;
+			    float Min = 1.0;
+			    float Max = 0.0;
+				// We want to have the leaf node composed from minimum of 4 nearest values for each axis.
+				for (int a = -1; a <= 1; a++)
+				{
+					for (int b = -1; b <= 1; b++)
+					{
+						for (int c = -1; c <= 1; c++)
+						{
+							int3 NeighborhoodPosition = ActualPos + int3(a,b,c);
+							float Value = Volume.Load(int4(NeighborhoodPosition, 0), 0).r;
+                            Min = min(Min, Value);
+                            Max = max(Max, Value);
+						}
+					}
+				}
+
+			    uint BitMax = GetValueIndexInBitMask(Max);
+			    uint BitMin = GetValueIndexInBitMask(Min);
+
+			    for(uint i = BitMin; i <= BitMax; i++)
+			    {
+			        XorredNeighborhood |= (1 << i);    
+			    }
+			    
+				OctreeVolumeMip0[ActualPos] = XorredNeighborhood;
 			}
 		}
 	}
@@ -55,10 +85,10 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 	}
 	
 	// Generate the rest of mip levels (1 to NumberOfMips).
-	RWTexture3D<float> Mips[HardcodedNumberOfMips] = { OctreeVolumeMip0, OctreeVolumeMip1, OctreeVolumeMip2, OctreeVolumeMip3 };
+	RWTexture3D<uint> Mips[HardcodedNumberOfMips] = { OctreeVolumeMip0, OctreeVolumeMip1, OctreeVolumeMip2, OctreeVolumeMip3 };
 	for (int Mip = 1; Mip < HardcodedNumberOfMips; Mip++)
 	{
-		RWTexture3D<float> MipBuffer = Mips[Mip];
+		RWTexture3D<uint> MipBuffer = Mips[Mip];
 
 		int Divisor = 1;
 		for (int i = 0; i < Mip; i++)
@@ -79,8 +109,7 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 					// Multiply LocalPos by two to get the correct position we can load data from in range <0,1>.
 					int3 CurrentPositionOffset = LowerMipOffset + LocalPos * 2;		
 
-					// For now save only the maximal value from all 8 nodes.
-					float Max = 0;
+					uint Xor = 0;
 					for (int a = 0; a < 2; a ++)
 					{
 						for (int b = 0; b < 2; b ++)
@@ -89,17 +118,14 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 							{
 								// Take current offset and append the final offset value to get the correct data position.  
 								int3 FinalPos = CurrentPositionOffset + int3(a, b, c);
-								float NodeValue = Mips[Mip-1][FinalPos];
-								if(Max < NodeValue)
-								{
-									Max = NodeValue;
-								}
+								uint NodeValue = Mips[Mip-1][FinalPos];
+								Xor |= NodeValue;
 							}
 						}
 					}
 					int3 MipPos = ThreadOffset/Divisor + LocalPos;
 					// Insert the value to the Mip.
-					MipBuffer[MipPos] = Max;
+					MipBuffer[MipPos] = Xor;
 				}
 			}
 		}

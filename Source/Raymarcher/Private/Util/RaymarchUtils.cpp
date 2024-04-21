@@ -13,11 +13,11 @@
 #include "RHIDefinitions.h"
 #include "RHIStaticStates.h"
 #include "Rendering/LightingShaders.h"
+#include "Rendering/OctreeShaders.h"
 #include "Rendering/RaymarchTypes.h"
 #include "SceneInterface.h"
 #include "SceneUtils.h"
 #include "ShaderParameterUtils.h"
-#include "Rendering/OctreeShaders.h"
 #include "VolumeTextureToolkit/Public/TextureUtilities.h"
 
 #include <Engine/TextureRenderTargetVolume.h>
@@ -100,6 +100,114 @@ void URaymarchUtils::GenerateOctree(FBasicRaymarchRenderingResources& Resources)
 		GenerateOctreeForVolume_RenderThread(RHICmdList, Resources);
 	});
 }
+
+
+// Function to sample from the Texture2D. The U and V coordinate are normalized texture coodinates.
+FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
+{
+	// Ensure the Texture2D is valid.
+	if (TF == nullptr)
+	{
+		return {};
+	}
+	
+	int32 TextureWidth = TF->GetSizeX();
+	int32 TextureHeight = TF->GetSizeY();
+	int32 X = FMath::Clamp(FMath::RoundToInt(U * TextureWidth), 0, TextureWidth - 1);
+	int32 Y = FMath::Clamp(FMath::RoundToInt(V * TextureHeight), 0, TextureHeight - 1);
+	
+	// Get the texture data.
+	FTexture2DMipMap* MipMap = &TF->GetPlatformData()->Mips[0];
+	const void* TextureData = MipMap->BulkData.LockReadOnly();
+
+	// Calculate the index in the texture data.
+	int32 TextureDataIndex = (Y * MipMap->SizeX) + X;
+
+	// Sample the color.
+	const FFloat16Color* ColorData = static_cast<const FFloat16Color*>(TextureData);
+	FFloat16Color SampleColor = ColorData[TextureDataIndex];
+
+	// Unlock the texture data.
+	MipMap->BulkData.Unlock();
+
+	return SampleColor;
+}
+
+FVector4 URaymarchUtils::GetWindowingParamsBitMask(FWindowingParameters WindowingParams, int EdgeBits, UTexture2D* TF)
+{
+	// TFPos == 1.0 => Value = WindowCenter + WindowWidth/2
+	// TFPos == 0.0 => Value = WindowCenter - WindowWidth/2;
+	
+	float Value0 = (WindowingParams.Center - (WindowingParams.Width / 2.0));
+	float Value1 = (WindowingParams.Center + (WindowingParams.Width / 2.0));
+
+	// Clamp the values since we do not expect negative value in currently rendered volume.
+	Value0 = FMath::Clamp(Value0, 0.0f, 1.0f);
+	Value1 = FMath::Clamp(Value1, 0.0f, 1.0f);
+	
+	// Define the maximal number of bits in bitmask window.
+	static constexpr uint32_t MaxNumberOfBits = 31;
+	const float Factor = 1.0/static_cast<float>(MaxNumberOfBits);
+
+	auto GetBitMask = [&](float Val) -> uint32_t
+	{
+	    return static_cast<uint32_t>(Val / Factor);
+	};
+	
+	uint32_t Value0Bit = FMath::Clamp(GetBitMask(Value0), 0, MaxNumberOfBits);
+	uint32_t Value1Bit = FMath::Clamp(GetBitMask(Value1), 0, MaxNumberOfBits);
+
+
+	if (!WindowingParams.LowCutoff)
+	{
+		Value0Bit = 0;
+	}
+
+	if(!WindowingParams.HighCutoff)
+	{
+		Value1Bit = MaxNumberOfBits;
+	}
+
+	if(Value0Bit > Value1Bit)
+	{
+		Swap(Value0Bit, Value1Bit);
+	}
+	
+	uint32_t Result = 0;
+	for(uint32_t i = Value0Bit; i <= Value1Bit; i++)
+	{
+		// Sample the current value from texture. In case the alpha is zero, do not use it.
+		FFloat16Color TFColor = SampleFromTexture(Factor * i, 0.5, TF);
+		if (TFColor.A != 0)
+		{
+			uint32_t n = (1 << i);
+			Result |= n;
+		}
+	}
+
+	// Make the window mask bigger based on the edge Bits.
+	for(int k = 0; k < EdgeBits; k++)
+	{
+		Result |= (Result << 1);
+		Result |= (Result >> 1);
+	}
+
+    // Use for debug purpose.
+	// GEngine->AddOnScreenDebugMessage(54,100,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
+
+	union FloatFromUint
+	{
+		uint32_t uintValue;
+		float floatValue;
+	};
+
+	// We need to pack the uint bits into a float value to pass it to the shader.
+	// In the shader, this HAS to be read with asuint(value). Otherwise, it will be garbage.
+	FloatFromUint FloatResult;
+	FloatResult.uintValue = Result;
+	return FVector4(FloatResult.floatValue,0,0,0 );
+}
+
 
 void URaymarchUtils::ClearResourceLightVolumes(const FBasicRaymarchRenderingResources Resources, float ClearValue)
 {

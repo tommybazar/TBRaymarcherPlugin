@@ -17,6 +17,8 @@
 #include <Curves/CurveLinearColor.h>
 #include <Engine/TextureRenderTargetVolume.h>
 
+#include <bitset>
+
 DEFINE_LOG_CATEGORY(LogRaymarchVolume)
 
 #if !UE_BUILD_SHIPPING
@@ -134,6 +136,7 @@ void ARaymarchVolume::PostRegisterAllComponents()
 		// Set default valuees for the octree raymarch material.
 		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
 		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeVolumeMip);
+		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeStartingMip, OctreeStartingMip);
 	}
 
 	if (StaticMeshComponent)
@@ -312,6 +315,22 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		if (RaymarchResources.bIsInitialized)
 		{
 			OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeVolumeMip);
+		}
+	}
+
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, OctreeStartingMip))
+	{
+		if (RaymarchResources.bIsInitialized)
+		{
+			OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeStartingMip, OctreeStartingMip);
+		}
+	}
+
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, WindowMaskEdgeBitsCount))
+	{
+		if (RaymarchResources.bIsInitialized)
+		{
+			SetMaterialWindowingParameters();
 		}
 	}
 }
@@ -572,6 +591,7 @@ void ARaymarchVolume::SetTFCurve(UCurveLinearColor* InTFCurve)
 		// Set TF Texture to the lit and octree material.
 		LitRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
 		OctreeRaymarchMaterial->SetTextureParameterValue(RaymarchParams::TransferFunction, RaymarchResources.TFTextureRef);
+		SetMaterialWindowingParameters();
 		bRequestedRecompute = true;
 	}
 }
@@ -702,6 +722,13 @@ void ARaymarchVolume::SetMaterialWindowingParameters()
 	{
 		OctreeRaymarchMaterial->SetVectorParameterValue(
 			RaymarchParams::WindowingParams, RaymarchResources.WindowingParameters.ToLinearColor());
+
+		FVector4 WindowMask = URaymarchUtils::GetWindowingParamsBitMask(RaymarchResources.WindowingParameters, WindowMaskEdgeBitsCount, RaymarchResources.TFTextureRef);
+		FLinearColor LinearColor(WindowMask.X, WindowMask.Y, WindowMask.Z, WindowMask.W);
+		OctreeRaymarchMaterial->SetVectorParameterValue(RaymarchParams::WindowMask, LinearColor);
+
+		// Uncomment to debug window bit mask.
+		// GEngine->AddOnScreenDebugMessage(324, 100, FColor::Orange, std::bitset<32>(LinearColor.R).to_string().c_str());
 	}
 }
 
@@ -874,7 +901,7 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 	RaymarchResources.OctreeVolumeRenderTarget->bCanCreateUAV = true;
 	RaymarchResources.OctreeVolumeRenderTarget->bHDR = false;
 	RaymarchResources.OctreeVolumeRenderTarget->Init(FMath::RoundUpToPowerOfTwo(Volume->GetSizeX()),
-		FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()), FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()), 4, PF_G16);
+		FMath::RoundUpToPowerOfTwo(Volume->GetSizeY()), FMath::RoundUpToPowerOfTwo(Volume->GetSizeZ()), 4, PF_R32_UINT);
 
 	// Flush rendering commands so that all textures are definitely initialized with resources and we can create a UAV ref.
 	FlushRenderingCommands();

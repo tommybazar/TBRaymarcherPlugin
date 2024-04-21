@@ -20,7 +20,9 @@
 
 // Performs raymarch cube setup for this pixel. Returns the position of entry to the cube in rgb channels 
 // and thickness of the cube in alpha. All values returned are in UVW space.
-float4 PerformRaymarchCubeSetup(FMaterialPixelParameters MaterialParameters)
+float4 PerformRaymarchCubeSetup(float3 ClippingCenter,
+								float3 ClippingDirection, // Clipping plane position and direction of clipped away region
+								FMaterialPixelParameters MaterialParameters)
 {
     // Get scene depth at this pixel.
     float LocalSceneDepth = CalcSceneDepth(ScreenAlignedPosition(GetScreenPosition(MaterialParameters)));
@@ -52,20 +54,45 @@ float4 PerformRaymarchCubeSetup(FMaterialPixelParameters MaterialParameters)
 
 	// Get times (or distances from LocalCamPos along LocalCamVec) to the box entry and exit.
 	float2 EntryExitTimes = RayAABBIntersection(LocalCamPos, LocalCamVec, 0, 1);
-	
+
     // Make sure the entry point is not behind the camera
     EntryExitTimes.x = max(0, EntryExitTimes.x);
 
     // Make sure the exit point is not behind other scene geometry.
 	EntryExitTimes.y = min(LocalSceneDepth, EntryExitTimes.y);
 
+	// Get entry position in UVW space.
+    float3 EntryPosition = LocalCamPos + ((EntryExitTimes.x) * LocalCamVec);
+	// Calculate the exit position.
+	float3 ExitPosition = LocalCamPos + (EntryExitTimes.y * LocalCamVec);
+
+	// Get the clipping plane intersection between entry position and direction vector.
+	float PlaneHitTime = LinePlaneIntersection(ClippingCenter, ClippingDirection, EntryPosition, LocalCamVec);
+	// Adjust the intersection to not calculate the one behid us.
+	PlaneHitTime = max(0, PlaneHitTime);
+
     // Calculate box thickness at this pixel (in local space).
     float BoxThickness = max(0, EntryExitTimes.y - EntryExitTimes.x);
 
-    // Get entry position in UVW space.
-    float3 EntryPos = LocalCamPos + (EntryExitTimes.x * LocalCamVec);
+	if(IsCurPosClipped(EntryPosition, ClippingCenter, ClippingDirection) && IsCurPosClipped(ExitPosition, ClippingCenter, ClippingDirection))
+	{
+		// Both entry point and exit point is clipped. Nothing to show. Set the thickness to zero.
+		BoxThickness = 0;
+	}
+	else if(IsCurPosClipped(EntryPosition, ClippingCenter, ClippingDirection))
+	{
+		// Entry position is clipped, start from the plane intersection position.
+		float3 PlaneIntersectionPoint = EntryPosition + (LocalCamVec * PlaneHitTime);
+		EntryPosition = PlaneIntersectionPoint;
+		BoxThickness = max(0, BoxThickness - PlaneHitTime);
+	}
+	else if(IsCurPosClipped(ExitPosition, ClippingCenter, ClippingDirection))
+	{
+		// Exit position is clipped. Adjust the thickness.
+		BoxThickness = max(0, PlaneHitTime);
+	}
     
-    return float4(EntryPos, BoxThickness);
+	return float4(EntryPosition, BoxThickness);
 }
 
 
