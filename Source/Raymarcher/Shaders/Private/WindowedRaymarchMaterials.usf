@@ -114,7 +114,7 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	float3 ExitPosition = EntryPosition + FloatActualSteps * LocalCamVec;
 	
 	// Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
-	 float StepSizeWorld = VOLUME_DENSITY * StepSize;
+    float StepSizeWorld = VOLUME_DENSITY * StepSize;
 	// Initialize accumulated light energy.
 	float4 LightEnergy = 0;
 	// Jitter Entry position to avoid artifacts.
@@ -128,10 +128,10 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	OctreeVolume.GetDimensions(OctreeWidth, OctreeHeight, OctreeDepth);
 	// Copy the octree depth on mip level 0 for use when recalculating to correct texture coordinates.
 	float OctreeDepthConst = OctreeDepth;
-
-	// Get the bit mask based on window center and window width.
-	uint UintWindowMask = asuint(WindowMask.r); //GetWindowingParamsBitMask(WindowingParams.x, WindowingParams.y);
-	// Set to the mip number with worst detail.
+	
+	// Get the bit mask for the current TransferFunction with the current window width/center.
+	uint UintWindowMask = asuint(WindowMask.r);
+    // Set to the mip number with worst detail.
 	const int MaxPossibleMip = 3;
 	// Current mip where the algorithm raymarch data in octree.
 	int CurrentMip = StartingMip;
@@ -143,9 +143,10 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 	{
 		// Get the correct width, height and depth for current mip.
 		OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
-		// Because of the volume texture mip properties, we need to calculate actual octree mip width.
-		float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
-
+		// Because of different sizes of Volume vs Octree, need to adjust where we sample from.
+        // TODO do this for other dimensions too! Depth is not the only one that can be different
+	    float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
+	    
 		// Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
 		// Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
 		int3 VoxelPos = int3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, CurPos.z * AdjustedDepth);
@@ -175,7 +176,7 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 
 		if (CurrentMip == OctreeMip)
 		{
-			// We found a mip with required data. Gather the actuall color sample from data volume.
+			// We found a mip with required data. Gather the actual color sample from data volume.
 			float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSizeWorld, DataVolume, DataVolumeSampler,
 													TF, Material.Clamp_WorldGroupSettings, WindowingParams);
 
