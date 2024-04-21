@@ -13,11 +13,11 @@
 #include "RHIDefinitions.h"
 #include "RHIStaticStates.h"
 #include "Rendering/LightingShaders.h"
+#include "Rendering/OctreeShaders.h"
 #include "Rendering/RaymarchTypes.h"
 #include "SceneInterface.h"
 #include "SceneUtils.h"
 #include "ShaderParameterUtils.h"
-#include "Rendering/OctreeShaders.h"
 #include "VolumeTextureToolkit/Public/TextureUtilities.h"
 
 #include <Engine/TextureRenderTargetVolume.h>
@@ -137,7 +137,6 @@ FVector4 URaymarchUtils::GetWindowingParamsBitMask(FWindowingParameters Windowin
 {
 	// TFPos == 1.0 => Value = WindowCenter + WindowWidth/2
 	// TFPos == 0.0 => Value = WindowCenter - WindowWidth/2;
-	using uint = unsigned int;
 	
 	float Value0 = (WindowingParams.Center - (WindowingParams.Width / 2.0));
 	float Value1 = (WindowingParams.Center + (WindowingParams.Width / 2.0));
@@ -147,25 +146,16 @@ FVector4 URaymarchUtils::GetWindowingParamsBitMask(FWindowingParameters Windowin
 	Value1 = FMath::Clamp(Value1, 0.0f, 1.0f);
 	
 	// Define the maximal number of bits in bitmask window.
-	static constexpr uint MaxNumberOfBits = 31;
+	static constexpr uint32_t MaxNumberOfBits = 31;
 	const float Factor = 1.0/static_cast<float>(MaxNumberOfBits);
 
-	auto GetBitMask = [&](float Val) -> uint
+	auto GetBitMask = [&](float Val) -> uint32_t
 	{
-		float Add = 0.0f;
-		for (uint i = 0; i <= MaxNumberOfBits; i++)
-		{
-			if((Add + Factor) > Val)
-			{
-				return i;
-			}
-			Add += Factor;
-		}
-		return MaxNumberOfBits;
+	    return static_cast<uint32_t>(Val / Factor);
 	};
 	
-	uint Value0Bit = FMath::Clamp(GetBitMask(Value0), 0, MaxNumberOfBits);
-	uint Value1Bit = FMath::Clamp(GetBitMask(Value1), 0, MaxNumberOfBits);
+	uint32_t Value0Bit = FMath::Clamp(GetBitMask(Value0), 0, MaxNumberOfBits);
+	uint32_t Value1Bit = FMath::Clamp(GetBitMask(Value1), 0, MaxNumberOfBits);
 
 
 	if (!WindowingParams.LowCutoff)
@@ -183,14 +173,14 @@ FVector4 URaymarchUtils::GetWindowingParamsBitMask(FWindowingParameters Windowin
 		Swap(Value0Bit, Value1Bit);
 	}
 	
-	uint Result = 0;
-	for(uint i = Value0Bit; i <= Value1Bit; i++)
+	uint32_t Result = 0;
+	for(uint32_t i = Value0Bit; i <= Value1Bit; i++)
 	{
 		// Sample the current value from texture. In case the alpha is zero, do not use it.
 		FFloat16Color TFColor = SampleFromTexture(Factor * i, 0.5, TF);
 		if (TFColor.A != 0)
 		{
-			uint n = (1 << i);
+			uint32_t n = (1 << i);
 			Result |= n;
 		}
 	}
@@ -201,8 +191,9 @@ FVector4 URaymarchUtils::GetWindowingParamsBitMask(FWindowingParameters Windowin
 		Result |= (Result << 1);
 		Result |= (Result >> 1);
 	}
-	// Use for debug purpose.
-	GEngine->AddOnScreenDebugMessage(54,100,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
+
+    // Use for debug purpose.
+	// GEngine->AddOnScreenDebugMessage(54,100,FColor::Orange, FString::Printf(TEXT("%u 0Bit: %u 1Bit: %u"),Result, Value0Bit, Value1Bit));
 
 	union FloatFromUint
 	{
@@ -210,24 +201,6 @@ FVector4 URaymarchUtils::GetWindowingParamsBitMask(FWindowingParameters Windowin
 		float floatValue;
 	};
 
-	FloatFromUint convert;
-
-	convert.uintValue = 0b01111111110000000000000000000000;
-	UE_LOG(LogTemp, Warning, TEXT("+nan = %f"), convert.floatValue);
-
-	convert.uintValue = 0b11111111110000000000000000000000;
-	UE_LOG(LogTemp, Warning, TEXT("-nan = %f"), convert.floatValue);
-
-	convert.uintValue = 0b01111111100000000000000000000000;
-	UE_LOG(LogTemp, Warning, TEXT("+inf = %f"), convert.floatValue);
-
-	convert.uintValue = 0b11111111100000000000000000000000;
-	UE_LOG(LogTemp, Warning, TEXT("-inf = %f"), convert.floatValue);
-
-	// 52.5 from https://www.h-schmidt.net/FloatConverter/IEEE754.html
-	convert.uintValue = 0b01000010010100100000000000000000;
-	UE_LOG(LogTemp, Warning, TEXT("52.5 = %f"), convert.floatValue);
-	
 	// We need to pack the uint bits into a float value to pass it to the shader.
 	// In the shader, this HAS to be read with asuint(value). Otherwise, it will be garbage.
 	FloatFromUint FloatResult;

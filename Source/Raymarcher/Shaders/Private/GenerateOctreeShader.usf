@@ -22,20 +22,11 @@ Texture3D Volume;
 int LeafNodeSize = 8;
 int NumberOfMips = 4;
 
-uint GetValueIndexInBitMask(float InValue)
+uint GetValueIndexInBitMask(float Val)
 {
     const uint MaxBits = 31;
     const float Factor = 1.0/float(MaxBits);
-    float Add = 0;
-    for(uint i = 0; i <= MaxBits; i++)
-    {
-        if(Add + Factor > InValue)
-        {
-            return i;
-        }
-        Add += Factor;
-    }
-    return MaxBits;
+    return uint(Val / Factor);
 }
 
 [numthreads(1, 1, 1)]
@@ -65,7 +56,6 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 					{
 						for (int c = -1; c <= 1; c++)
 						{
-							
 							int3 NeighborhoodPosition = ActualPos + int3(a,b,c);
 							float Value = Volume.Load(int4(NeighborhoodPosition, 0), 0).r;
                             Min = min(Min, Value);
@@ -95,7 +85,7 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 	}
 	
 	// Generate the rest of mip levels (1 to NumberOfMips).
-	RWTexture3D<uint> Mips[HardcodedNumberOfMips] = {  OctreeVolumeMip0, OctreeVolumeMip1, OctreeVolumeMip2, OctreeVolumeMip3 };
+	RWTexture3D<uint> Mips[HardcodedNumberOfMips] = { OctreeVolumeMip0, OctreeVolumeMip1, OctreeVolumeMip2, OctreeVolumeMip3 };
 	for (int Mip = 1; Mip < HardcodedNumberOfMips; Mip++)
 	{
 		RWTexture3D<uint> MipBuffer = Mips[Mip];
