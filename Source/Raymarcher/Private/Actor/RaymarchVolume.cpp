@@ -137,6 +137,7 @@ void ARaymarchVolume::PostRegisterAllComponents()
 		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::Steps, RaymarchingSteps);
 		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeMip, OctreeVolumeMip);
 		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeStartingMip, OctreeStartingMip);
+		OctreeRaymarchMaterial->SetScalarParameterValue(RaymarchParams::OctreeStartingMip, OctreeStartingMip);
 	}
 
 	if (StaticMeshComponent)
@@ -248,6 +249,18 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		{
 			bRequestedRecompute = true;
 		}
+		return;
+	}
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, OctreeLight))
+	{
+        if(OctreeRaymarchMaterial)
+        {
+            FVector LightDirection =  OctreeLight->GetCurrentParameters().LightDirection;
+            float LightIntensity = OctreeLight->GetCurrentParameters().LightIntensity;
+            OctreeRaymarchMaterial->SetVectorParameterValue(RaymarchParams::LightParams, FLinearColor{
+                (float)LightDirection.X, (float)LightDirection.Y, (float)LightDirection.Z, LightIntensity});
+        }
 		return;
 	}
 
