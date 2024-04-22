@@ -232,6 +232,22 @@ void ARaymarchVolume::OnImageInfoChangedInEditor()
 	}
 }
 
+void ARaymarchVolume::SetOctreeLightParamters()
+{
+    FVector LightDirection =  OctreeLight->GetCurrentParameters().LightDirection;
+
+    GEngine->AddOnScreenDebugMessage(23,10,FColor::Orange, FString("Light Direction: ") + LightDirection.ToString());
+
+    float LightIntensity = OctreeLight->GetCurrentParameters().LightIntensity;
+
+    OctreeRaymarchMaterial->SetVectorParameterValue(RaymarchParams::LightParams, FLinearColor(
+        static_cast<float>(LightDirection.X),
+        static_cast<float>(LightDirection.Y),
+        static_cast<float>(LightDirection.Z),
+        LightIntensity));
+}
+
+
 void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
@@ -252,17 +268,14 @@ void ARaymarchVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		return;
 	}
 
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, OctreeLight))
-	{
-        if(OctreeRaymarchMaterial)
-        {
-            FVector LightDirection =  OctreeLight->GetCurrentParameters().LightDirection;
-            float LightIntensity = OctreeLight->GetCurrentParameters().LightIntensity;
-            OctreeRaymarchMaterial->SetVectorParameterValue(RaymarchParams::LightParams, FLinearColor{
-                (float)LightDirection.X, (float)LightDirection.Y, (float)LightDirection.Z, LightIntensity});
-        }
-		return;
-	}
+    //if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, OctreeLight))
+	// {
+ //        if(OctreeRaymarchMaterial)
+ //        {
+ //            SetOctreeLightParamters();
+ //        }
+	// 	return;
+	// }
 
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARaymarchVolume, ClippingPlane))
 	{
@@ -393,6 +406,10 @@ void ARaymarchVolume::Tick(float DeltaTime)
 		// We rebuild the octree. Set to false to prevent additional unwanted rebuild.
 		bRequestedOctreeRebuild = false;
 	}
+    if(OctreeLight && SelectRaymarchMaterial == ERaymarchMaterial::Octree)
+    {
+        SetOctreeLightParamters();
+    }
 
 	// Only check if we need to update lights if we're using Lit raymarch material.
 	// (No point in recalculating a light volume that's not currently being used anyways).

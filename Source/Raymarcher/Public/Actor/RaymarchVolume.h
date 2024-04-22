@@ -114,6 +114,8 @@ public:
 	/** Override ShouldTickIfViewportsOnly to return true, so this also ticks in editor viewports.*/
 	virtual bool ShouldTickIfViewportsOnly() const override;
 
+    void SetOctreeLightParamters();
+
 #endif	  //#if WITH_EDITOR
 
 	/** Called every frame */
