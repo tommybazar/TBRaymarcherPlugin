@@ -37,7 +37,7 @@ float4 SampleWindowedTransferFunction(float VolumeDataValue, float StepSize, Tex
 }
 
 // Samples and interpolate Data volume, transforms it to fit the Windowing parameters and then transforms it by the TF. Corrects the opacity to account for StepSize (in Unreal units).
-float4 SampleWindowedVolumeStep(float3 CurPos, float StepSize, Texture3D Volume, SamplerState VolumeSampler, Texture2D TF, SamplerState TFSampler, float4 WindowingParams)
+float4 SampleWindowedVolumeStep(const float3 CurPos, float StepSize, Texture3D Volume, SamplerState VolumeSampler, Texture2D TF, SamplerState TFSampler, float4 WindowingParams)
 {
 	const float DataValue = Volume.SampleLevel(VolumeSampler, CurPos, 0).r;
 	return SampleWindowedTransferFunction(DataValue, StepSize, TF, TFSampler, WindowingParams);

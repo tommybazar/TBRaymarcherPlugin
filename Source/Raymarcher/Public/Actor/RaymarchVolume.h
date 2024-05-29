@@ -114,6 +114,8 @@ public:
 	/** Override ShouldTickIfViewportsOnly to return true, so this also ticks in editor viewports.*/
 	virtual bool ShouldTickIfViewportsOnly() const override;
 
+    void SetOctreeLightParamters();
+
 #endif	  //#if WITH_EDITOR
 
 	/** Called every frame */
@@ -158,9 +160,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	ARaymarchClipPlane* ClippingPlane = nullptr;
 
-	/** An array of lights affecting this volume.**/
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	TArray<ARaymarchLight*> LightsArray;
 
 	/** If set to true, lights will be recomputed on next tick.**/
 	bool bRequestedRecompute = false;
@@ -171,6 +170,14 @@ public:
 	/** Raymarch the volume based on defined material. **/
 	UPROPERTY(EditAnywhere)
 	ERaymarchMaterial SelectRaymarchMaterial;
+
+    /** An array of lights affecting this volume.**/
+	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Lit", EditConditionHides))
+	TArray<ARaymarchLight*> LightsArray;
+
+    /** Single light used for rendering octree lit raymarch */
+    UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
+	ARaymarchLight* OctreeLight;
 	
 	/** Raymarch Rendering resources. These contain references to the volume texture currently used, the light volume
 		currently used, as well as buffers to fasten the light propagation.	**/
