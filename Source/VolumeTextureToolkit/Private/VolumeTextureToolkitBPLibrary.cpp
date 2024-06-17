@@ -10,8 +10,8 @@
 #include "VolumeAsset/Loaders/DICOMLoader.h"
 #include "VolumeAsset/Loaders/MHDLoader.h"
 
-#include <DesktopPlatform/Public/DesktopPlatformModule.h>
-#include <DesktopPlatform/Public/IDesktopPlatform.h>
+#include "Developer/DesktopPlatform/Public/DesktopPlatformModule.h"
+#include "Developer/DesktopPlatform/Public/IDesktopPlatform.h"
 #include "VolumeAsset/VolumeAsset.h"
 
 

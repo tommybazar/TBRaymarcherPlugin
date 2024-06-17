@@ -4,13 +4,11 @@
 // (original raymarching code).
 
 #include "Rendering/LightingShaders.h"
-#include "Rendering/LightingShaderUtils.h"
 
-#include "RenderCore/Public/RenderUtils.h"
-#include "Renderer/Public/VolumeRendering.h"
-#include "Rendering/LightingShaders.h"
-
+#include "DataDrivenShaderPlatformInfo.h"
 #include "Engine/TextureRenderTargetVolume.h"
+#include "Rendering/LightingShaderUtils.h"
+#include "Runtime/RenderCore/Public/RenderUtils.h"
 #include "Util/UtilityShaders.h"
 
 #if !UE_BUILD_SHIPPING
@@ -69,8 +67,8 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 			break;
 		}
 		// Get the X, Y and Z transposed into the current axis orientation.
-		FIntVector TransposedDimensions =
-			GetTransposedDimensions(LocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), i);
+		FIntVector TransposedDimensions = GetTransposedDimensions(
+			LocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), i);
 		OneAxisReadWriteBufferResources& Buffers = GetBuffers(LocalMajorAxes, i, Resources);
 
 		float LightAlpha = GetLightAlpha(LocalLightParams, LocalMajorAxes, i);
@@ -85,7 +83,7 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 	TShaderMapRef<FAddDirLightShader> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
 	SetComputePipelineState(RHICmdList, ShaderRHI);
-	
+
 	// Transition the resource to Compute-shader.
 	// Otherwise the renderer might touch our textures while we're writing to them.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
@@ -103,8 +101,8 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 		FSamplerStateRHIRef readBuffSampler = GetBufferSamplerRef(ColorInt);
 
 		// Get the X, Y and Z transposed into the current axis orientation.
-		FIntVector TransposedDimensions =
-			GetTransposedDimensions(LocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), i);
+		FIntVector TransposedDimensions = GetTransposedDimensions(
+			LocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), i);
 
 		FVector2D UVOffset =
 			GetUVOffset(LocalMajorAxes.FaceWeight[i].first, -LocalLightParams.LightDirection, TransposedDimensions);
@@ -137,11 +135,12 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 			// TODO find out why this has to be set for every invocation when it was fine to just SetLoop before UE 5.3
 			ComputeShader->SetRaymarchParameters(
 				RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
-			ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+			ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI,
+				Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
 				Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
 			ComputeShader->SetLightAdded(RHICmdList, ShaderRHI, Added);
 			ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
-     		ComputeShader->SetUVOffset(RHICmdList, ShaderRHI, UVOffset);
+			ComputeShader->SetUVOffset(RHICmdList, ShaderRHI, UVOffset);
 			ComputeShader->SetUVWOffset(RHICmdList, ShaderRHI, UVWOffset);
 			ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermutationMatrix);
 			ComputeShader->SetStepSize(RHICmdList, ShaderRHI, StepSize);
@@ -291,7 +290,8 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 		{	 // Switch read and write buffers each cycle.
 			ComputeShader->SetRaymarchParameters(
 				RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
-			ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI, Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+			ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI,
+				Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
 				Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
 			ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
 			ComputeShader->SetStepSizes(RHICmdList, ShaderRHI, AddedStepSize, RemovedStepSize);

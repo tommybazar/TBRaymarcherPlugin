@@ -6,7 +6,7 @@
 #include "CoreMinimal.h"
 #include "MediaTexture.h"
 #include "GameFramework/Actor.h"
-#include "MediaAssets/Public/MediaPlayer.h"
+#include "Runtime/MediaAssets/Public/MediaPlayer.h"
 #include "FractalVideoProcessor.generated.h"
 
 /// This class takes a video source and creates 2 render targets from it.\
