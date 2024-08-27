@@ -15,12 +15,28 @@ void FVolumeTextureToolkitModule::StartupModule()
 	// This creates an alias "Raymarcher" for the folder of our shaders, which can be used when calling IMPLEMENT_GLOBAL_SHADER to
 	// find our shaders.
 	AddShaderSourceDirectoryMapping(TEXT("/VolumeTextureToolkit"), PluginShaderDir);
+
+	const FString DllBasePath = FPaths::Combine(
+		FPaths::ProjectPluginsDir(), TEXT("TBRaymarcherPlugin/Source/VolumeTextureToolkit/ThirdParty/dcmtk/Bin/Win64"));
+	const FString DCMTKDlls[] = {"oficonv.dll", "ofstd.dll", "oflog.dll", "dcmdata.dll"};
+	for (const FString& DllName : DCMTKDlls)
+	{
+		const FString DllPath = FPaths::Combine(DllBasePath, DllName);
+		void* DllHandle = FPlatformProcess::GetDllHandle(*DllPath);
+		check(DllHandle);
+		DllHandles.Add(DllHandle);
+	}
 }
 
 void FVolumeTextureToolkitModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
+
+	for (void* DllHandle : DllHandles)
+	{
+		FPlatformProcess::FreeDllHandle(DllHandle);
+	}
 }
 
 #undef LOCTEXT_NAMESPACE
