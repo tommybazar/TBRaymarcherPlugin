@@ -84,7 +84,7 @@ FVolumeInfo UDICOMLoader::ParseVolumeInfoFromHeader(FString FileName)
 		case DICOMParser::VR_SignedShort:
 		case DICOMParser::VR_WordString:
 			Info.OriginalFormat = EVolumeVoxelFormat::SignedShort;
-			Info.bIsSigned = true;
+			Info.bIsSigned = true; // TODO: This is probably a wrong assumption. DCMTK reads this is unsigned.
 			Info.BytesPerVoxel = 2;
 			break;
 		case DICOMParser::VR_Double:
