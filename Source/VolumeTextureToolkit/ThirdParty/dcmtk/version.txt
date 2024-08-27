@@ -1,0 +1,4 @@
+Name: DCMTK
+Description: DICOM Toolkit (DCMTK)
+URL: https://dcmtk.org
+Version: 3.6.8
