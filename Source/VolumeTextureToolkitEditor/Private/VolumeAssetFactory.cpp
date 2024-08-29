@@ -8,9 +8,9 @@
 #include "Containers/UnrealString.h"
 #include "Engine/VolumeTexture.h"
 #include "Misc/MessageDialog.h"
+#include "VolumeAsset/Loaders/DCMTKLoader.h"
 #include "VolumeAsset/Loaders/MHDLoader.h"
 #include "VolumeAsset/VolumeAsset.h"
-#include "VolumeAsset/Loaders/DICOMLoader.h"
 
 /* UMHDVolumeTextureFactory structors
  *****************************************************************************/
@@ -40,7 +40,7 @@ UObject* UVolumeAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
 	}
 	else
 	{
-		Loader = UDICOMLoader::Get();
+		Loader = UDCMTKLoader::Get();
 	}
 
 	FVolumeInfo Info = Loader->ParseVolumeInfoFromHeader(Filename);
