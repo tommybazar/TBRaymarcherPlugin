@@ -28,27 +28,29 @@ public:
 
 	bool bCancelled = true;
 
-	float PixelSpacingX = 1.0f;
-	float PixelSpacingY = 1.0f;
+	static float PixelSpacingX;
+	static float PixelSpacingY;
 
-	bool bSetPixelSpacingX = false;
-	bool bSetPixelSpacingY = false;
+	static bool bSetPixelSpacingX;
+	static bool bSetPixelSpacingY;
 
-	bool bSetSliceThickness = false;
-	float SliceThickness = 1.0f;
-	bool bVerifySliceThickness = true;
-	bool bIgnoreIrregularThickness = false;
+	static float SliceThickness;
 
-	EVolumeImporterThicknessOperation ThicknessOperation = EVolumeImporterThicknessOperation::Read;
-	EVolumeImporterLoaderType LoaderType = EVolumeImporterLoaderType::DICOM;
+	static EVolumeImporterThicknessOperation ThicknessOperation;
+	static EVolumeImporterLoaderType LoaderType;
 
 	bool GetNormalize() const;
 	bool GetConvertToFloat() const;
+	bool GetVerifySliceThickness() const;
+	bool GetIgnoreIrregularThickness() const;
 
 	void Construct(const FArguments& InArgs);
 
 private:
 	SWindow* WidgetWindow;
+
+	static bool bVerifySliceThickness;
+	static bool bIgnoreIrregularThickness;
 
 	TSharedPtr<SCheckBox> NormalizeCheckBox;
 	TSharedPtr<SCheckBox> ConvertToFloatCheckBox;

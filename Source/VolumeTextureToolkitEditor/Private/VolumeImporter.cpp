@@ -10,6 +10,20 @@
 
 #define LOCTEXT_NAMESPACE "SVolumeImporterWindow"
 
+float SVolumeImporterWindow::PixelSpacingX = 1.0f;
+float SVolumeImporterWindow::PixelSpacingY = 1.0f;
+
+bool SVolumeImporterWindow::bSetPixelSpacingX = false;
+bool SVolumeImporterWindow::bSetPixelSpacingY = false;
+
+float SVolumeImporterWindow::SliceThickness = 1.0f;
+
+EVolumeImporterThicknessOperation SVolumeImporterWindow::ThicknessOperation = EVolumeImporterThicknessOperation::Read;
+EVolumeImporterLoaderType SVolumeImporterWindow::LoaderType = EVolumeImporterLoaderType::DICOM;
+
+bool SVolumeImporterWindow::bVerifySliceThickness = true;
+bool SVolumeImporterWindow::bIgnoreIrregularThickness = false;
+
 bool SVolumeImporterWindow::GetNormalize() const
 {
 	return NormalizeCheckBox->GetCheckedState() == ECheckBoxState::Checked;
@@ -18,6 +32,25 @@ bool SVolumeImporterWindow::GetNormalize() const
 bool SVolumeImporterWindow::GetConvertToFloat() const
 {
 	return ConvertToFloatCheckBox->GetCheckedState() == ECheckBoxState::Checked;
+}
+
+bool SVolumeImporterWindow::GetVerifySliceThickness() const
+{
+	return ThicknessOperation == EVolumeImporterThicknessOperation::Read && bVerifySliceThickness;
+}
+
+bool SVolumeImporterWindow::GetIgnoreIrregularThickness() const
+{
+	if (ThicknessOperation == EVolumeImporterThicknessOperation::Calculate)
+	{
+		return bIgnoreIrregularThickness;
+	}
+	else if (ThicknessOperation == EVolumeImporterThicknessOperation::Read && bVerifySliceThickness)
+	{
+		return bIgnoreIrregularThickness;
+	}
+
+	return false;
 }
 
 void SVolumeImporterWindow::Construct(const FArguments& InArgs)

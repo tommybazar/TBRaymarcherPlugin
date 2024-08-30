@@ -75,8 +75,8 @@ UObject* UVolumeAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
 		DCMTKLoader->bSetSliceThickness = VolumeImporterWindow->ThicknessOperation == EVolumeImporterThicknessOperation::Set;
 		DCMTKLoader->DefaultSliceThickness = VolumeImporterWindow->SliceThickness;
 		DCMTKLoader->bCalculateSliceThickness = VolumeImporterWindow->ThicknessOperation == EVolumeImporterThicknessOperation::Calculate;
-		DCMTKLoader->bVerifySliceThickness = VolumeImporterWindow->bVerifySliceThickness;
-		DCMTKLoader->bIgnoreIrregularThickness = VolumeImporterWindow->bIgnoreIrregularThickness;
+		DCMTKLoader->bVerifySliceThickness = VolumeImporterWindow->GetVerifySliceThickness();
+		DCMTKLoader->bIgnoreIrregularThickness = VolumeImporterWindow->GetIgnoreIrregularThickness();
 		DCMTKLoader->bReadPixelSpacing = VolumeImporterWindow->bSetPixelSpacingX || VolumeImporterWindow->bSetPixelSpacingY;
 		DCMTKLoader->bSetPixelSpacingX = VolumeImporterWindow->bSetPixelSpacingX;
 		DCMTKLoader->DefaultPixelSpacingX = VolumeImporterWindow->PixelSpacingX;
