@@ -58,30 +58,60 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 		return Info;
 	}
 
-	uint32 NumberOfSlices = 0;
+	uint32 NumberOfSlices = 1;
 	{
-		FString FolderName, FileNameDummy, Extension;
-		FPaths::Split(FileName, FolderName, FileNameDummy, Extension);
-		TArray<FString> FilesInDir = GetFilesInFolder(FolderName, Extension);
-
-		for (const FString& File : FilesInDir)
+		OFString OfNumverOfFrames;
+		if (Dataset->findAndGetOFString(DCM_NumberOfFrames, OfNumverOfFrames).good())
 		{
-			DcmFileFormat FileFormat;
-			if (FileFormat.loadFile(TCHAR_TO_UTF8(*(FolderName / File))).bad())
+			NumberOfSlices = FCString::Atoi(*FString(UTF8_TO_TCHAR(OfNumverOfFrames.c_str())));
+		}
+
+		if (NumberOfSlices == 1)
+		{
+			FString FolderName, FileNameDummy, Extension;
+			FPaths::Split(FileName, FolderName, FileNameDummy, Extension);
+			TArray<FString> FilesInDir = GetFilesInFolder(FolderName, Extension);
+
+			NumberOfSlices = 0;
+			for (const FString& File : FilesInDir)
 			{
-				continue;
+				DcmFileFormat FileFormat;
+				if (FileFormat.loadFile(TCHAR_TO_UTF8(*(FolderName / File))).bad())
+				{
+					continue;
+				}
+
+				DcmDataset* FileDataset = FileFormat.getDataset();
+				OFString FileSeriesInstanceUID;
+				if (FileDataset->findAndGetOFString(DCM_SeriesInstanceUID, FileSeriesInstanceUID).bad())
+				{
+					continue;
+				}
+
+				if (FileSeriesInstanceUID == SeriesInstanceUID)
+				{
+					++NumberOfSlices;
+				}
+			}
+		}
+		else
+		{
+			if (bCalculateSliceThickness)
+			{
+				UE_LOG(LogDCMTK, Error, TEXT("Cannot calculate slice thickness for multi-frame DICOM files!"));
+				return Info;
 			}
 
-			DcmDataset* FileDataset = FileFormat.getDataset();
-			OFString FileSeriesInstanceUID;
-			if (FileDataset->findAndGetOFString(DCM_SeriesInstanceUID, FileSeriesInstanceUID).bad())
+			if (bVerifySliceThickness)
 			{
-				continue;
+				UE_LOG(LogDCMTK, Error, TEXT("Cannot verify slice thickness for multi-frame DICOM files!"));
+				return Info;
 			}
 
-			if (FileSeriesInstanceUID == SeriesInstanceUID)
+			if (bIgnoreIrregularThickness)
 			{
-				++NumberOfSlices;
+				UE_LOG(LogDCMTK, Error, TEXT("Cannot ignore irregular slice thickness for multi-frame DICOM files!"));
+				return Info;
 			}
 		}
 	}
@@ -302,29 +332,32 @@ UVolumeAsset* UDCMTKLoader::CreateVolumeFromFileInExistingPackage(
 	}
 }
 
-uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
+uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfSlices, uint32 DataSize)
+{
+	const Uint8* PixelData;
+	unsigned long DataLength;
+	Dataset->findAndGetUint8Array(DCM_PixelData, PixelData, &DataLength);
+
+	if (DataLength != DataSize)
+	{
+		UE_LOG(LogDCMTK, Error, TEXT("DICOM Loader error, PixelData size %d is different from the expected size %d"),
+			DataLength, DataSize);
+		return nullptr;
+	}
+
+	uint8* Data = new uint8[DataSize];
+	memcpy(Data, PixelData, DataLength);
+
+	return Data;
+}
+
+uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& SeriesInstanceUID, FVolumeInfo& VolumeInfo,
+	bool bCalculateSliceThickness, bool bVerifySliceThickness, bool bIgnoreIrregularThickness)
 {
 	unsigned long TotalDataSize = VolumeInfo.GetByteSize();
 
 	FString FolderName, FileNameDummy, Extension;
 	FPaths::Split(FilePath, FolderName, FileNameDummy, Extension);
-
-	TArray<FString> FilesInDir = GetFilesInFolder(FolderName, Extension);
-
-	DcmFileFormat Format;
-	if (Format.loadFile(TCHAR_TO_UTF8(*FilePath)).bad())
-	{
-		UE_LOG(LogDCMTK, Error, TEXT("Error loading DICOM image!"));
-		return nullptr;
-	}
-
-	DcmDataset* Dataset = Format.getDataset();
-	OFString SeriesInstanceUID;
-	if (Dataset->findAndGetOFString(DCM_SeriesInstanceUID, SeriesInstanceUID).bad())
-	{
-		UE_LOG(LogDCMTK, Error, TEXT("Error getting Series Instance UID!"));
-		return nullptr;
-	}
 
 	uint8* TotalArray = new uint8[TotalDataSize];
 	memset(TotalArray, 0, TotalDataSize);
@@ -332,6 +365,7 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 	TArray<double> SliceLocations;
 	SliceLocations.Reserve(VolumeInfo.Dimensions.Z);
 	uint32 NumberOfSlices = 0;
+	const TArray<FString> FilesInDir = IVolumeLoader::GetFilesInFolder(FolderName, Extension);
 	for (const FString& SliceFileName : FilesInDir)
 	{
 		DcmFileFormat SliceFormat;
@@ -439,16 +473,60 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 		}
 	}
 
+	return TotalArray;
+}
+
+uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
+{
+	DcmFileFormat Format;
+	if (Format.loadFile(TCHAR_TO_UTF8(*FilePath)).bad())
+	{
+		UE_LOG(LogDCMTK, Error, TEXT("Error loading DICOM image!"));
+		return nullptr;
+	}
+
+	DcmDataset* Dataset = Format.getDataset();
+
+	int32 NumberOfSlices = 1;
+	OFString OfNumverOfFrames;
+	if (Dataset->findAndGetOFString(DCM_NumberOfFrames, OfNumverOfFrames).good())
+	{
+		NumberOfSlices = FCString::Atoi(*FString(UTF8_TO_TCHAR(OfNumverOfFrames.c_str())));
+	}
+
+	uint8* Data;
+	if (NumberOfSlices > 1)
+	{
+		Data = LoadMultiFrameDICOM(Dataset, NumberOfSlices, VolumeInfo.GetByteSize());
+	}
+	else
+	{
+		OFString SeriesInstanceUID;
+		if (Dataset->findAndGetOFString(DCM_SeriesInstanceUID, SeriesInstanceUID).bad())
+		{
+			UE_LOG(LogDCMTK, Error, TEXT("Error getting Series Instance UID!"));
+			return nullptr;
+		}
+
+		Data = LoadSingleFrameDICOMFolder(
+			FilePath, SeriesInstanceUID, VolumeInfo, bCalculateSliceThickness, bVerifySliceThickness, bIgnoreIrregularThickness);
+	}
+
+	if (Data == nullptr)
+	{
+		return nullptr;
+	}
+
 	if (NumberOfSlices != VolumeInfo.Dimensions.Z)
 	{
 		UE_LOG(LogDCMTK, Error, TEXT("Number of slices in the folder %d is different from the one in the privided volume info %d"),
 			NumberOfSlices, VolumeInfo.Dimensions.Z);
-		delete[] TotalArray;
+		delete[] Data;
 		return nullptr;
 	}
 
-	TotalArray = IVolumeLoader::ConvertData(TotalArray, VolumeInfo, bNormalize, bConvertToFloat);
-	return TotalArray;
+	Data = IVolumeLoader::ConvertData(Data, VolumeInfo, bNormalize, bConvertToFloat);
+	return Data;
 }
 
 #pragma optimize("", on)
