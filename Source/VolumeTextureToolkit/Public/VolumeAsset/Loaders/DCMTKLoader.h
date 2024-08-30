@@ -16,6 +16,41 @@ class VOLUMETEXTURETOOLKIT_API UDCMTKLoader : public UObject, public IVolumeLoad
 {
 	GENERATED_BODY()
 public:
+	/// Read the slice thickness from the DICOM file. Default is true.
+	bool bReadSliceThickness : 1;
+
+	/// Set the slice thickness in the volume info ignoring the values of the DICOM file. Default is false.
+	bool bSetSliceThickness : 1;
+
+	/// Calculate the slice thickness from the slice location. Default is false.
+	bool bCalculateSliceThickness : 1;
+
+	/// Verify the slice thickness by measurements from the slice location. Default is true.
+	bool bVerifySliceThickness : 1;
+
+	/// Ignore irregular slice thickness in the slice thickness calculation pass. Default is false.
+	bool bIgnoreIrregularThickness : 1;
+
+	/// Read the pixel spacing from the DICOM file. Default is true.
+	bool bReadPixelSpacing : 1;
+
+	/// Set the pixel spacing in the volume info ignoring the values of the DICOM file. Default is false.
+	bool bSetPixelSpacingX : 1;
+
+	/// Set the pixel spacing in the volume info ignoring the values of the DICOM file. Default is false.
+	bool bSetPixelSpacingY : 1;
+
+	/// The distance between pixels in mm in the x direction. Default is 1.0f.
+	float DefaultPixelSpacingX = 1.0f;
+
+	/// The distance between pixels in mm in the y direction. Default is 1.0f.
+	float DefaultPixelSpacingY = 1.0f;
+
+	/// The distance between slices in mm used when the bSetSliceThickness flag is set. Default is 1.0f.
+	float DefaultSliceThickness = 1.0f;
+
+	UDCMTKLoader();
+
 	static UDCMTKLoader* Get();
 
 	virtual FVolumeInfo ParseVolumeInfoFromHeader(FString FileName) override;

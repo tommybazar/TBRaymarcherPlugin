@@ -19,6 +19,20 @@
 
 DEFINE_LOG_CATEGORY(LogDCMTK);
 
+
+UDCMTKLoader::UDCMTKLoader() :
+	IVolumeLoader(),
+	bReadSliceThickness(true),
+	bSetSliceThickness(false),
+	bCalculateSliceThickness(false),
+	bVerifySliceThickness(false),
+	bIgnoreIrregularThickness(false),
+	bReadPixelSpacing(true),
+	bSetPixelSpacingX(false),
+	bSetPixelSpacingY(false)
+{
+}
+
 UDCMTKLoader* UDCMTKLoader::Get()
 {
 	return NewObject<UDCMTKLoader>();
@@ -80,30 +94,36 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 	}
 	Info.Dimensions = FIntVector(Columns, Rows, NumberOfSlices);
 
-	OFString OfPixelSpacingStr;
-	if (Dataset->findAndGetOFString(DCM_PixelSpacing, OfPixelSpacingStr).bad())
+	double PixelSpacingX = DefaultPixelSpacingX, PixelSpacingY = DefaultPixelSpacingY;
+	if (!bSetPixelSpacingX || !bSetPixelSpacingY)
 	{
-		UE_LOG(LogDCMTK, Error, TEXT("Error getting Pixel Spacing!"));
-		return Info;
+		OFString OfPixelSpacingStr;
+		if (Dataset->findAndGetOFString(DCM_PixelSpacing, OfPixelSpacingStr).bad())
+		{
+			UE_LOG(LogDCMTK, Error, TEXT("Error getting Pixel Spacing!"));
+			return Info;
+		}
+
+		int ScanfResult = sscanf(OfPixelSpacingStr.c_str(), "%lf\\%lf", &PixelSpacingX, &PixelSpacingY);
+		if (ScanfResult == 0)
+		{
+			UE_LOG(LogDCMTK, Error, TEXT("Error parsing Pixel Spacing!"));
+			return Info;
+		}
+		else if (ScanfResult == 1)
+		{
+			PixelSpacingY = PixelSpacingX;
+		}
 	}
 
-	double PixelSpacingX, PixelSpacingY;
-	int ScanfResult = sscanf(OfPixelSpacingStr.c_str(), "%lf\\%lf", &PixelSpacingX, &PixelSpacingY);
-	if (ScanfResult == 0)
+	double SliceThickness = DefaultSliceThickness;
+	if (bReadSliceThickness)
 	{
-		UE_LOG(LogDCMTK, Error, TEXT("Error parsing Pixel Spacing!"));
-		return Info;
-	}
-	else if (ScanfResult == 1)
-	{
-		PixelSpacingY = PixelSpacingX;
-	}
-
-	double SliceThickness;
-	if (Dataset->findAndGetFloat64(DCM_SliceThickness, SliceThickness).bad())
-	{
-		UE_LOG(LogDCMTK, Error, TEXT("Error getting Slice Thickness!"));
-		return Info;
+		if (Dataset->findAndGetFloat64(DCM_SliceThickness, SliceThickness).bad())
+		{
+			UE_LOG(LogDCMTK, Error, TEXT("Error getting Slice Thickness!"));
+			return Info;
+		}
 	}
 
 	Info.Spacing = FVector(PixelSpacingX, PixelSpacingY, SliceThickness);
@@ -343,15 +363,18 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 		const FString SliceInstanceNumberStr = FString(UTF8_TO_TCHAR(OfSliceInstanceNumberStr.c_str()));
 		const int SliceNumber = FCString::Atoi(*SliceInstanceNumberStr) - 1;
 
-		double SliceLocation;
-		if (SliceDataset->findAndGetFloat64(DCM_SliceLocation, SliceLocation).bad())
+		if (bCalculateSliceThickness || bVerifySliceThickness)
 		{
-			UE_LOG(LogDCMTK, Error, TEXT("Error getting Slice Location!"));
-			delete[] TotalArray;
-			return nullptr;
-		}
+			double SliceLocation;
+			if (SliceDataset->findAndGetFloat64(DCM_SliceLocation, SliceLocation).bad())
+			{
+				UE_LOG(LogDCMTK, Error, TEXT("Error getting Slice Location!"));
+				delete[] TotalArray;
+				return nullptr;
+			}
 
-		SliceLocations.Add(SliceLocation);
+			SliceLocations.Add(SliceLocation);
+		}
 
 		const Uint8* PixelData;
 		unsigned long DataLength;
@@ -369,24 +392,51 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 		++NumberOfSlices;
 	}
 
-	SliceLocations.Sort();
-	check(SliceLocations.Num() > 2);
-
-	constexpr static const double Tolerance = 0.0001;
-	double CalculatedSliceThickness = FMath::Abs(SliceLocations[1] - SliceLocations[0]);
-	double PreviousSliceLocation = SliceLocations[1];
-	for (int32 i = 2; i < SliceLocations.Num(); ++i)
+	if (bCalculateSliceThickness || bVerifySliceThickness)
 	{
-		const double CurrentSliceLocation = SliceLocations[i];
-		const double CurrentSliceThickness = FMath::Abs(CurrentSliceLocation - PreviousSliceLocation);
-		const double NewCalculatedSliceThickness = FMath::Abs(CurrentSliceLocation - PreviousSliceLocation);
-		if (FMath::Abs(NewCalculatedSliceThickness - CalculatedSliceThickness) > Tolerance)
+		SliceLocations.Sort();
+		check(SliceLocations.Num() > 2);
+
+		constexpr static const double Tolerance = 0.0001;
+		double CalculatedSliceThickness = FMath::Abs(SliceLocations[1] - SliceLocations[0]);
+		double PreviousSliceLocation = SliceLocations[1];
+		for (int32 i = 2; i < SliceLocations.Num(); ++i)
 		{
-			UE_LOG(LogDCMTK, Warning, TEXT("Computed slice thickness varies across the dataset! %d != %d"),
-				CalculatedSliceThickness, NewCalculatedSliceThickness);
+			const double CurrentSliceLocation = SliceLocations[i];
+			const double CurrentSliceThickness = FMath::Abs(CurrentSliceLocation - PreviousSliceLocation);
+			const double NewCalculatedSliceThickness = FMath::Abs(CurrentSliceLocation - PreviousSliceLocation);
+			if (FMath::Abs(NewCalculatedSliceThickness - CalculatedSliceThickness) > Tolerance)
+			{
+				if (bIgnoreIrregularThickness)
+				{
+					UE_LOG(LogDCMTK, Error, TEXT("Computed slice thickness varies across the dataset! %d != %d"),
+						CalculatedSliceThickness, NewCalculatedSliceThickness);
+					delete [] TotalArray;
+					return nullptr;
+				}
+				else
+				{
+					UE_LOG(LogDCMTK, Warning, TEXT("Computed slice thickness varies across the dataset! %d != %d"),
+						CalculatedSliceThickness, NewCalculatedSliceThickness);
+				}
+			}
+			PreviousSliceLocation = CurrentSliceLocation;
+			CalculatedSliceThickness = NewCalculatedSliceThickness;
 		}
-		PreviousSliceLocation = CurrentSliceLocation;
-		CalculatedSliceThickness = NewCalculatedSliceThickness;
+
+		if (FMath::Abs(VolumeInfo.Spacing.Z - CalculatedSliceThickness) > Tolerance)
+		{
+			if (!bCalculateSliceThickness)
+			{
+				UE_LOG(LogDCMTK, Error, TEXT("Calculated slice thickness %f is different from the one in the header %f"),
+					CalculatedSliceThickness, VolumeInfo.Spacing.Z);
+				delete[] TotalArray;
+				return nullptr;
+			}
+
+			VolumeInfo.Spacing.Z = CalculatedSliceThickness;
+			VolumeInfo.WorldDimensions = VolumeInfo.Spacing * FVector(VolumeInfo.Dimensions);
+		}
 	}
 
 	if (NumberOfSlices != VolumeInfo.Dimensions.Z)
@@ -395,15 +445,6 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 			NumberOfSlices, VolumeInfo.Dimensions.Z);
 		delete[] TotalArray;
 		return nullptr;
-	}
-
-	if (FMath::Abs(VolumeInfo.Spacing.Z - CalculatedSliceThickness) > Tolerance)
-	{
-		UE_LOG(LogDCMTK, Warning, TEXT("Calculated slice thickness %f is different from the one in the header %f"),
-			CalculatedSliceThickness, VolumeInfo.Spacing.Z);
-
-		VolumeInfo.Spacing.Z = CalculatedSliceThickness;
-		VolumeInfo.WorldDimensions = VolumeInfo.Spacing * FVector(VolumeInfo.Dimensions);
 	}
 
 	TotalArray = IVolumeLoader::ConvertData(TotalArray, VolumeInfo, bNormalize, bConvertToFloat);
