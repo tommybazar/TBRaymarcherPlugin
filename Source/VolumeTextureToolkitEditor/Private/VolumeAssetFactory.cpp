@@ -83,6 +83,11 @@ UObject* UVolumeAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
 		DCMTKLoader->bSetPixelSpacingY = VolumeImporterWindow->bSetPixelSpacingY;
 		DCMTKLoader->DefaultPixelSpacingY = VolumeImporterWindow->PixelSpacingY;
 
+		if (VolumeImporterWindow->bDumpDicom)
+		{
+			UDCMTKLoader::DumpFileStructure(Filename);
+		}
+
 		Loader = DCMTKLoader;
 	}
 

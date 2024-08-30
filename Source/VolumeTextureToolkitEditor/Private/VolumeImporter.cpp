@@ -10,6 +10,8 @@
 
 #define LOCTEXT_NAMESPACE "SVolumeImporterWindow"
 
+bool SVolumeImporterWindow::bDumpDicom = false;
+
 float SVolumeImporterWindow::PixelSpacingX = 1.0f;
 float SVolumeImporterWindow::PixelSpacingY = 1.0f;
 
@@ -74,7 +76,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 			.Padding(5)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString("Format"))
+				.Text(LOCTEXT("FormatSection", "Format"))
 			]
 
 			+ SVerticalBox::Slot()
@@ -104,7 +106,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 			.Padding(5)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString("Conversion"))
+				.Text(LOCTEXT("ConversionSection", "Conversion"))
 			]
 
 			+ SVerticalBox::Slot()
@@ -126,7 +128,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 					.Content()
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString("Normalize"))
+						.Text(LOCTEXT("NormalizeCheckbox", "Normalize"))
 					]
 				]
 			]
@@ -148,7 +150,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 					.Content()
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString("To Float"))
+						.Text(LOCTEXT("ToFloatCheckbox", "To Float"))
 					]
 				]
 			]
@@ -165,7 +167,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 			.Padding(10, 5)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString("Pixel Spacing"))
+				.Text(LOCTEXT("PixelSpacingSection", "Pixel Spacing"))
 			]
 
 			// PixelSpacing X
@@ -199,7 +201,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 							.Content()
 							[
 								SNew(STextBlock)
-								.Text(FText::FromString("Set X"))
+								.Text(LOCTEXT("SetXCheckbox", "Set X"))
 							]
 						]
 
@@ -249,7 +251,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 							.Content()
 							[
 								SNew(STextBlock)
-								.Text(FText::FromString("Set Y"))
+								.Text(LOCTEXT("SetYCheckbox", "Set Y"))
 							]
 						]
 
@@ -285,7 +287,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 				.Padding(5)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString("Slice Thickness"))
+					.Text(LOCTEXT("SliceThicknessSection", "Slice Thickness"))
 				]
 
 				+ SVerticalBox::Slot()
@@ -326,7 +328,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 					.Content()
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString("Verify"))
+						.Text(LOCTEXT("VerifyCheckbox", "Verify"))
 					]
 				]
 
@@ -351,7 +353,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 					.Content()
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString("Ignore Irregular"))
+						.Text(LOCTEXT("IgnoreIrregularCheckbox", "Ignore Irregular"))
 					]
 				]
 
@@ -382,6 +384,39 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 
 			+ SVerticalBox::Slot()
 			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("UtilsSection", "Utils"))
+			]
+
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(10, 5)
+			[
+				SNew(SCheckBox)
+				.IsChecked_Lambda([this]() { return bDumpDicom ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+				.IsEnabled_Lambda([this]() { return LoaderType == EVolumeImporterLoaderType::DICOM; })
+				.OnCheckStateChanged_Lambda([this](ECheckBoxState State) { bDumpDicom = State == ECheckBoxState::Checked; })
+				.Content()
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("DumpCheckbox", "Dump"))
+					.ToolTip(
+						SNew(SToolTip)
+						.Text(LOCTEXT("DumpDicomTooltip", "Dump the file structure of the DICOM file to the output log.")))
+				]
+			]
+
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(SSeparator)
+			]
+
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			.Padding(5, 10)
 			[
 				SNew(SHorizontalBox)
@@ -391,7 +426,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 				.Padding(5)
 				[
 					SNew(SButton)
-					.Text(FText::FromString("Import"))
+					.Text(LOCTEXT("ImportButton", "Import"))
 					.OnClicked(this, &SVolumeImporterWindow::OnImport)
 				]
 
@@ -401,7 +436,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 				.Padding(5)
 				[
 					SNew(SButton)
-					.Text(FText::FromString("Cancel"))
+					.Text(LOCTEXT("CancelButton", "Cancel"))
 					.OnClicked(this, &SVolumeImporterWindow::OnCancel)
 				]
 			]

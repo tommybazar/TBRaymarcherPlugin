@@ -28,6 +28,8 @@ public:
 
 	bool bCancelled = true;
 
+	static bool bDumpDicom;
+
 	static float PixelSpacingX;
 	static float PixelSpacingY;
 

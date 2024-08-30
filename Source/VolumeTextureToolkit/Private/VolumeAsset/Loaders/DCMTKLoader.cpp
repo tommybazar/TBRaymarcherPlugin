@@ -38,6 +38,32 @@ UDCMTKLoader* UDCMTKLoader::Get()
 	return NewObject<UDCMTKLoader>();
 }
 
+void Dump(DcmDataset* Dataset)
+{
+	std::ostringstream out;
+	Dataset->print(out);
+
+	const FString ContentString(out.str().c_str());
+	UE_LOG(LogDCMTK, Log, TEXT("%s"), *ContentString);
+}
+
+void UDCMTKLoader::DumpFileStructure(const FString& FileName)
+{
+	DcmFileFormat Format;
+	if (Format.loadFile(TCHAR_TO_UTF8(*FileName)).bad())
+	{
+		UE_LOG(LogDCMTK, Error, TEXT("Error loading DICOM image!"));
+	}
+
+	DcmDataset* Dataset = Format.getDataset();
+	if (Dataset == nullptr)
+	{
+		UE_LOG(LogDCMTK, Error, TEXT("Error getting DICOM dataset!"));
+	}
+
+	Dump(Dataset);
+}
+
 FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 {
 	FVolumeInfo Info;

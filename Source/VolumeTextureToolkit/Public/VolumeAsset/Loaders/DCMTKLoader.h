@@ -64,4 +64,6 @@ public:
 		FString FileName, UObject* ParentPackage, bool bNormalize = true, bool bConvertToFloat = true) override;
 
 	virtual uint8* LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat) override;
+
+	static void DumpFileStructure(const FString& FileName);
 };
