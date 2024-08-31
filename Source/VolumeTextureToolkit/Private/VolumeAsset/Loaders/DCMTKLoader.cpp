@@ -76,28 +76,28 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 	}
 
 	DcmDataset* Dataset = Format.getDataset();
-	OFString SeriesInstanceUID;
-	if (Dataset->findAndGetOFString(DCM_SeriesInstanceUID, SeriesInstanceUID).bad())
+	OFString SeriesInstanceUIDOfString;
+	if (Dataset->findAndGetOFString(DCM_SeriesInstanceUID, SeriesInstanceUIDOfString).bad())
 	{
 		UE_LOG(LogDCMTK, Error, TEXT("Error getting Series Instance UID!"));
 		return Info;
 	}
 
-	uint32 NumberOfSlices = 1;
+	uint32 NumberOfFrames = 1;
 	{
-		OFString NumberOfFramesString;
-		if (Dataset->findAndGetOFString(DCM_NumberOfFrames, NumberOfFramesString).good())
+		OFString NumberOfFramesOfString;
+		if (Dataset->findAndGetOFString(DCM_NumberOfFrames, NumberOfFramesOfString).good())
 		{
-			NumberOfSlices = FCString::Atoi(*FString(UTF8_TO_TCHAR(NumberOfFramesString.c_str())));
+			NumberOfFrames = FCString::Atoi(*FString(UTF8_TO_TCHAR(NumberOfFramesOfString.c_str())));
 		}
 
-		if (NumberOfSlices == 1)
+		if (NumberOfFrames == 1)
 		{
 			FString FolderName, FileNameDummy, Extension;
 			FPaths::Split(FileName, FolderName, FileNameDummy, Extension);
 			TArray<FString> FilesInDir = GetFilesInFolder(FolderName, Extension);
 
-			NumberOfSlices = 0;
+			NumberOfFrames = 0;
 			for (const FString& File : FilesInDir)
 			{
 				DcmFileFormat FileFormat;
@@ -107,15 +107,15 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 				}
 
 				DcmDataset* FileDataset = FileFormat.getDataset();
-				OFString FileSeriesInstanceUID;
-				if (FileDataset->findAndGetOFString(DCM_SeriesInstanceUID, FileSeriesInstanceUID).bad())
+				OFString FileSeriesInstanceUIDOfString;
+				if (FileDataset->findAndGetOFString(DCM_SeriesInstanceUID, FileSeriesInstanceUIDOfString).bad())
 				{
 					continue;
 				}
 
-				if (FileSeriesInstanceUID == SeriesInstanceUID)
+				if (FileSeriesInstanceUIDOfString == SeriesInstanceUIDOfString)
 				{
-					++NumberOfSlices;
+					++NumberOfFrames;
 				}
 			}
 		}
@@ -147,19 +147,19 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 		UE_LOG(LogDCMTK, Error, TEXT("Error getting Rows and Columns!"));
 		return Info;
 	}
-	Info.Dimensions = FIntVector(Columns, Rows, NumberOfSlices);
+	Info.Dimensions = FIntVector(Columns, Rows, NumberOfFrames);
 
 	double PixelSpacingX = DefaultPixelSpacingX, PixelSpacingY = DefaultPixelSpacingY;
 	if (!bSetPixelSpacingX || !bSetPixelSpacingY)
 	{
-		OFString OfPixelSpacingStr;
-		if (Dataset->findAndGetOFString(DCM_PixelSpacing, OfPixelSpacingStr).bad())
+		OFString OfPixelSpacingOfString;
+		if (Dataset->findAndGetOFString(DCM_PixelSpacing, OfPixelSpacingOfString).bad())
 		{
 			UE_LOG(LogDCMTK, Error, TEXT("Error getting Pixel Spacing!"));
 			return Info;
 		}
 
-		int ScanfResult = sscanf(OfPixelSpacingStr.c_str(), "%lf\\%lf", &PixelSpacingX, &PixelSpacingY);
+		int ScanfResult = sscanf(OfPixelSpacingOfString.c_str(), "%lf\\%lf", &PixelSpacingX, &PixelSpacingY);
 		if (ScanfResult == 0)
 		{
 			UE_LOG(LogDCMTK, Error, TEXT("Error parsing Pixel Spacing!"));
@@ -361,7 +361,7 @@ UVolumeAsset* UDCMTKLoader::CreateVolumeFromFileInExistingPackage(
 	}
 }
 
-uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfSlices, uint32 DataSize)
+uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfFrames, uint32 DataSize)
 {
 	const Uint8* PixelData;
 	unsigned long DataLength;
@@ -380,7 +380,7 @@ uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfSlices, uint32 Da
 	return Data;
 }
 
-uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& SeriesInstanceUID, FVolumeInfo& VolumeInfo,
+uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& SeriesInstanceUIDOfString, FVolumeInfo& VolumeInfo,
 	bool bCalculateSliceThickness, bool bVerifySliceThickness, bool bIgnoreIrregularThickness)
 {
 	unsigned long TotalDataSize = VolumeInfo.GetByteSize();
@@ -393,7 +393,7 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 
 	TArray<double> SliceLocations;
 	SliceLocations.Reserve(VolumeInfo.Dimensions.Z);
-	uint32 NumberOfSlices = 0;
+	uint32 NumberOfFrames = 0;
 	const TArray<FString> FilesInDir = IVolumeLoader::GetFilesInFolder(FolderName, Extension);
 	for (const FString& SliceFileName : FilesInDir)
 	{
@@ -404,13 +404,13 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		}
 
 		DcmDataset* SliceDataset = SliceFormat.getDataset();
-		OFString SliceSeriesInstanceUID;
-		if (SliceDataset->findAndGetOFString(DCM_SeriesInstanceUID, SliceSeriesInstanceUID).bad())
+		OFString SliceSeriesInstanceUIDOfString;
+		if (SliceDataset->findAndGetOFString(DCM_SeriesInstanceUID, SliceSeriesInstanceUIDOfString).bad())
 		{
 			continue;
 		}
 
-		if (SliceSeriesInstanceUID != SeriesInstanceUID)
+		if (SliceSeriesInstanceUIDOfString != SeriesInstanceUIDOfString)
 		{
 			continue;
 		}
@@ -454,7 +454,7 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 					 "missing"));
 		}
 
-		++NumberOfSlices;
+		++NumberOfFrames;
 	}
 
 	if (bCalculateSliceThickness || bVerifySliceThickness)
@@ -515,10 +515,10 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 	DcmDataset* Dataset = Format.getDataset();
 
 	int32 NumberOfFrames = 1;
-	OFString NumberOfFramesString;
-	if (Dataset->findAndGetOFString(DCM_NumberOfFrames, NumberOfFramesString).good())
+	OFString NumberOfFramesOfString;
+	if (Dataset->findAndGetOFString(DCM_NumberOfFrames, NumberOfFramesOfString).good())
 	{
-		NumberOfFrames = FCString::Atoi(*FString(UTF8_TO_TCHAR(NumberOfFramesString.c_str())));
+		NumberOfFrames = FCString::Atoi(*FString(UTF8_TO_TCHAR(NumberOfFramesOfString.c_str())));
 	}
 
 	uint8* Data;
@@ -528,15 +528,15 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 	}
 	else
 	{
-		OFString SeriesInstanceUID;
-		if (Dataset->findAndGetOFString(DCM_SeriesInstanceUID, SeriesInstanceUID).bad())
+		OFString SeriesInstanceUIDOfString;
+		if (Dataset->findAndGetOFString(DCM_SeriesInstanceUID, SeriesInstanceUIDOfString).bad())
 		{
 			UE_LOG(LogDCMTK, Error, TEXT("Error getting Series Instance UID!"));
 			return nullptr;
 		}
 
 		Data = LoadSingleFrameDICOMFolder(
-			FilePath, SeriesInstanceUID, VolumeInfo, bCalculateSliceThickness, bVerifySliceThickness, bIgnoreIrregularThickness);
+			FilePath, SeriesInstanceUIDOfString, VolumeInfo, bCalculateSliceThickness, bVerifySliceThickness, bIgnoreIrregularThickness);
 	}
 
 	if (Data != nullptr)
