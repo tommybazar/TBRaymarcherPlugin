@@ -101,9 +101,11 @@ UObject* UVolumeAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
 		Loader->GetValidPackageNameFromFileName(FullPath, FolderName, AssetName);
 
 		OutVolume = Loader->CreatePersistentVolumeFromFile(Filename, FolderName, VolumeImporterWindow->GetNormalize());
-
-		UVolumeTexture*& VolumeTexture = OutVolume->DataTexture;
-		AdditionalImportedObjects.Add(VolumeTexture);
+		if (OutVolume)
+		{
+			UVolumeTexture*& VolumeTexture = OutVolume->DataTexture;
+			AdditionalImportedObjects.Add(VolumeTexture);
+		}
 	}
 
 	if (OutVolume == nullptr || !Info.bParseWasSuccessful)

@@ -19,17 +19,16 @@
 
 DEFINE_LOG_CATEGORY(LogDCMTK);
 
-
-UDCMTKLoader::UDCMTKLoader() :
-	IVolumeLoader(),
-	bReadSliceThickness(true),
-	bSetSliceThickness(false),
-	bCalculateSliceThickness(false),
-	bVerifySliceThickness(false),
-	bIgnoreIrregularThickness(false),
-	bReadPixelSpacing(true),
-	bSetPixelSpacingX(false),
-	bSetPixelSpacingY(false)
+UDCMTKLoader::UDCMTKLoader()
+	: IVolumeLoader()
+	, bReadSliceThickness(true)
+	, bSetSliceThickness(false)
+	, bCalculateSliceThickness(false)
+	, bVerifySliceThickness(false)
+	, bIgnoreIrregularThickness(false)
+	, bReadPixelSpacing(true)
+	, bSetPixelSpacingX(false)
+	, bSetPixelSpacingY(false)
 {
 }
 
@@ -86,10 +85,10 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 
 	uint32 NumberOfSlices = 1;
 	{
-		OFString OfNumverOfFrames;
-		if (Dataset->findAndGetOFString(DCM_NumberOfFrames, OfNumverOfFrames).good())
+		OFString NumberOfFramesString;
+		if (Dataset->findAndGetOFString(DCM_NumberOfFrames, NumberOfFramesString).good())
 		{
-			NumberOfSlices = FCString::Atoi(*FString(UTF8_TO_TCHAR(OfNumverOfFrames.c_str())));
+			NumberOfSlices = FCString::Atoi(*FString(UTF8_TO_TCHAR(NumberOfFramesString.c_str())));
 		}
 
 		if (NumberOfSlices == 1)
@@ -287,6 +286,13 @@ UVolumeAsset* UDCMTKLoader::CreatePersistentVolumeFromFile(
 	// Get a nice name from the folder we're in to name the asset.
 	FString VolumeName;
 	GetValidPackageNameFromFolderName(FileName, VolumeName);
+	
+	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, false);
+	if (LoadedArray == nullptr)
+	{
+		return nullptr;
+	}
+
 	// Create the persistent volume asset.
 	UVolumeAsset* OutAsset = UVolumeAsset::CreatePersistent(OutFolder, VolumeName);
 	if (!OutAsset)
@@ -294,7 +300,6 @@ UVolumeAsset* UDCMTKLoader::CreatePersistentVolumeFromFile(
 		return nullptr;
 	}
 
-	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, false);
 	const EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
 	// Create the persistent volume texture.
 	const FString VolumeTextureName = "VA_" + VolumeName + "_Data";
@@ -309,10 +314,8 @@ UVolumeAsset* UDCMTKLoader::CreatePersistentVolumeFromFile(
 		OutAsset->ImageInfo = VolumeInfo;
 		return OutAsset;
 	}
-	else
-	{
-		return nullptr;
-	}
+
+	return nullptr;
 }
 
 UVolumeAsset* UDCMTKLoader::CreateVolumeFromFileInExistingPackage(
@@ -366,8 +369,8 @@ uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfSlices, uint32 Da
 
 	if (DataLength != DataSize)
 	{
-		UE_LOG(LogDCMTK, Error, TEXT("DICOM Loader error, PixelData size %d is different from the expected size %d"),
-			DataLength, DataSize);
+		UE_LOG(LogDCMTK, Error, TEXT("DICOM Loader error, PixelData size %d is different from the expected size %d"), DataLength,
+			DataSize);
 		return nullptr;
 	}
 
@@ -401,27 +404,27 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		}
 
 		DcmDataset* SliceDataset = SliceFormat.getDataset();
-		OFString SliceSeriesInstancUID;
-		if (SliceDataset->findAndGetOFString(DCM_SeriesInstanceUID, SliceSeriesInstancUID).bad())
+		OFString SliceSeriesInstanceUID;
+		if (SliceDataset->findAndGetOFString(DCM_SeriesInstanceUID, SliceSeriesInstanceUID).bad())
 		{
 			continue;
 		}
 
-		if (SliceSeriesInstancUID != SeriesInstanceUID)
+		if (SliceSeriesInstanceUID != SeriesInstanceUID)
 		{
 			continue;
 		}
 
-		OFString OfSliceInstanceNumberStr;
-		if (SliceDataset->findAndGetOFString(DCM_InstanceNumber, OfSliceInstanceNumberStr).bad())
+		OFString SliceInstanceNumberOfString;
+		if (SliceDataset->findAndGetOFString(DCM_InstanceNumber, SliceInstanceNumberOfString).bad())
 		{
 			UE_LOG(LogDCMTK, Error, TEXT("Error getting Instance Number!"));
 			delete[] TotalArray;
 			return nullptr;
 		}
 
-		const FString SliceInstanceNumberStr = FString(UTF8_TO_TCHAR(OfSliceInstanceNumberStr.c_str()));
-		const int SliceNumber = FCString::Atoi(*SliceInstanceNumberStr) - 1;
+		const FString SliceInstanceNumberString = FString(UTF8_TO_TCHAR(SliceInstanceNumberOfString.c_str()));
+		const int SliceNumber = FCString::Atoi(*SliceInstanceNumberString) - 1;
 
 		if (bCalculateSliceThickness || bVerifySliceThickness)
 		{
@@ -440,13 +443,15 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		unsigned long DataLength;
 		SliceDataset->findAndGetUint8Array(DCM_PixelData, PixelData, &DataLength);
 
-		if ((DataLength * SliceNumber) < TotalDataSize)
+		if ((DataLength * (SliceNumber + 1)) <= TotalDataSize)
 		{
 			memcpy(TotalArray + (DataLength * SliceNumber), PixelData, DataLength);
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("DICOM Loader error during memcpy, some data might be missing"));
+			UE_LOG(LogTemp, Warning,
+				TEXT("DICOM Loader error when attempting memcpy (SliceNumber * Data exceeds total array length), some data will be "
+					 "missing"));
 		}
 
 		++NumberOfSlices;
@@ -463,22 +468,18 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		for (int32 i = 2; i < SliceLocations.Num(); ++i)
 		{
 			const double CurrentSliceLocation = SliceLocations[i];
-			const double CurrentSliceThickness = FMath::Abs(CurrentSliceLocation - PreviousSliceLocation);
 			const double NewCalculatedSliceThickness = FMath::Abs(CurrentSliceLocation - PreviousSliceLocation);
 			if (FMath::Abs(NewCalculatedSliceThickness - CalculatedSliceThickness) > Tolerance)
 			{
-				if (bIgnoreIrregularThickness)
+				if (!bIgnoreIrregularThickness)
 				{
-					UE_LOG(LogDCMTK, Error, TEXT("Computed slice thickness varies across the dataset! %d != %d"),
+					UE_LOG(LogDCMTK, Error, TEXT("Computed slice thickness varies across the dataset! %f != %f"),
 						CalculatedSliceThickness, NewCalculatedSliceThickness);
-					delete [] TotalArray;
+					delete[] TotalArray;
 					return nullptr;
 				}
-				else
-				{
-					UE_LOG(LogDCMTK, Warning, TEXT("Computed slice thickness varies across the dataset! %d != %d"),
-						CalculatedSliceThickness, NewCalculatedSliceThickness);
-				}
+				UE_LOG(LogDCMTK, Warning, TEXT("Computed slice thickness varies across the dataset! %f != %f"),
+					CalculatedSliceThickness, NewCalculatedSliceThickness);
 			}
 			PreviousSliceLocation = CurrentSliceLocation;
 			CalculatedSliceThickness = NewCalculatedSliceThickness;
@@ -486,7 +487,7 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 
 		if (FMath::Abs(VolumeInfo.Spacing.Z - CalculatedSliceThickness) > Tolerance)
 		{
-			if (!bCalculateSliceThickness)
+			if (bVerifySliceThickness)
 			{
 				UE_LOG(LogDCMTK, Error, TEXT("Calculated slice thickness %f is different from the one in the header %f"),
 					CalculatedSliceThickness, VolumeInfo.Spacing.Z);
@@ -513,17 +514,17 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 
 	DcmDataset* Dataset = Format.getDataset();
 
-	int32 NumberOfSlices = 1;
-	OFString OfNumverOfFrames;
-	if (Dataset->findAndGetOFString(DCM_NumberOfFrames, OfNumverOfFrames).good())
+	int32 NumberOfFrames = 1;
+	OFString NumberOfFramesString;
+	if (Dataset->findAndGetOFString(DCM_NumberOfFrames, NumberOfFramesString).good())
 	{
-		NumberOfSlices = FCString::Atoi(*FString(UTF8_TO_TCHAR(OfNumverOfFrames.c_str())));
+		NumberOfFrames = FCString::Atoi(*FString(UTF8_TO_TCHAR(NumberOfFramesString.c_str())));
 	}
 
 	uint8* Data;
-	if (NumberOfSlices > 1)
+	if (NumberOfFrames > 1)
 	{
-		Data = LoadMultiFrameDICOM(Dataset, NumberOfSlices, VolumeInfo.GetByteSize());
+		Data = LoadMultiFrameDICOM(Dataset, NumberOfFrames, VolumeInfo.GetByteSize());
 	}
 	else
 	{
@@ -538,20 +539,11 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 			FilePath, SeriesInstanceUID, VolumeInfo, bCalculateSliceThickness, bVerifySliceThickness, bIgnoreIrregularThickness);
 	}
 
-	if (Data == nullptr)
+	if (Data != nullptr)
 	{
-		return nullptr;
+		Data = ConvertData(Data, VolumeInfo, bNormalize, bConvertToFloat);
 	}
 
-	if (NumberOfSlices != VolumeInfo.Dimensions.Z)
-	{
-		UE_LOG(LogDCMTK, Error, TEXT("Number of slices in the folder %d is different from the one in the privided volume info %d"),
-			NumberOfSlices, VolumeInfo.Dimensions.Z);
-		delete[] Data;
-		return nullptr;
-	}
-
-	Data = IVolumeLoader::ConvertData(Data, VolumeInfo, bNormalize, bConvertToFloat);
 	return Data;
 }
 

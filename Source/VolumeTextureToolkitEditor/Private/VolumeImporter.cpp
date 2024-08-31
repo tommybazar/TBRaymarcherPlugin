@@ -23,8 +23,8 @@ float SVolumeImporterWindow::SliceThickness = 1.0f;
 EVolumeImporterThicknessOperation SVolumeImporterWindow::ThicknessOperation = EVolumeImporterThicknessOperation::Read;
 EVolumeImporterLoaderType SVolumeImporterWindow::LoaderType = EVolumeImporterLoaderType::DICOM;
 
-bool SVolumeImporterWindow::bVerifySliceThickness = true;
-bool SVolumeImporterWindow::bIgnoreIrregularThickness = false;
+bool SVolumeImporterWindow::bVerifySliceThickness = false;
+bool SVolumeImporterWindow::bIgnoreIrregularThickness = true;
 
 bool SVolumeImporterWindow::GetNormalize() const
 {
@@ -119,7 +119,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 					.Text(LOCTEXT("Normalization",
 						"Would you like your volume converted to G8 or G16 and normalized to the whole type range? This will allow it to "
 						"be saved persistently as an asset and make inspecting it with Texture editor easier. Also, rendering with the "
-						"default raymarching material and transfer function will be easier.\nIf your volume already is MET_(U)CHAR or "
+						"provided raymarching material and transfer function will work out-of-the-box.\nIf your volume already is MET_(U)CHAR or "
 						"MET_(U)SHORT, your volume will be persistent even without conversion, but values might be all over the place.")))
 				+ SHorizontalBox::Slot()
 				[
@@ -141,12 +141,11 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 				.ToolTip(
 					SNew(SToolTip)
 					.Text(LOCTEXT("FloatConversion",
-						"Should we convert it to R32_FLOAT? This will make sure the default materials can read it, but will make the "
-						"texture un-saveable.")))
+						"Should we convert it to R32_FLOAT? This will make the asset un-saveable." )))
 				+ SHorizontalBox::Slot()
 				[
 					SAssignNew(ConvertToFloatCheckBox, SCheckBox)
-					.IsChecked(ECheckBoxState::Checked)
+					.IsChecked(ECheckBoxState::Unchecked)
 					.Content()
 					[
 						SNew(STextBlock)
@@ -324,7 +323,7 @@ void SVolumeImporterWindow::Construct(const FArguments& InArgs)
 						})
 					.ToolTip(
 						SNew(SToolTip)
-						.Text(LOCTEXT("TicknessVerifyTooltip", "Read the value from the header and compare it to each difference of the slice location attributes.")))
+						.Text(LOCTEXT("ThicknessVerifyTooltip", "Read the value from the header and compare it to each difference of the slice location attributes.")))
 					.Content()
 					[
 						SNew(STextBlock)
