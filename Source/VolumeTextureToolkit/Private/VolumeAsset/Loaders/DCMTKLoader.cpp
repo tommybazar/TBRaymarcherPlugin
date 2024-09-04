@@ -75,8 +75,8 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 		return Info;
 	}
 
-	// TODO - Sanity check that this DICOM is even a 2D/3D image 
-	
+	// TODO - Sanity check that this DICOM is even a 2D/3D image
+
 	DcmDataset* Dataset = Format.getDataset();
 	OFString SeriesInstanceUIDOfString;
 	if (Dataset->findAndGetOFString(DCM_SeriesInstanceUID, SeriesInstanceUIDOfString).bad())
@@ -397,13 +397,18 @@ void PrintDebugData(const Uint8* PixelData, unsigned long DataLength)
 uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& SeriesInstanceUIDOfString, FVolumeInfo& VolumeInfo,
 	bool bCalculateSliceThickness, bool bVerifySliceThickness, bool bIgnoreIrregularThickness)
 {
-	unsigned long TotalDataSize = VolumeInfo.GetByteSize();
+	unsigned long FullDataSize = VolumeInfo.GetByteSize();
 
 	FString FolderName, FileNameDummy, Extension;
 	FPaths::Split(FilePath, FolderName, FileNameDummy, Extension);
 
-	uint8* TotalArray = new uint8[TotalDataSize];
-	memset(TotalArray, 0, TotalDataSize);
+	// Unique-ptr'd to manage the memory release automatically when exiting early on error.
+	std::unique_ptr<uint8[]> FullData(new uint8[FullDataSize]);
+	memset(FullData.get(), 0, FullDataSize);
+
+	// Buffer for reading data per-slice.
+	unsigned long SliceByteSize = VolumeInfo.Dimensions.X * VolumeInfo.Dimensions.Y * VolumeInfo.BytesPerVoxel;
+	std::unique_ptr<uint8[]> SliceData(new uint8[SliceByteSize]);
 
 	TArray<double> SliceLocations;
 	SliceLocations.Reserve(VolumeInfo.Dimensions.Z);
@@ -433,7 +438,6 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		if (SliceDataset->findAndGetOFString(DCM_InstanceNumber, SliceInstanceNumberOfString).bad())
 		{
 			UE_LOG(LogDCMTK, Error, TEXT("Error getting Instance Number!"));
-			delete[] TotalArray;
 			return nullptr;
 		}
 
@@ -450,15 +454,11 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 			if (SliceDataset->findAndGetFloat64(DCM_SliceLocation, SliceLocation).bad())
 			{
 				UE_LOG(LogDCMTK, Error, TEXT("Error getting Slice Location!"));
-				delete[] TotalArray;
 				return nullptr;
 			}
 
 			SliceLocations.Add(SliceLocation);
 		}
-
-		uint8* PixelData = new uint8[VolumeInfo.Dimensions.X * VolumeInfo.Dimensions.Y * VolumeInfo.BytesPerVoxel];
-		unsigned long DataLength = VolumeInfo.Dimensions.X * VolumeInfo.Dimensions.Y * VolumeInfo.BytesPerVoxel;
 
 		DcmElement* Element;
 		SliceDataset->findAndGetElement(DCM_PixelData, Element);
@@ -468,18 +468,20 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		// images.
 		// TODO - test the above assumption thoroughly
 		Uint32 StartingFragment = 1;
-		DicomPixelData->getUncompressedFrame(SliceDataset, 0, StartingFragment, (void*) PixelData, DataLength, Dummy);
-
-		if (PixelData == nullptr)
+		if (DicomPixelData->getUncompressedFrame(SliceDataset, 0, StartingFragment, SliceData.get(), SliceByteSize, Dummy).bad())
 		{
-			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! Most likely unsupported compression type."));
-			delete[] TotalArray;
 			return nullptr;
 		}
 
-		if ((DataLength * (SliceNumber + 1)) <= TotalDataSize)
+		if (SliceData == nullptr)
 		{
-			memcpy(TotalArray + (DataLength * SliceNumber), PixelData, DataLength);
+			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! Most likely unsupported compression type."));
+			return nullptr;
+		}
+
+		if ((SliceByteSize * (SliceNumber + 1)) <= FullDataSize)
+		{
+			memcpy(FullData.get() + (SliceByteSize * SliceNumber), SliceData.get(), SliceByteSize);
 		}
 		else
 		{
@@ -509,7 +511,6 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 				{
 					UE_LOG(LogDCMTK, Error, TEXT("Computed slice thickness varies across the dataset! %f != %f"),
 						CalculatedSliceThickness, NewCalculatedSliceThickness);
-					delete[] TotalArray;
 					return nullptr;
 				}
 				UE_LOG(LogDCMTK, Warning, TEXT("Computed slice thickness varies across the dataset! %f != %f"),
@@ -525,7 +526,6 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 			{
 				UE_LOG(LogDCMTK, Error, TEXT("Calculated slice thickness %f is different from the one in the header %f"),
 					CalculatedSliceThickness, VolumeInfo.Spacing.Z);
-				delete[] TotalArray;
 				return nullptr;
 			}
 
@@ -534,7 +534,8 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		}
 	}
 
-	return TotalArray;
+	SliceData.reset();
+	return FullData.release();
 }
 
 uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
