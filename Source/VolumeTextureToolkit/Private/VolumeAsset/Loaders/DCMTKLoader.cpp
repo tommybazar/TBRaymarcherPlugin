@@ -4,12 +4,12 @@
 
 #include "TextureUtilities.h"
 
+// DCMTK uses their own verify and check macros.
 #pragma push_macro("verify")
 #pragma push_macro("check")
 #undef verify
 #undef check
 
-#include "dcmtk/config/osconfig.h"
 #include "dcmtk/dcmdata/dctk.h"
 
 #pragma pop_macro("verify")
@@ -75,6 +75,8 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 		return Info;
 	}
 
+	// TODO - Sanity check that this DICOM is even a 2D/3D image 
+	
 	DcmDataset* Dataset = Format.getDataset();
 	OFString SeriesInstanceUIDOfString;
 	if (Dataset->findAndGetOFString(DCM_SeriesInstanceUID, SeriesInstanceUIDOfString).bad())
@@ -286,7 +288,7 @@ UVolumeAsset* UDCMTKLoader::CreatePersistentVolumeFromFile(
 	// Get a nice name from the folder we're in to name the asset.
 	FString VolumeName;
 	GetValidPackageNameFromFolderName(FileName, VolumeName);
-	
+
 	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, false);
 	if (LoadedArray == nullptr)
 	{
@@ -380,6 +382,18 @@ uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfFrames, uint32 Da
 	return Data;
 }
 
+/// Prints 100 char values from the PixelData array. Used to roughly check array contents.
+void PrintDebugData(const Uint8* PixelData, unsigned long DataLength)
+{
+	std::vector<uint8> debugData;
+	for (unsigned long i = 0; i < DataLength; i += (DataLength / 100))
+	{
+		debugData.push_back((int8) PixelData[i]);
+	}
+	std::string DebugStdString(debugData.begin(), debugData.end());
+	UE_LOG(LogTemp, Warning, TEXT("Debug data : %hs"), DebugStdString.c_str());
+}
+
 uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& SeriesInstanceUIDOfString, FVolumeInfo& VolumeInfo,
 	bool bCalculateSliceThickness, bool bVerifySliceThickness, bool bIgnoreIrregularThickness)
 {
@@ -425,6 +439,10 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 
 		const FString SliceInstanceNumberString = FString(UTF8_TO_TCHAR(SliceInstanceNumberOfString.c_str()));
 		const int SliceNumber = FCString::Atoi(*SliceInstanceNumberString) - 1;
+		if (SliceNumber < 0)	// TODO handle imgs which start at slice zero (go through slices, find lowest, offset from there)
+		{
+			continue;
+		}
 
 		if (bCalculateSliceThickness || bVerifySliceThickness)
 		{
@@ -439,9 +457,25 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 			SliceLocations.Add(SliceLocation);
 		}
 
-		const Uint8* PixelData;
-		unsigned long DataLength;
-		SliceDataset->findAndGetUint8Array(DCM_PixelData, PixelData, &DataLength);
+		uint8* PixelData = new uint8[VolumeInfo.Dimensions.X * VolumeInfo.Dimensions.Y * VolumeInfo.BytesPerVoxel];
+		unsigned long DataLength = VolumeInfo.Dimensions.X * VolumeInfo.Dimensions.Y * VolumeInfo.BytesPerVoxel;
+
+		DcmElement* Element;
+		SliceDataset->findAndGetElement(DCM_PixelData, Element);
+		DcmPixelData* DicomPixelData = OFstatic_cast(DcmPixelData*, Element);
+		OFString Dummy;
+		// Data is presumably stored in the first fragment (0th fragment is byte offsets and whatnot) of 0th frame for single frame
+		// images.
+		// TODO - test the above assumption thoroughly
+		Uint32 StartingFragment = 1;
+		DicomPixelData->getUncompressedFrame(SliceDataset, 0, StartingFragment, (void*) PixelData, DataLength, Dummy);
+
+		if (PixelData == nullptr)
+		{
+			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! Most likely unsupported compression type."));
+			delete[] TotalArray;
+			return nullptr;
+		}
 
 		if ((DataLength * (SliceNumber + 1)) <= TotalDataSize)
 		{
@@ -462,7 +496,7 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		SliceLocations.Sort();
 		check(SliceLocations.Num() > 2);
 
-		constexpr static const double Tolerance = 0.0001;
+		constexpr static double Tolerance = 0.0001;
 		double CalculatedSliceThickness = FMath::Abs(SliceLocations[1] - SliceLocations[0]);
 		double PreviousSliceLocation = SliceLocations[1];
 		for (int32 i = 2; i < SliceLocations.Num(); ++i)
@@ -535,8 +569,8 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 			return nullptr;
 		}
 
-		Data = LoadSingleFrameDICOMFolder(
-			FilePath, SeriesInstanceUIDOfString, VolumeInfo, bCalculateSliceThickness, bVerifySliceThickness, bIgnoreIrregularThickness);
+		Data = LoadSingleFrameDICOMFolder(FilePath, SeriesInstanceUIDOfString, VolumeInfo, bCalculateSliceThickness,
+			bVerifySliceThickness, bIgnoreIrregularThickness);
 	}
 
 	if (Data != nullptr)
