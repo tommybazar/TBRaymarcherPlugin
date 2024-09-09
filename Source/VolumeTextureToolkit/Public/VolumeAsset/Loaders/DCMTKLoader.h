@@ -31,9 +31,6 @@ public:
 	/// Ignore irregular slice thickness in the slice thickness calculation pass. Default is false.
 	bool bIgnoreIrregularThickness : 1;
 
-	/// Read the pixel spacing from the DICOM file. Default is true.
-	bool bReadPixelSpacing : 1;
-
 	/// Set the pixel spacing in the volume info ignoring the values of the DICOM file. Default is false.
 	bool bSetPixelSpacingX : 1;
 

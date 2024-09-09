@@ -5,12 +5,19 @@
 #include "TextureUtilities.h"
 
 // DCMTK uses their own verify and check macros.
+// Also, they include some effed up windows headers which for example include min and max macros for that
+// extra bit of _screw you_
 #pragma push_macro("verify")
 #pragma push_macro("check")
 #undef verify
 #undef check
 
-#include "dcmtk/dcmdata/dctk.h"
+#include "dcmtk/dcmdata/dcdatset.h"
+#include "dcmtk/dcmdata/dcdeftag.h"
+#include "dcmtk/dcmdata/dcfilefo.h"
+#include "dcmtk/dcmdata/dcpixel.h"
+
+#include <vector>
 
 #pragma pop_macro("verify")
 #pragma pop_macro("check")
@@ -26,7 +33,6 @@ UDCMTKLoader::UDCMTKLoader()
 	, bCalculateSliceThickness(false)
 	, bVerifySliceThickness(false)
 	, bIgnoreIrregularThickness(false)
-	, bReadPixelSpacing(true)
 	, bSetPixelSpacingX(false)
 	, bSetPixelSpacingY(false)
 {
@@ -35,6 +41,18 @@ UDCMTKLoader::UDCMTKLoader()
 UDCMTKLoader* UDCMTKLoader::Get()
 {
 	return NewObject<UDCMTKLoader>();
+}
+
+int GetSliceNumber(DcmDataset* SliceDataset)
+{
+	OFString SliceInstanceNumberOfString;
+	if (SliceDataset->findAndGetOFString(DCM_InstanceNumber, SliceInstanceNumberOfString).bad())
+	{
+		UE_LOG(LogDCMTK, Error, TEXT("Error getting Instance Number!"));
+		return -1;
+	}
+	const FString SliceInstanceNumberString = FString(UTF8_TO_TCHAR(SliceInstanceNumberOfString.c_str()));
+	return FCString::Atoi(*SliceInstanceNumberString);
 }
 
 void Dump(DcmDataset* Dataset)
@@ -102,22 +120,32 @@ FVolumeInfo UDCMTKLoader::ParseVolumeInfoFromHeader(FString FileName)
 			NumberOfFrames = 0;
 			for (const FString& File : FilesInDir)
 			{
-				DcmFileFormat FileFormat;
-				if (FileFormat.loadFile(TCHAR_TO_UTF8(*(FolderName / File))).bad())
+				DcmFileFormat SliceDataFormat;
+				if (SliceDataFormat.loadFile(TCHAR_TO_UTF8(*(FolderName / File))).bad())
 				{
 					continue;
 				}
 
-				DcmDataset* FileDataset = FileFormat.getDataset();
+				DcmDataset* SliceDataSet = SliceDataFormat.getDataset();
 				OFString FileSeriesInstanceUIDOfString;
-				if (FileDataset->findAndGetOFString(DCM_SeriesInstanceUID, FileSeriesInstanceUIDOfString).bad())
+				if (SliceDataSet->findAndGetOFString(DCM_SeriesInstanceUID, FileSeriesInstanceUIDOfString).bad())
 				{
+					// Series UID not matching -> different image than what we're loading.
 					continue;
 				}
 
 				if (FileSeriesInstanceUIDOfString == SeriesInstanceUIDOfString)
 				{
 					++NumberOfFrames;
+					if (int SliceNumber = GetSliceNumber(SliceDataSet); SliceNumber != -1)
+					{
+						Info.UpdateMinMaxSliceNumber(SliceNumber);
+					}
+					else
+					{
+						UE_LOG(LogDCMTK, Error, TEXT("Failed getting slice numbers when reading DICOM folder headers"));
+						return Info;	
+					}
 				}
 			}
 		}
@@ -385,12 +413,12 @@ uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfFrames, uint32 Da
 /// Prints 100 char values from the PixelData array. Used to roughly check array contents.
 void PrintDebugData(const Uint8* PixelData, unsigned long DataLength)
 {
-	std::vector<uint8> debugData;
+	std::vector<uint8> DebugData;
 	for (unsigned long i = 0; i < DataLength; i += (DataLength / 100))
 	{
-		debugData.push_back((int8) PixelData[i]);
+		DebugData.push_back((int8) PixelData[i]);
 	}
-	std::string DebugStdString(debugData.begin(), debugData.end());
+	std::string DebugStdString(DebugData.begin(), DebugData.end());
 	UE_LOG(LogTemp, Warning, TEXT("Debug data : %hs"), DebugStdString.c_str());
 }
 
@@ -434,20 +462,10 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 			continue;
 		}
 
-		OFString SliceInstanceNumberOfString;
-		if (SliceDataset->findAndGetOFString(DCM_InstanceNumber, SliceInstanceNumberOfString).bad())
-		{
-			UE_LOG(LogDCMTK, Error, TEXT("Error getting Instance Number!"));
-			return nullptr;
-		}
-
-		const FString SliceInstanceNumberString = FString(UTF8_TO_TCHAR(SliceInstanceNumberOfString.c_str()));
-		const int SliceNumber = FCString::Atoi(*SliceInstanceNumberString) - 1;
-		if (SliceNumber < 0)	// TODO handle imgs which start at slice zero (go through slices, find lowest, offset from there)
-		{
-			continue;
-		}
-
+		const int SliceNumber = GetSliceNumber(SliceDataset);
+		// Slices can be numbered from 0 or 1 (or another, random number?), so always offset from the min slice number instead of 0 or 1.
+		const int SliceOffset = SliceNumber - VolumeInfo.minSliceNumber;
+		
 		if (bCalculateSliceThickness || bVerifySliceThickness)
 		{
 			double SliceLocation;
@@ -470,18 +488,13 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		Uint32 StartingFragment = 1;
 		if (DicomPixelData->getUncompressedFrame(SliceDataset, 0, StartingFragment, SliceData.get(), SliceByteSize, Dummy).bad())
 		{
+			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! JPEG2000 - compressed files require custom licensing"));
 			return nullptr;
 		}
 
-		if (SliceData == nullptr)
+		if ((SliceByteSize * (SliceOffset + 1)) <= FullDataSize)
 		{
-			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! Most likely unsupported compression type."));
-			return nullptr;
-		}
-
-		if ((SliceByteSize * (SliceNumber + 1)) <= FullDataSize)
-		{
-			memcpy(FullData.get() + (SliceByteSize * SliceNumber), SliceData.get(), SliceByteSize);
+			memcpy(FullData.get() + (SliceByteSize * SliceOffset), SliceData.get(), SliceByteSize);
 		}
 		else
 		{

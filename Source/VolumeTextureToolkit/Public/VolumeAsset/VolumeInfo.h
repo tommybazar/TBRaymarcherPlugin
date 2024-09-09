@@ -119,6 +119,12 @@ public:
 	// Will reflect the ActualFormat rather than OriginalFormat.
 	size_t BytesPerVoxel;
 
+	// Initialized to max() so that any int lowers it on first call.
+	int minSliceNumber{std::numeric_limits<int>::max()};
+	
+	// Initialized to min() so that any int increases it on first call.
+	int maxSliceNumber{std::numeric_limits<int>::min()};
+	
 	// Normalizes an input value from the range [MinValue, MaxValue] to [0,1]. Note that values can be outside of the range,
 	// e.g. MinValue - (MaxValue - MinValue) will be normalized to -1.
 	float NormalizeValue(float InValue);
@@ -138,5 +144,8 @@ public:
 
 	static EPixelFormat VoxelFormatToPixelFormat(EVolumeVoxelFormat InFormat);
 
+	/// Updates min + max slice numbers saved in the VolumeInfo to reflect having a slice with the provided number.
+	void UpdateMinMaxSliceNumber(int SliceNumber);
+	
 	FString ToString() const;
 };

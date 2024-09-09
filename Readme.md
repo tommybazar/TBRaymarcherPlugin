@@ -89,6 +89,7 @@ Located in the `/VolumeTextureToolkit` and `/VolumeTextureToolkitEditor` plugin 
 for loading .raw files into volumes, convenience functions for creating VolumeTextures from said .raw files, conversion functions
 to process data when it is imported etc.
 I tried to be very generous with comments, so check out `TextureUtilities.h`/`.cpp` and see for yourself.
+The easiest way to load DICOMs is through drag'n'dropping a single file from the series into the content browser.
 
 ### Volume loading
 All functionality discussed in this section can be found in `VolumeTextureToolkit/Public/VolumeAsset/VolumeAsset.h` and `VolumeTextureToolkit/Public/VolumeAsset/Loaders/VolumeLoader.h` 
@@ -96,18 +97,15 @@ and it's inherited classes (MHD and DICOM loaders).
 
 We support loading MHD and DICOM files into a `UVolumeAsset` data asset. 
 
-When loading volumetric files, the user must choose if they want them normalized and converted to G8/G16 (grayscale 8bit or 16bit) format.
+When loading volumetric files, the values in the file are normalized to 0-1 and the original min and max values are saved.
 This allows the textures to be persistently saved in Unreal, but comes at the cost of being forced to normalize the file to 0-1 range.
 To conserve the original values, we keep the minimum and maximum value encountered in the volume when it was loaded, so after normalization,
 value of 0 in the texture corresponds to `ImageInfo.MinValue` within the UVolumeAsset and value of 1 in the texture corresponds to `ImageInfo.MaxValue` in the asset.
 
-This is not necessary if you don't mind your loaded assets not being persistent, then you can load the file as a R32Float and keep the original values.
-I'm currently investigating how to get around this limitation by making my own `UVolumeTexture`-like asset instead of using the `UVolumeTexture` assets directly.
-
 See `CreateVolumeFromFile` and `CreatePersistentVolumeFromFile` functions respectively for both of these loading types.
 
-We also support drag'n'drop asset import. If you drag a file with a .dcm or .mhd extension into the content browser, a `UVolumeAsset` and a corresponding `UVolumeTexture` will
-be created in the current folder. User will be prompted if they want the data to be normalized or converted into float, which results in same behaviour as described previously. 
+We also support drag'n'drop asset import. If you drag a file with a .dcm or .mhd (or empty) extension into the content browser, a `UVolumeAsset` and a corresponding `UVolumeTexture` will
+be created in the current folder. The user is shown an importer window where they can select whether to read or hard-set the slice thickness and pixel spacing. If "read" is selected, then the import will fail if the DICOM doesn't have values in the neccessary tags. 
 See `VolumeTextureEditor/Public/VolumeTextureFactory.h` and associated .cpp file for implementation details.
 
 
@@ -279,4 +277,4 @@ In `TBRaymarcherPlugin/Content/DefaultResources/` are VolumeAsset and volume tex
 The data is taken from publicly available LIDC/IDRI database and uses [CC Attribution 3.0 Unported License](https://creativecommons.org/licenses/by/3.0/).
 
 ## DICOM loading
-DICOM loading is utilizing a modified version of VTK DicomParser, made by Matt Turek. See  License.txt in /Source/VolumeTextureToolkit/Public/VolumeAsset/DICOMParser/License.txt for full license text.
+DICOM loading is using a binary version of DCMTK library, you can find their full license at their [github](https://github.com/DCMTK/dcmtk/blob/master/COPYRIGHT)
