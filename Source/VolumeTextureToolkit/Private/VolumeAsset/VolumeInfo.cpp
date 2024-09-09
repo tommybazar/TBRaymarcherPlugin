@@ -118,6 +118,18 @@ EPixelFormat FVolumeInfo::VoxelFormatToPixelFormat(EVolumeVoxelFormat InFormat)
 	}
 }
 
+void FVolumeInfo::UpdateMinMaxSliceNumber(int SliceNumber)
+{
+	if (SliceNumber < minSliceNumber)
+	{
+		minSliceNumber = SliceNumber;
+	}
+	if (SliceNumber > maxSliceNumber)
+	{
+		maxSliceNumber = SliceNumber;
+	}
+}
+
 FString FVolumeInfo::ToString() const
 {
 	FString text = "File name " + DataFileName + " details:" + "\nDimensions = " + Dimensions.ToString() +

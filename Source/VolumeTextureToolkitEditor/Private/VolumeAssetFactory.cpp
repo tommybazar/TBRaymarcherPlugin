@@ -8,84 +8,120 @@
 #include "Containers/UnrealString.h"
 #include "Engine/VolumeTexture.h"
 #include "Misc/MessageDialog.h"
+#include "Runtime/Slate/Public/Framework/Notifications/NotificationManager.h"
+#include "Runtime/Slate/Public/Widgets/Notifications/SNotificationList.h"
+#include "VolumeAsset/Loaders/DCMTKLoader.h"
 #include "VolumeAsset/Loaders/MHDLoader.h"
 #include "VolumeAsset/VolumeAsset.h"
-#include "VolumeAsset/Loaders/DICOMLoader.h"
+#include "VolumeImporter.h"
 
 /* UMHDVolumeTextureFactory structors
  *****************************************************************************/
 
 UVolumeAssetFactory::UVolumeAssetFactory(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
+	Formats.Add(FString(TEXT(";")) + NSLOCTEXT("UMHDVolumeTextureFactory", "FormatAny", "No Extension File").ToString());
 	Formats.Add(FString(TEXT("mhd;")) + NSLOCTEXT("UMHDVolumeTextureFactory", "FormatMhd", ".mhd File").ToString());
 	Formats.Add(FString(TEXT("dcm;")) + NSLOCTEXT("UMHDVolumeTextureFactory", "FormatDicom", ".dcm File").ToString());
 
 	SupportedClass = UVolumeAsset::StaticClass();
 	bCreateNew = false;
 	bEditorImport = true;
-	ImportPriority = 1;
+	ImportPriority = DefaultImportPriority - 10;
 }
 
 #pragma optimize("", off)
 UObject* UVolumeAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags,
 	const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
-	IVolumeLoader* Loader = nullptr;
+	bOutOperationCanceled = false;
+
+	TSharedPtr<SVolumeImporterWindow> VolumeImporterWindow;
+	TSharedRef<SWindow> Window =
+		SNew(SWindow)
+			.Title(NSLOCTEXT("VolumeAssetFactory", "VolumeImportTitle", "Volume Import"))
+			.SizingRule(ESizingRule::Autosized)
+			.SupportsMaximize(false)
+			.SupportsMinimize(false)[SAssignNew(VolumeImporterWindow, SVolumeImporterWindow).WidgetWindow(&Window.Get())];
 
 	FString FileNamePart, FolderPart, ExtensionPart;
 	FPaths::Split(Filename, FolderPart, FileNamePart, ExtensionPart);
 	if (ExtensionPart.Equals(TEXT("mhd")))
 	{
+		VolumeImporterWindow->LoaderType = EVolumeImporterLoaderType::MHD;
+	}
+	else
+	{
+		VolumeImporterWindow->LoaderType = EVolumeImporterLoaderType::DICOM;
+	}
+
+	FSlateApplication::Get().AddModalWindow(Window, nullptr, false);
+
+	if (VolumeImporterWindow->bCancelled)
+	{
+		bOutOperationCanceled = true;
+		return nullptr;
+	}
+
+	IVolumeLoader* Loader = nullptr;
+	if (VolumeImporterWindow->LoaderType == EVolumeImporterLoaderType::MHD)
+	{
 		Loader = UMHDLoader::Get();
 	}
 	else
 	{
-		Loader = UDICOMLoader::Get();
+		UDCMTKLoader* DCMTKLoader = UDCMTKLoader::Get();
+		DCMTKLoader->bReadSliceThickness = VolumeImporterWindow->ThicknessOperation == EVolumeImporterThicknessOperation::Read;
+		DCMTKLoader->bSetSliceThickness = VolumeImporterWindow->ThicknessOperation == EVolumeImporterThicknessOperation::Set;
+		DCMTKLoader->DefaultSliceThickness = VolumeImporterWindow->SliceThickness;
+		DCMTKLoader->bCalculateSliceThickness = VolumeImporterWindow->ThicknessOperation == EVolumeImporterThicknessOperation::Calculate;
+		DCMTKLoader->bVerifySliceThickness = VolumeImporterWindow->GetVerifySliceThickness();
+		DCMTKLoader->bIgnoreIrregularThickness = VolumeImporterWindow->GetIgnoreIrregularThickness();
+		DCMTKLoader->bSetPixelSpacingX = VolumeImporterWindow->bSetPixelSpacingX;
+		DCMTKLoader->DefaultPixelSpacingX = VolumeImporterWindow->PixelSpacingX;
+		DCMTKLoader->bSetPixelSpacingY = VolumeImporterWindow->bSetPixelSpacingY;
+		DCMTKLoader->DefaultPixelSpacingY = VolumeImporterWindow->PixelSpacingY;
+
+		if (VolumeImporterWindow->bDumpDicom)
+		{
+			UDCMTKLoader::DumpFileStructure(Filename);
+		}
+
+		Loader = DCMTKLoader;
 	}
 
 	FVolumeInfo Info = Loader->ParseVolumeInfoFromHeader(Filename);
-	if (!Info.bParseWasSuccessful)
+	UVolumeAsset* OutVolume = nullptr;
+	if (Info.bParseWasSuccessful)
 	{
-		return nullptr;
-	}
+		FString FullPath = InParent->GetName();
+		FString AssetName;
+		FString FolderName;
+		Loader->GetValidPackageNameFromFileName(FullPath, FolderName, AssetName);
 
-	bool bNormalize = false;
-	bool bConvertToFloat = false;
-
-	EAppReturnType::Type DialogAnswer = FMessageDialog::Open(EAppMsgType::YesNo, EAppReturnType::Yes,
-		NSLOCTEXT("Volumetrics", "Normalize?",
-			"Would you like your volume converted to G8 or G16 and normalized to the whole type range? This will allow it to "
-			"be saved persistently as an asset and make inspecting it with Texture editor easier. Also, rendering with the "
-			"default raymarching material and transfer function will be easier.\nIf your volume already is MET_(U)CHAR or "
-			"MET_(U)SHORT, your volume will be persistent even without conversion, but values might be all over the place."));
-
-	if (DialogAnswer == EAppReturnType::Yes)
-	{
-		bNormalize = true;
-	}
-	else if (Info.OriginalFormat != EVolumeVoxelFormat::Float)
-	{
-		EAppReturnType::Type DialogAnswer2 = FMessageDialog::Open(EAppMsgType::YesNo, EAppReturnType::Yes,
-			NSLOCTEXT("Volumetrics", "Convert to R32?",
-				"Should we convert it to R32_FLOAT? This will make sure the default materials can read it, but will make the "
-				"texture un-saveable."));
-		if (DialogAnswer2 == EAppReturnType::Yes)
+		OutVolume = Loader->CreatePersistentVolumeFromFile(Filename, FolderName, VolumeImporterWindow->GetNormalize());
+		if (OutVolume)
 		{
-			bConvertToFloat = true;
+			UVolumeTexture*& VolumeTexture = OutVolume->DataTexture;
+			AdditionalImportedObjects.Add(VolumeTexture);
 		}
 	}
-	
-	FString FullPath = InParent->GetName();
-	FString AssetName;
-	FString FolderName;
-	Loader->GetValidPackageNameFromFileName(FullPath, FolderName, AssetName);
-	
-	UVolumeAsset* OutVolume = Loader->CreatePersistentVolumeFromFile(Filename, FolderName, bNormalize);
-	bOutOperationCanceled = false;
 
-	// Add created MHD file to AdditionalImportedObjects so it also gets saved in-editor.
-	UVolumeTexture*& VolumeTexture = OutVolume->DataTexture;
-	AdditionalImportedObjects.Add(VolumeTexture);
+	if (OutVolume == nullptr || !Info.bParseWasSuccessful)
+	{
+		FNotificationInfo Notification(NSLOCTEXT("VolumeAssetFactory", "VolumeImportFailed", "Volume import failed!"));
+		Notification.Image = FCoreStyle::Get().GetBrush(TEXT("Icons.ErrorWithColor.Large"));
+		Notification.ExpireDuration = 5.0f;
+		FSlateNotificationManager::Get().AddNotification(Notification);
+		return nullptr;
+	}
+	else
+	{
+		FNotificationInfo Notification(NSLOCTEXT("VolumeAssetFactory", "VolumeImportSuccess", "Volume import succeeded!"));
+		Notification.Image = FCoreStyle::Get().GetBrush(TEXT("Icons.SuccessWithColor.Large"));
+		Notification.ExpireDuration = 5.0f;
+		FSlateNotificationManager::Get().AddNotification(Notification);
+	}
 
 	return OutVolume;
 }

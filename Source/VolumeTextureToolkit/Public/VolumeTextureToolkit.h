@@ -9,6 +9,7 @@
 class FVolumeTextureToolkitModule : public IModuleInterface
 {
 public:
+	TArray<void*> DllHandles;
 
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;

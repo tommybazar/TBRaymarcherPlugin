@@ -189,7 +189,7 @@ public:
 	float RaymarchingSteps = 150;
 
 	/** Define mip level that octree raymarch material will render.**/
-	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
+	UPROPERTY(EditAnywhere,meta=(EditCondition="SelectRaymarchMaterial==ERaymarchMaterial::Octree", EditConditionHides))
 	uint32 OctreeVolumeMip = 0;
 
 	/** If true, the light volume texture will be created using R32F format instead of the standard G8. This allows

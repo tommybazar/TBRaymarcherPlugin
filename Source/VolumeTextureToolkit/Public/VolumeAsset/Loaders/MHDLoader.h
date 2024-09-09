@@ -8,7 +8,7 @@
 
 #include "MHDLoader.generated.h"
 /**
- * IVolumeLoader specialized for reading MHD files.
+ * IVolumeLoader specialized for reading MHD files. (https://itk.org/Wiki/ITK/MetaIO/Documentation)
  */
 UCLASS()
 class VOLUMETEXTURETOOLKIT_API UMHDLoader : public UObject, public IVolumeLoader

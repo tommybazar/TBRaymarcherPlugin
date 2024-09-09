@@ -5,15 +5,12 @@
 
 #include "VolumeTextureToolkitBPLibrary.h"
 
-#include "TextureUtilities.h"
-
-#include "VolumeAsset/Loaders/DICOMLoader.h"
-#include "VolumeAsset/Loaders/MHDLoader.h"
-
 #include "Developer/DesktopPlatform/Public/DesktopPlatformModule.h"
 #include "Developer/DesktopPlatform/Public/IDesktopPlatform.h"
+#include "TextureUtilities.h"
+#include "VolumeAsset/Loaders/DCMTKLoader.h"
+#include "VolumeAsset/Loaders/MHDLoader.h"
 #include "VolumeAsset/VolumeAsset.h"
-
 
 bool UVolumeTextureToolkitBPLibrary::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, FString AssetName, FString FolderName,
 	EPixelFormat PixelFormat, FIntVector Dimensions, bool bUAVTargettable /*= false*/)
@@ -44,7 +41,7 @@ UVolumeAsset* UVolumeTextureToolkitBPLibrary::LoadVolumeFromFileDialog(const boo
 		}
 		else
 		{
-			Loader = UDICOMLoader::Get();
+			Loader = UDCMTKLoader::Get();
 		}
 		UVolumeAsset* OutAsset = Loader->CreateVolumeFromFile(FileName, bNormalize, !bNormalize);
 
