@@ -484,13 +484,13 @@ TUniquePtr<uint8[]> LoadSingleFrameDICOMFolder(const FString& FilePath, const OF
 		}
 
 		uint32 FragmentIndex = 1;
-		if ((SliceByteSize * (SliceNumber + 1)) > FullDataSize)
+		if ((SliceByteSize * (SliceOffset + 1)) > FullDataSize)
 		{
 			UE_LOG(LogTemp, Warning,
 				TEXT("DICOM Loader error when attempting memcpy (SliceNumber * Data exceeds total array length), some data will be "
 					 "missing"));
 		}
-		else if (LoadPixelData(SliceDataset, FullData.Get() + SliceByteSize * SliceNumber, SliceByteSize, 0, &FragmentIndex))
+		else if (LoadPixelData(SliceDataset, FullData.Get() + SliceByteSize * SliceOffset, SliceByteSize, 0, &FragmentIndex))
 		{
 			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! JPEG2000 - compressed files require custom licensing."));
 			return nullptr;
