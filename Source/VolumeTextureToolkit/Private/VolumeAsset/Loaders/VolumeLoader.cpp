@@ -13,17 +13,18 @@
 
 DEFINE_LOG_CATEGORY(LogVolumeLoader)
 
-uint8* IVolumeLoader::LoadRawDataFileFromInfo(const FString& FilePath, const FVolumeInfo& Info)
+TUniquePtr<uint8[]> IVolumeLoader::LoadRawDataFileFromInfo(const FString& FilePath, const FVolumeInfo& Info)
 {
 	if (Info.bIsCompressed)
 	{
 		// #TODO potentially implement support for other compression formats.
-		return UVolumeTextureToolkit::LoadZLibCompressedFileIntoArray(
-			FilePath + "/" + Info.DataFileName, Info.GetByteSize(), Info.CompressedByteSize);
+		return TUniquePtr<uint8[]>(UVolumeTextureToolkit::LoadZLibCompressedFileIntoArray(
+			FilePath + "/" + Info.DataFileName, Info.GetByteSize(), Info.CompressedByteSize));
 	}
 	else
 	{
-		return UVolumeTextureToolkit::LoadRawFileIntoArray(FilePath + "/" + Info.DataFileName, Info.GetByteSize());
+		return TUniquePtr<uint8[]>(
+			UVolumeTextureToolkit::LoadRawFileIntoArray(FilePath + "/" + Info.DataFileName, Info.GetByteSize()));
 	}
 }
 
@@ -46,7 +47,6 @@ FString IVolumeLoader::ReadFileAsString(const FString& FileName)
 	UE_LOG(LogVolumeLoader, Error, TEXT("Cannot read file path %s either as absolute or as relative path."), *FileName);
 	return "";
 }
-
 
 TArray<FString> IVolumeLoader::GetFilesInFolder(FString Directory, FString Extension)
 {
@@ -80,30 +80,28 @@ void IVolumeLoader::GetValidPackageNameFromFolderName(const FString& FullPath, F
 	int32 LastSlash = OutPackageName.Find("\\", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
 	OutPackageName.RightChopInline(LastSlash);
 	OutPackageName = FPaths::MakeValidFileName(OutPackageName);
-	// Periods and spaces are not cool in package names -> replace with underscores. 
+	// Periods and spaces are not cool in package names -> replace with underscores.
 	OutPackageName.ReplaceCharInline('.', '_');
 	OutPackageName.ReplaceCharInline(' ', '_');
-
 }
 
-uint8* IVolumeLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
+TUniquePtr<uint8[]> IVolumeLoader::LoadAndConvertData(
+	FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
 {
 	// Load raw data.
-	uint8* LoadedArray = LoadRawDataFileFromInfo(FilePath, VolumeInfo);
-	LoadedArray = ConvertData(LoadedArray, VolumeInfo, bNormalize, bConvertToFloat);
+	TUniquePtr<uint8[]> LoadedArray = LoadRawDataFileFromInfo(FilePath, VolumeInfo);
+	LoadedArray = ConvertData(MoveTemp(LoadedArray), VolumeInfo, bNormalize, bConvertToFloat);
 	return LoadedArray;
 }
 
-uint8* IVolumeLoader::ConvertData(uint8* LoadedArray, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
+TUniquePtr<uint8[]> IVolumeLoader::ConvertData(TUniquePtr<uint8[]>&& LoadedArray, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
 {
 	VolumeInfo.bIsNormalized = bNormalize;
 	if (bNormalize)
 	{
 		// We want to normalize and cap at G16, perform that normalization.
-		uint8* ConvertedArray = UVolumeTextureToolkit::NormalizeArrayByFormat(
-			VolumeInfo.OriginalFormat, LoadedArray, VolumeInfo.GetByteSize(), VolumeInfo.MinValue, VolumeInfo.MaxValue);
-		delete[] LoadedArray;
-		LoadedArray = ConvertedArray;
+		LoadedArray = TUniquePtr<uint8[]>(UVolumeTextureToolkit::NormalizeArrayByFormat(
+			VolumeInfo.OriginalFormat, LoadedArray.Get(), VolumeInfo.GetByteSize(), VolumeInfo.MinValue, VolumeInfo.MaxValue));
 
 		if (VolumeInfo.BytesPerVoxel > 1)
 		{
@@ -118,9 +116,8 @@ uint8* IVolumeLoader::ConvertData(uint8* LoadedArray, FVolumeInfo& VolumeInfo, b
 	else if (bConvertToFloat && VolumeInfo.OriginalFormat != EVolumeVoxelFormat::Float)
 	{
 		float* ConvertedArray =
-			UVolumeTextureToolkit::ConvertArrayToFloat(VolumeInfo.OriginalFormat, LoadedArray, VolumeInfo.GetTotalVoxels());
-		delete[] LoadedArray;
-		LoadedArray = (uint8*) ConvertedArray;
+			UVolumeTextureToolkit::ConvertArrayToFloat(VolumeInfo.OriginalFormat, LoadedArray.Get(), VolumeInfo.GetTotalVoxels());
+		LoadedArray = TUniquePtr<uint8[]>(reinterpret_cast<uint8*>(ConvertedArray));
 		VolumeInfo.ActualFormat = EVolumeVoxelFormat::Float;
 	}
 	else

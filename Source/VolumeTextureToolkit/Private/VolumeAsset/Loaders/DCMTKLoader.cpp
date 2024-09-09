@@ -282,15 +282,13 @@ UVolumeAsset* UDCMTKLoader::CreateVolumeFromFile(FString FileName, bool bNormali
 	}
 
 	// Perform complete load and conversion of data.
-	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, bConvertToFloat);
+	TUniquePtr<uint8[]> LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, bConvertToFloat);
 
 	// Get proper pixel format depending on what got saved into the MHDInfo during conversion.
 	const EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
 
 	// Create the transient Volume texture.
-	UVolumeTextureToolkit::CreateVolumeTextureTransient(OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray);
-
-	delete[] LoadedArray;
+	UVolumeTextureToolkit::CreateVolumeTextureTransient(OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray.Get());
 
 	// Check that the texture got created properly.
 	if (OutAsset->DataTexture)
@@ -317,7 +315,7 @@ UVolumeAsset* UDCMTKLoader::CreatePersistentVolumeFromFile(
 	FString VolumeName;
 	GetValidPackageNameFromFolderName(FileName, VolumeName);
 
-	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, false);
+	TUniquePtr<uint8[]> LoadedArray(LoadAndConvertData(FileName, VolumeInfo, bNormalize, false));
 	if (LoadedArray == nullptr)
 	{
 		return nullptr;
@@ -334,10 +332,9 @@ UVolumeAsset* UDCMTKLoader::CreatePersistentVolumeFromFile(
 	// Create the persistent volume texture.
 	const FString VolumeTextureName = "VA_" + VolumeName + "_Data";
 	UVolumeTextureToolkit::CreateVolumeTextureAsset(
-		OutAsset->DataTexture, VolumeTextureName, OutFolder, PixelFormat, VolumeInfo.Dimensions, LoadedArray, true);
+		OutAsset->DataTexture, VolumeTextureName, OutFolder, PixelFormat, VolumeInfo.Dimensions, LoadedArray.Get(), true);
 	OutAsset->ImageInfo = VolumeInfo;
 
-	delete[] LoadedArray;
 	// Check that the texture got created properly.
 	if (OutAsset->DataTexture)
 	{
@@ -368,16 +365,14 @@ UVolumeAsset* UDCMTKLoader::CreateVolumeFromFileInExistingPackage(
 		return nullptr;
 	}
 
-	uint8* LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, bConvertToFloat);
+	TUniquePtr<uint8[]> LoadedArray = LoadAndConvertData(FileName, VolumeInfo, bNormalize, bConvertToFloat);
 	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
 
 	OutAsset->DataTexture =
 		NewObject<UVolumeTexture>(ParentPackage, FName("VA_" + VolumeName + "_Data"), RF_Public | RF_Standalone);
 
 	UVolumeTextureToolkit::SetupVolumeTexture(
-		OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray, !bConvertToFloat);
-
-	delete[] LoadedArray;
+		OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray.Get(), !bConvertToFloat);
 
 	// Check that the texture got created properly.
 	if (OutAsset->DataTexture)
@@ -391,21 +386,35 @@ UVolumeAsset* UDCMTKLoader::CreateVolumeFromFileInExistingPackage(
 	}
 }
 
-uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfFrames, uint32 DataSize)
+// Data is presumably stored in the first fragment (0th fragment is byte offsets and whatnot) of 0th frame for single frame
+// images.
+// TODO - test the above assumption thoroughly
+bool LoadPixelData(DcmDataset* Dataset, uint8* FrameData, uint64 FrameSize, uint32 FrameIndex, uint32* InOutFragmentIndex)
 {
-	const Uint8* PixelData;
-	unsigned long DataLength;
-	Dataset->findAndGetUint8Array(DCM_PixelData, PixelData, &DataLength);
+	DcmElement* Element;
+	Dataset->findAndGetElement(DCM_PixelData, Element);
+	DcmPixelData* DicomPixelData = OFstatic_cast(DcmPixelData*, Element);
+	OFString Dummy;
+	return DicomPixelData->getUncompressedFrame(Dataset, FrameIndex, *InOutFragmentIndex, FrameData, FrameSize, Dummy).bad();
+}
 
-	if (DataLength != DataSize)
+TUniquePtr<uint8[]> LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfFrames, const FVolumeInfo& VolumeInfo)
+{
+	const unsigned long FullDataSize = VolumeInfo.GetByteSize();
+	const unsigned long SliceByteSize = VolumeInfo.Dimensions.X * VolumeInfo.Dimensions.Y * VolumeInfo.BytesPerVoxel;
+
+	TUniquePtr<uint8[]> Data(new uint8[FullDataSize]);
+	memset(Data.Get(), 0, FullDataSize);
+
+	uint32 FragmentIndex = 1;
+	for (uint32 FrameIndex = 0; FrameIndex < NumberOfFrames; ++FrameIndex)
 	{
-		UE_LOG(LogDCMTK, Error, TEXT("DICOM Loader error, PixelData size %d is different from the expected size %d"), DataLength,
-			DataSize);
-		return nullptr;
+		if (!LoadPixelData(Dataset, Data.Get() + SliceByteSize * FrameIndex, SliceByteSize, FrameIndex, &FragmentIndex))
+		{
+			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! Most likely unsupported compression type."));
+			return nullptr;
+		}
 	}
-
-	uint8* Data = new uint8[DataSize];
-	memcpy(Data, PixelData, DataLength);
 
 	return Data;
 }
@@ -413,30 +422,26 @@ uint8* LoadMultiFrameDICOM(DcmDataset* Dataset, uint32 NumberOfFrames, uint32 Da
 /// Prints 100 char values from the PixelData array. Used to roughly check array contents.
 void PrintDebugData(const Uint8* PixelData, unsigned long DataLength)
 {
-	std::vector<uint8> DebugData;
+	TArray<uint8> DebugData;
 	for (unsigned long i = 0; i < DataLength; i += (DataLength / 100))
 	{
-		DebugData.push_back((int8) PixelData[i]);
+		DebugData.Add((int8) PixelData[i]);
 	}
-	std::string DebugStdString(DebugData.begin(), DebugData.end());
-	UE_LOG(LogTemp, Warning, TEXT("Debug data : %hs"), DebugStdString.c_str());
+	const FString DebugString(DebugData.Num(), (ANSICHAR*)DebugData.GetData());
+	UE_LOG(LogTemp, Warning, TEXT("Debug data : %hs"), *DebugString);
 }
 
-uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& SeriesInstanceUIDOfString, FVolumeInfo& VolumeInfo,
+TUniquePtr<uint8[]> LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& SeriesInstanceUIDOfString, FVolumeInfo& VolumeInfo,
 	bool bCalculateSliceThickness, bool bVerifySliceThickness, bool bIgnoreIrregularThickness)
 {
-	unsigned long FullDataSize = VolumeInfo.GetByteSize();
+	const unsigned long FullDataSize = VolumeInfo.GetByteSize();
+	const unsigned long SliceByteSize = VolumeInfo.Dimensions.X * VolumeInfo.Dimensions.Y * VolumeInfo.BytesPerVoxel;
 
 	FString FolderName, FileNameDummy, Extension;
 	FPaths::Split(FilePath, FolderName, FileNameDummy, Extension);
 
-	// Unique-ptr'd to manage the memory release automatically when exiting early on error.
-	std::unique_ptr<uint8[]> FullData(new uint8[FullDataSize]);
-	memset(FullData.get(), 0, FullDataSize);
-
-	// Buffer for reading data per-slice.
-	unsigned long SliceByteSize = VolumeInfo.Dimensions.X * VolumeInfo.Dimensions.Y * VolumeInfo.BytesPerVoxel;
-	std::unique_ptr<uint8[]> SliceData(new uint8[SliceByteSize]);
+	TUniquePtr<uint8[]> FullData(new uint8[FullDataSize]);
+	memset(FullData.Get(), 0, FullDataSize);
 
 	TArray<double> SliceLocations;
 	SliceLocations.Reserve(VolumeInfo.Dimensions.Z);
@@ -478,29 +483,17 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 			SliceLocations.Add(SliceLocation);
 		}
 
-		DcmElement* Element;
-		SliceDataset->findAndGetElement(DCM_PixelData, Element);
-		DcmPixelData* DicomPixelData = OFstatic_cast(DcmPixelData*, Element);
-		OFString Dummy;
-		// Data is presumably stored in the first fragment (0th fragment is byte offsets and whatnot) of 0th frame for single frame
-		// images.
-		// TODO - test the above assumption thoroughly
-		Uint32 StartingFragment = 1;
-		if (DicomPixelData->getUncompressedFrame(SliceDataset, 0, StartingFragment, SliceData.get(), SliceByteSize, Dummy).bad())
-		{
-			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! JPEG2000 - compressed files require custom licensing"));
-			return nullptr;
-		}
-
-		if ((SliceByteSize * (SliceOffset + 1)) <= FullDataSize)
-		{
-			memcpy(FullData.get() + (SliceByteSize * SliceOffset), SliceData.get(), SliceByteSize);
-		}
-		else
+		uint32 FragmentIndex = 1;
+		if ((SliceByteSize * (SliceNumber + 1)) > FullDataSize)
 		{
 			UE_LOG(LogTemp, Warning,
 				TEXT("DICOM Loader error when attempting memcpy (SliceNumber * Data exceeds total array length), some data will be "
 					 "missing"));
+		}
+		else if (LoadPixelData(SliceDataset, FullData.Get() + SliceByteSize * SliceNumber, SliceByteSize, 0, &FragmentIndex))
+		{
+			UE_LOG(LogDCMTK, Error, TEXT("Error Loading Pixel data from file! JPEG2000 - compressed files require custom licensing."));
+			return nullptr;
 		}
 
 		++NumberOfFrames;
@@ -547,11 +540,10 @@ uint8* LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& Serie
 		}
 	}
 
-	SliceData.reset();
-	return FullData.release();
+	return FullData;
 }
 
-uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
+TUniquePtr<uint8[]> UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat)
 {
 	DcmFileFormat Format;
 	if (Format.loadFile(TCHAR_TO_UTF8(*FilePath)).bad())
@@ -569,10 +561,10 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 		NumberOfFrames = FCString::Atoi(*FString(UTF8_TO_TCHAR(NumberOfFramesOfString.c_str())));
 	}
 
-	uint8* Data;
+	TUniquePtr<uint8[]> Data;
 	if (NumberOfFrames > 1)
 	{
-		Data = LoadMultiFrameDICOM(Dataset, NumberOfFrames, VolumeInfo.GetByteSize());
+		Data = LoadMultiFrameDICOM(Dataset, NumberOfFrames, VolumeInfo);
 	}
 	else
 	{
@@ -589,7 +581,7 @@ uint8* UDCMTKLoader::LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInf
 
 	if (Data != nullptr)
 	{
-		Data = ConvertData(Data, VolumeInfo, bNormalize, bConvertToFloat);
+		Data = ConvertData(MoveTemp(Data), VolumeInfo, bNormalize, bConvertToFloat);
 	}
 
 	return Data;

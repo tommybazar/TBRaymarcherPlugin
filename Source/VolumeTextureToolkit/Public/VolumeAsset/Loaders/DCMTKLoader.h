@@ -60,7 +60,7 @@ public:
 	virtual UVolumeAsset* CreateVolumeFromFileInExistingPackage(
 		FString FileName, UObject* ParentPackage, bool bNormalize = true, bool bConvertToFloat = true) override;
 
-	virtual uint8* LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat) override;
+	virtual TUniquePtr<uint8[]> LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat) override;
 
 	static void DumpFileStructure(const FString& FileName);
 };
