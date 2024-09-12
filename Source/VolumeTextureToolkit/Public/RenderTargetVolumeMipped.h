@@ -60,17 +60,31 @@ public:
 		return MippedTexture3DRTResource;
 	}
 
+	///
+	/// Following functions are stubs/copypasta from UTextureRenderTargetVolume, because Epic can't be bothered to export symbols
+	/// with ENGINE_API on their functions.
+	///
+	virtual bool CanConvertToTexture(
+		ETextureSourceFormat& OutTextureSourceFormat, EPixelFormat& OutPixelFormat, FText* OutErrorMessage) const override;
+	virtual TSubclassOf<UTexture> GetTextureUClass() const override;
+	virtual EPixelFormat GetFormat() const override;
+	virtual bool IsSRGB() const override;
+	virtual float GetDisplayGamma() const override;
+	virtual ETextureClass GetRenderTargetTextureClass() const override;
+	///
+	/// end of copypasta
+	///
+
 	//~ Begin UObject Interface
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif // WITH_EDITOR
+#endif	  // WITH_EDITOR
 	virtual void PostLoad() override;
 	virtual void GetResourceSizeEx(FResourceSizeEx& CumulativeResourceSize) override;
 	virtual FString GetDesc() override;
 
 	FTexture3DComputeResource* MippedTexture3DRTResource;
 };
-
 
 // A bare-bones resource created for storing mipped 3D textures that should be accessible from compute shaders.
 class FTexture3DComputeResource : public FTextureResource
@@ -90,17 +104,16 @@ public:
 		, TextureReference(&InOwner->TextureReference)
 	{
 		check(0 < NumMips && NumMips <= MAX_TEXTURE_MIP_COUNT);
-		check(FMath::IsPowerOfTwo(SizeX) && FMath::IsPowerOfTwo(SizeY) && FMath::IsPowerOfTwo(SizeZ))
-		uint32 MinAxis = FMath::Min3(SizeX, SizeY, SizeZ);
+		check(FMath::IsPowerOfTwo(SizeX) && FMath::IsPowerOfTwo(SizeY) && FMath::IsPowerOfTwo(SizeZ)) uint32 MinAxis =
+			FMath::Min3(SizeX, SizeY, SizeZ);
 		check((1U << (NumMips - 1)) <= MinAxis);
 
 		TextureName = Owner->GetName();
 
-		// This one line is the point of this whole file - add TexCreate_UAV to the resource creation flags so we can target the texture
-		// in Compute shaders.
-		CreationFlags = (Owner->SRGB ? ETextureCreateFlags::SRGB : ETextureCreateFlags::None) |
-		                ETextureCreateFlags::UAV | ETextureCreateFlags::ShaderResource |
-		                ETextureCreateFlags::RenderTargetable;
+		// This one line is the point of this whole file - add TexCreate_UAV to the resource creation flags so we can target the
+		// texture in Compute shaders.
+		CreationFlags = (Owner->SRGB ? ETextureCreateFlags::SRGB : ETextureCreateFlags::None) | ETextureCreateFlags::UAV |
+						ETextureCreateFlags::ShaderResource | ETextureCreateFlags::RenderTargetable;
 
 		SamplerFilter = SF_Trilinear;
 		bGreyScaleFormat = (PixelFormat == PF_G8) || (PixelFormat == PF_G16) || (PixelFormat == PF_BC4);
@@ -112,8 +125,7 @@ public:
 	virtual void InitRHI(FRHICommandListBase& RHICmdList) override
 	{
 		// Create the RHI texture.
-		FRHITextureCreateDesc Desc =
-			FRHITextureCreateDesc::Create3D(*TextureName, SizeX, SizeY, SizeZ, PixelFormat);
+		FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(*TextureName, SizeX, SizeY, SizeZ, PixelFormat);
 		Desc.SetFlags(CreationFlags);
 		Desc.SetNumMips(NumMips);
 
@@ -125,7 +137,8 @@ public:
 
 		for (int i = 0; i < NumMips; i++)
 		{
-			UnorderedAccessViewRHIs.Add(GetCommandList().CreateUnorderedAccessView(TextureRHI, i));
+			UnorderedAccessViewRHIs.Add(
+				FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(TextureRHI, i));
 		}
 
 		RHIUpdateTextureReference(Owner->TextureReference.TextureReferenceRHI, TextureRHI);

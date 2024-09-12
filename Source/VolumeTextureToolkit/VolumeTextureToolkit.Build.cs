@@ -30,7 +30,6 @@ public class VolumeTextureToolkit : ModuleRules
 			new string[]
 			{
 				"CoreUObject",
-				"Engine",
 				"Slate",
 				"SlateCore",
 			}
