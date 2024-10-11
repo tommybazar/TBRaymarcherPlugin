@@ -180,8 +180,7 @@ FVolumeInfo UMHDLoader::ParseVolumeInfoFromHeader(FString FileName)
 	}
 }
 
-UVolumeAsset* UMHDLoader::CreateVolumeFromFile(
-	FString FileName, bool bNormalize /*= true*/, bool bConvertToFloat /*= true*/)
+UVolumeAsset* UMHDLoader::CreateVolumeFromFile(FString FileName, bool bNormalize /*= true*/, bool bConvertToFloat /*= true*/)
 {
 	FVolumeInfo VolumeInfo = ParseVolumeInfoFromHeader(FileName);
 	if (!VolumeInfo.bParseWasSuccessful)
@@ -200,15 +199,14 @@ UVolumeAsset* UMHDLoader::CreateVolumeFromFile(
 	}
 
 	// Perform complete load and conversion of data.
-	uint8* LoadedArray = LoadAndConvertData(FilePath, VolumeInfo, bNormalize, bConvertToFloat);
+	TUniquePtr<uint8[]> LoadedArray = LoadAndConvertData(FilePath, VolumeInfo, bNormalize, bConvertToFloat);
 
 	// Get proper pixel format depending on what got saved into the MHDInfo during conversion.
 	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
 
 	// Create the transient Volume texture.
-	UVolumeTextureToolkit::CreateVolumeTextureTransient(OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray);
-
-	delete[] LoadedArray;
+	UVolumeTextureToolkit::CreateVolumeTextureTransient(
+		OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray.Get());
 
 	// Check that the texture got created properly.
 	if (OutAsset->DataTexture)
@@ -241,16 +239,15 @@ UVolumeAsset* UMHDLoader::CreatePersistentVolumeFromFile(
 		return nullptr;
 	}
 
-	uint8* LoadedArray = LoadAndConvertData(FilePath, VolumeInfo, bNormalize, false);
+	TUniquePtr<uint8[]> LoadedArray = LoadAndConvertData(FilePath, VolumeInfo, bNormalize, false);
 	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
 
 	// Create the persistent volume texture.
 	FString VolumeTextureName = "VA_" + VolumeName + "_Data";
 	UVolumeTextureToolkit::CreateVolumeTextureAsset(
-		OutAsset->DataTexture, VolumeTextureName, OutFolder, PixelFormat, VolumeInfo.Dimensions, LoadedArray, true);
+		OutAsset->DataTexture, VolumeTextureName, OutFolder, PixelFormat, VolumeInfo.Dimensions, LoadedArray.Get(), true);
 	OutAsset->ImageInfo = VolumeInfo;
 
-	delete[] LoadedArray;
 	// Check that the texture got created properly.
 	if (OutAsset->DataTexture)
 	{
@@ -276,15 +273,14 @@ UVolumeAsset* UMHDLoader::CreateVolumeFromFileInExistingPackage(
 	GetValidPackageNameFromFileName(FileName, FilePath, VolumeName);
 
 	// Create the transient volume asset.
-	UVolumeAsset* OutAsset =
-		NewObject<UVolumeAsset>(ParentPackage, FName("VA_" + VolumeName), RF_Standalone | RF_Public);
+	UVolumeAsset* OutAsset = NewObject<UVolumeAsset>(ParentPackage, FName("VA_" + VolumeName), RF_Standalone | RF_Public);
 	if (!OutAsset)
 	{
 		return nullptr;
 	}
 
 	// Perform complete load and conversion of data.
-	uint8* LoadedArray = LoadAndConvertData(FilePath, VolumeInfo, bNormalize, bConvertToFloat);
+	TUniquePtr<uint8[]> LoadedArray = LoadAndConvertData(FilePath, VolumeInfo, bNormalize, bConvertToFloat);
 
 	// Get proper pixel format depending on what got saved into the MHDInfo during conversion.
 	EPixelFormat PixelFormat = FVolumeInfo::VoxelFormatToPixelFormat(VolumeInfo.ActualFormat);
@@ -294,9 +290,7 @@ UVolumeAsset* UMHDLoader::CreateVolumeFromFileInExistingPackage(
 		NewObject<UVolumeTexture>(ParentPackage, FName("VA_" + VolumeName + "_Data"), RF_Public | RF_Standalone);
 
 	UVolumeTextureToolkit::SetupVolumeTexture(
-		OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray, !bConvertToFloat);
-
-	delete[] LoadedArray;
+		OutAsset->DataTexture, PixelFormat, VolumeInfo.Dimensions, LoadedArray.Get(), !bConvertToFloat);
 
 	// Check that the texture got created properly.
 	if (OutAsset->DataTexture)

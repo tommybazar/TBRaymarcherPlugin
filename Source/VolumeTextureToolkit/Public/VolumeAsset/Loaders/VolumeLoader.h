@@ -44,7 +44,7 @@ public:
 
 	// Loads the raw bytes from the file specified in Info. Detects if file is compressed and loads returns a new uint8 array.
 	// Don't forget to delete[] after using.
-	static uint8* LoadRawDataFileFromInfo(const FString& FilePath, const FVolumeInfo& Info);
+	static TUniquePtr<uint8[]> LoadRawDataFileFromInfo(const FString& FilePath, const FVolumeInfo& Info);
 
 	// Tries to read the provided FileName as a file either in absolute path or relative to game folder.
 	static FString ReadFileAsString(const FString& FileName);
@@ -64,10 +64,10 @@ public:
 
 	// Loads the raw data specified in the VolumeInfo and converts it so that it's useable with our raymarching materials.
 	// This means either converting it to U8 or U16 and normalizing or a conversion to Float.
-	virtual uint8* LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat);
+	virtual TUniquePtr<uint8[]> LoadAndConvertData(FString FilePath, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat);
 	
 	// Converts raw data read from a Volume file so that it's useable by our materials.
 	// if bNormalize is true, the data gets normalized to 0.0 to 1.0 range and gets saved as a G8 or G16 texture later in the process.
 	// if bConvertToFloat is true, the data gets converted to float and gets saved as a R32_Float texture later in the process.
-	static uint8* ConvertData(uint8* LoadedArray, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat);
+	static TUniquePtr<uint8[]> ConvertData(TUniquePtr<uint8[]>&& LoadedArray, FVolumeInfo& VolumeInfo, bool bNormalize, bool bConvertToFloat);
 };
