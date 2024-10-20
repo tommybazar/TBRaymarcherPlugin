@@ -7,6 +7,7 @@
 #include "Containers/ResourceArray.h"
 #include "DeviceProfiles/DeviceProfile.h"
 #include "DeviceProfiles/DeviceProfileManager.h"
+#include "Engine/VolumeTexture.h"
 #include "RenderUtils.h"
 #include "TextureResource.h"
 
@@ -78,4 +79,54 @@ FString URenderTargetVolumeMipped::GetDesc()
 {
 	return FString::Printf(TEXT("Mipped (%d Mip) Render Volume %dx%d%d[%s]"), NumMips, SizeX, SizeY, SizeZ,
 		GPixelFormats[GetFormat()].Name);
+}
+
+bool URenderTargetVolumeMipped::CanConvertToTexture(
+	ETextureSourceFormat& OutTextureSourceFormat, EPixelFormat& OutPixelFormat, FText* OutErrorMessage) const
+{
+	const EPixelFormat LocalFormat = GetFormat();
+	// this is not actually required, TextureSourceFormat is a free choice
+	// volumes will always use the 16F read path, that comes from GetReadPixelsFormat()
+	auto TextureSourceFormat = TSF_RGBA16F;
+
+	if ((SizeX <= 0) || (SizeY <= 0) || (SizeZ <= 0))
+	{
+		if (OutErrorMessage != nullptr)
+		{
+			*OutErrorMessage = FText::Format(NSLOCTEXT("TextureRenderTargetVolume", "InvalidSizeForConversionToTexture",
+												 "Invalid size ({0},{1},{2}) for converting {3} to {4}"),
+				FText::AsNumber(SizeX), FText::AsNumber(SizeY), FText::AsNumber(SizeZ), FText::FromString(GetClass()->GetName()),
+				FText::FromString(GetTextureUClass()->GetName()));
+		}
+		return false;
+	}
+
+	OutPixelFormat = LocalFormat;
+	OutTextureSourceFormat = TextureSourceFormat;
+	return true;
+}
+
+TSubclassOf<UTexture> URenderTargetVolumeMipped::GetTextureUClass() const
+{
+	return UVolumeTexture::StaticClass();
+}
+
+EPixelFormat URenderTargetVolumeMipped::GetFormat() const
+{
+	return OverrideFormat;
+}
+
+bool URenderTargetVolumeMipped::IsSRGB() const
+{
+	return true;
+}
+
+float URenderTargetVolumeMipped::GetDisplayGamma() const
+{
+	return 1.0;
+}
+
+ETextureClass URenderTargetVolumeMipped::GetRenderTargetTextureClass() const
+{
+	return ETextureClass::Volume;
 }

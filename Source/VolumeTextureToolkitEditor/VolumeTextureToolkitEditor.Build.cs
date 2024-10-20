@@ -39,14 +39,15 @@ public class VolumeTextureToolkitEditor : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-                "Core",
-                "CoreUObject",
+				"Core",
+				"CoreUObject",
 				"Engine",
 				"Slate",
-                "RenderCore",
-                "SlateCore",
-                "UnrealEd",
-                "Projects",
+				"InputCore",
+				"RenderCore",
+				"SlateCore",
+				"UnrealEd",
+				"Projects",
 				"VolumeTextureToolkit"
 				// ... add private dependencies that you statically link with here ...	
 			}
