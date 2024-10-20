@@ -428,7 +428,7 @@ void PrintDebugData(const Uint8* PixelData, unsigned long DataLength)
 		DebugData.Add((int8) PixelData[i]);
 	}
 	const FString DebugString(DebugData.Num(), (ANSICHAR*)DebugData.GetData());
-	UE_LOG(LogTemp, Warning, TEXT("Debug data : %hs"), *DebugString);
+	UE_LOG(LogTemp, Warning, TEXT("Debug data : %ls"), *DebugString);
 }
 
 TUniquePtr<uint8[]> LoadSingleFrameDICOMFolder(const FString& FilePath, const OFString& SeriesInstanceUIDOfString, FVolumeInfo& VolumeInfo,
