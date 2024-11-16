@@ -87,25 +87,20 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
     return LightEnergy;
 }
 
-bool IsInsideOctree(float3 CurPos)
+bool IsInsideVolume(float3 CurPos)
 {
     return (CurPos.x) < 1 && (CurPos.y) < 1 && (CurPos.z) < 1 &&
         (CurPos.x) > 0 && (CurPos.y) > 0 && (CurPos.z) > 0;
 }
 
 bool GetNextSignificantPosition(const Texture3D DataVolume, const Texture3D OctreeVolume, const float3 LocalCamVec,
-    const uint UintWindowMask, inout float3 CurPos, bool NewVoxel = false)
+    const uint UintWindowMask, inout float3 CurPos)
 {
     // Set to the mip number with worst detail.
 	const int MaxPossibleMip = 3;
     int MinPossibleMip = 0;
 	// Current mip where the algorithm raymarch data in octree.
     float CurrentMip = 0;
-    if(NewVoxel)
-    {
-        MinPossibleMip = 0;
-        CurrentMip = 0;
-    }
     
 	// Get the volume depth for later use when recalculating coordinates.
 	float DataVolumeWidth = 0, DataVolumeHeight = 0, DataVolumeDepth = 0;
@@ -115,47 +110,39 @@ bool GetNextSignificantPosition(const Texture3D DataVolume, const Texture3D Octr
     OctreeVolume.GetDimensions(OctreeWidth, OctreeHeight, OctreeDepth);
 	// Copy the octree depth on mip level 0 for use when recalculating to correct texture coordinates.
 	float OctreeDepthConst = OctreeDepth;
+	float OctreeHeightConst = OctreeHeight;
+	float OctreeWidthConst = OctreeWidth;
     // Move the CurPos to the inside of the octree.  
-    if(!NewVoxel)
-    {
-        CurPos += LocalCamVec;
-    }
-    bool NewVoxelFound = NewVoxel;
+    CurPos += LocalCamVec;
     //while(length((CurPos - EntryPosition)) < MaxDistance)
-    while(IsInsideOctree(CurPos))
+    while(IsInsideVolume(CurPos))
     {
         // Get the correct width, height and depth for current mip.
         OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
         // Because of different sizes of Volume vs Octree, need to adjust where we sample from.
-        // TODO do this for other dimensions too! Depth is not the only one that can be different
+        // (Volume can be arbitrary size, octree is always nearest higher power of 2)
+        float AdjustedWidth = (DataVolumeWidth / OctreeWidthConst) * OctreeWidth;
+        float AdjustedHeight = (DataVolumeHeight / OctreeHeightConst) * OctreeHeight;
         float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
 
         // Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
         // Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
-        int3 VoxelPos = int3(CurPos.x * OctreeWidth, CurPos.y * OctreeHeight, CurPos.z * AdjustedDepth);
+        int3 VoxelPos = int3(CurPos.x * AdjustedWidth, CurPos.y * AdjustedHeight, CurPos.z * AdjustedDepth);
         
         // Get the bit mask saved in octree volume and check it against current window. In case the and operator results is true, the
         // value in the volume should be used. If not, find the next position in volume upper mip and starts again. 
         const uint BitMask = asuint(OctreeVolume.Load(int4(VoxelPos, CurrentMip), 0).r);
-        if (NewVoxelFound || !(BitMask & UintWindowMask))
+        if (!(BitMask & UintWindowMask))
         {
             // Get the box min values calculated in UV coordinates.
-            float3 BoxMin = float3(VoxelPos.x / OctreeWidth, VoxelPos.y / OctreeHeight, VoxelPos.z / AdjustedDepth);
+            float3 BoxMin = float3(VoxelPos.x / AdjustedWidth, VoxelPos.y / AdjustedHeight, VoxelPos.z / AdjustedDepth);
             // Get the box max values calculated in UV coordinates.
-            float3 BoxMax = float3((VoxelPos.x + 1.0) / OctreeWidth, (VoxelPos.y + 1.0) / OctreeHeight, (VoxelPos.z + 1.0) / AdjustedDepth);
+            float3 BoxMax = float3((VoxelPos.x + 1.0) / AdjustedWidth, (VoxelPos.y + 1.0) / AdjustedHeight, (VoxelPos.z + 1.0) / AdjustedDepth);
             float2 EntryTimes = float2(0,0);
             if (CheckedRayAABBIntersection(CurPos, LocalCamVec, BoxMin, BoxMax, EntryTimes))
             {
-                if(NewVoxel)
-                {
-                    CurPos += LocalCamVec * (EntryTimes.y + 0.01);
-                }
-                else
-                {
-                    // Use ceil to align with the requested step size.
-                    CurPos += LocalCamVec * ceil(EntryTimes.y);
-                }
-                NewVoxelFound = false;
+                // Use ceil to align with the requested step size.
+                CurPos += LocalCamVec * ceil(EntryTimes.y);
 
                 // Current mip does not have useful data, move to upper mip (bidirectional traversal).
                 CurrentMip += 1;
@@ -166,6 +153,7 @@ bool GetNextSignificantPosition(const Texture3D DataVolume, const Texture3D Octr
             return false;
         }
 
+        // We're at the lowest mip and still hitting the mask -> start sampling normally
         if (CurrentMip == MinPossibleMip)
         {
             return true;
@@ -244,7 +232,34 @@ float4 PerformDebug1Raymarch(Texture3D DataVolume, // Data Volume
                      float4 WindowMask,
                      FMaterialPixelParameters MaterialParameters) // Material Parameters provided by UE.
 {
-    return float4(EntryPos, 1.0f);
+    // StepSize in UVW is inverse to StepCount.
+    float StepSize = 1 / StepCount;
+
+    // Get camera vector in local space and multiply it by step size.
+    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
+	
+    // Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
+    float StepSizeWorld = VOLUME_DENSITY * StepSize;
+
+    // Initialize accumulated light energy.
+    float4 LightEnergy = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+    // Jitter Entry position to avoid artifacts.
+    JitterEntryPos(EntryPos, LocalCamVec, MaterialParameters);
+
+    // Get the bit mask for the current TransferFunction with the current window width/center.
+    uint UintWindowMask = asuint(WindowMask.r);
+    // The distance the raymarch must pass to calculate required data.
+
+    float3 CurPos = EntryPos;
+    while(length((CurPos - EntryPos)) < Thickness)
+    {
+        bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos);
+        if(!PositionFound)
+            break;
+        LightEnergy.r += 0.01;
+    }
+    return LightEnergy;
 }
 
 // Performs debug raymarch 2 for the current pixel.
@@ -261,15 +276,43 @@ float4 PerformDebug2Raymarch(Texture3D DataVolume, // Data Volume
                      float4 WindowMask,
                      FMaterialPixelParameters MaterialParameters) // Material Parameters provided by UE.
 {
-    
+    // StepSize in UVW is inverse to StepCount.
     float StepSize = 1 / StepCount;
+
     // Get camera vector in local space and multiply it by step size.
     float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
 	
-    return float4(EntryPos + (Thickness*normalize(LocalCamVec)), 1.0f);
+    // Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
+    float StepSizeWorld = VOLUME_DENSITY * StepSize;
+
+    // Initialize accumulated light energy.
+    float4 LightEnergy = 0;
+
+    // Jitter Entry position to avoid artifacts.
+    JitterEntryPos(EntryPos, LocalCamVec, MaterialParameters);
+
+    // Get the bit mask for the current TransferFunction with the current window width/center.
+    uint UintWindowMask = asuint(WindowMask.r);
+    // The distance the raymarch must pass to calculate required data.
+
+    float3 CurPos = EntryPos;
+    while(length((CurPos - EntryPos)) < Thickness)
+    {
+        bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos);
+        if(!PositionFound)
+            break;
+
+        AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler, TF, LightVolume, StepSizeWorld, WindowingParams);
+
+        // Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
+        if (LightEnergy.a > 0.95f)
+        {
+            LightEnergy.a = 1.0f;
+            break;
+        };
+    }
+    return LightEnergy;
 }
-
-
 
 // Performs lit raymarch for the current pixel. The lighting information is taken from a precomputed light volume.
 float4 PerformWindowedIntensityRaymarch(Texture3D DataVolume, // Data Volume 

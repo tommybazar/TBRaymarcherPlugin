@@ -104,9 +104,9 @@ float LinePlaneIntersection(float3 PlanePoint, float3 PlaneNormal, float3 LinePo
 	}
 
 	// Calculate distance parameter 'Multiplier'.
-	float numerator = dot(PlaneNormal, PlanePoint - LinePoint);
-	float denominator = dot(PlaneNormal, LineDirection);
-	float Multiplier = numerator / denominator;
+	float Numerator = dot(PlaneNormal, PlanePoint - LinePoint);
+	float Denominator = dot(PlaneNormal, LineDirection);
+	float Multiplier = Numerator / Denominator;
 
 	return Multiplier;
 }

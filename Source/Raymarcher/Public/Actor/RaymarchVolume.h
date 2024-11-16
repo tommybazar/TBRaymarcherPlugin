@@ -187,7 +187,7 @@ public:
     ERaymarchMaterial SelectRaymarchMaterial;
 
     /** An array of lights affecting this volume.**/
-    UPROPERTY(EditAnywhere, meta = (EditCondition = "SelectRaymarchMaterial == ERaymarchMaterial::Lit", EditConditionHides))
+    UPROPERTY(EditAnywhere)
     TArray<ARaymarchLight*> LightsArray;
 
     /** Raymarch Rendering resources. These contain references to the volume texture currently used, the light volume
@@ -207,11 +207,11 @@ public:
     float RaymarchingSteps = 150;
 
     /** Define minimal octree raymarch mip that will be used to collect data. **/
-    UPROPERTY(EditAnywhere, meta = (EditCondition = "SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
+    UPROPERTY(EditAnywhere)
     uint32 OctreeVolumeMip = 0;
 
     /** Adds one bit to the each side of the window. Use for debugging purposes. **/
-    UPROPERTY(EditAnywhere, meta = (EditCondition = "SelectRaymarchMaterial == ERaymarchMaterial::Octree", EditConditionHides))
+    UPROPERTY(EditAnywhere)
     uint32 WindowMaskEdgeBitsCount = 0;
 
     /** If true, the light volume texture will be created using R32F format instead of the standard G8. This allows
