@@ -194,7 +194,6 @@ float4 PerformWindowedRaymarchOctree(Texture3D DataVolume, // Data Volume
 
     // Get the bit mask for the current TransferFunction with the current window width/center.
     uint UintWindowMask = asuint(WindowMask.r);
-    // The distance the raymarch must pass to calculate required data.
 
     float3 CurPos = EntryPos;
     while(length((CurPos - EntryPos)) < Thickness)
@@ -239,6 +238,57 @@ float4 PerformDebug1Raymarch(Texture3D DataVolume, // Data Volume
     float StepSizeWorld = VOLUME_DENSITY * StepSize;
 
     // Initialize accumulated light energy.
+    float4 LightEnergy = 0;
+
+    // Jitter Entry position to avoid artifacts.
+    JitterEntryPos(EntryPos, LocalCamVec, MaterialParameters);
+
+    // Get the bit mask for the current TransferFunction with the current window width/center.
+    uint UintWindowMask = asuint(WindowMask.r);
+
+    float3 CurPos = EntryPos;
+    while(length((CurPos - EntryPos)) < Thickness)
+    {
+        bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos);
+        if(!PositionFound)
+            break;
+
+        AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler, TF, LightVolume, StepSizeWorld, WindowingParams);
+        
+        // Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
+        if (LightEnergy.a > 0.95f)
+        {
+            LightEnergy.a = 1.0f;
+            break;
+        };
+    }
+    return LightEnergy;
+}
+
+// Performs debug raymarch 2 for the current pixel.
+float4 PerformDebug2Raymarch(Texture3D DataVolume, // Data Volume 
+                             SamplerState DataVolumeSampler,
+                             Texture2D TF, // Transfer function texture.
+                             float3 EntryPos, float Thickness, // CurPos = Entry Position, Thickness is thickness of cube along the ray. Both in UVW space.
+                             float StepCount, // How many steps we should take. Actual number of steps taken is StepCount * Thickness.
+                             float4 WindowingParams,
+                             Texture3D OctreeVolume,
+                             SamplerState OctreeVolumeSampler,
+                             Texture3D LightVolume,
+                             SamplerState LightVolumeSampler,
+                             float4 WindowMask,
+                             FMaterialPixelParameters MaterialParameters) // Material Parameters provided by UE.
+{
+    // StepSize in UVW is inverse to StepCount.
+    float StepSize = 1 / StepCount;
+
+    // Get camera vector in local space and multiply it by step size.
+    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
+	
+    // Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
+    float StepSizeWorld = VOLUME_DENSITY * StepSize;
+
+    // Initialize accumulated light energy.
     float4 LightEnergy = float4(0.0f, 0.0f, 0.0f, 1.0f);
 
     // Jitter Entry position to avoid artifacts.
@@ -254,69 +304,27 @@ float4 PerformDebug1Raymarch(Texture3D DataVolume, // Data Volume
         bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos);
         if(!PositionFound)
             break;
-        LightEnergy.r += 0.01;
-    }
-    return LightEnergy;
-}
 
-// Performs debug raymarch 2 for the current pixel.
-float4 PerformDebug2Raymarch(Texture3D DataVolume, // Data Volume 
-                     SamplerState DataVolumeSampler,
-                     Texture2D TF, // Transfer function texture.
-                     float3 EntryPos, float Thickness, // CurPos = Entry Position, Thickness is thickness of cube along the ray. Both in UVW space.
-                     float StepCount, // How many steps we should take. Actual number of steps taken is StepCount * Thickness.
-                     float4 WindowingParams,
-                     Texture3D OctreeVolume,
-                     SamplerState OctreeVolumeSampler,
-                     Texture3D LightVolume,
-                     SamplerState LightVolumeSampler,
-                     float4 WindowMask,
-                     FMaterialPixelParameters MaterialParameters) // Material Parameters provided by UE.
-{
-    // StepSize in UVW is inverse to StepCount.
-    float StepSize = 1 / StepCount;
-
-    // Get camera vector in local space and multiply it by step size.
-    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal))) * StepSize;
-	
-    // Get step size in local units to get consistent opacity at different volume scale and to be consistent with compute shaders' opacity calculations.
-    float StepSizeWorld = VOLUME_DENSITY * StepSize;
-
-    // Initialize accumulated light energy.
-    float4 LightEnergy = 0;
-
-    // Jitter Entry position to avoid artifacts.
-    JitterEntryPos(EntryPos, LocalCamVec, MaterialParameters);
-
-    // Get the bit mask for the current TransferFunction with the current window width/center.
-    uint UintWindowMask = asuint(WindowMask.r);
-    // The distance the raymarch must pass to calculate required data.
-
-    float3 CurPos = EntryPos;
-    while(length((CurPos - EntryPos)) < Thickness)
-    {
-        bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos);
-        if(!PositionFound)
-            break;
-
-        AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler, TF, LightVolume, StepSizeWorld, WindowingParams);
-
-        // Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
-        if (LightEnergy.a > 0.95f)
+        // Perform several lowest-level steps when a region-of-interest is found. This will save us going through the octree when
+        // data was _just_ hit, so it's highly likely that more data is nearby.
+        int i = 0;
+        while(length((CurPos - EntryPos)) < Thickness && i < 5)
         {
-            LightEnergy.a = 1.0f;
-            break;
-        };
+            CurPos += LocalCamVec;
+            i++;
+        }
+        
+        LightEnergy.r += 0.01;
     }
     return LightEnergy;
 }
 
 // Performs lit raymarch for the current pixel. The lighting information is taken from a precomputed light volume.
 float4 PerformWindowedIntensityRaymarch(Texture3D DataVolume, // Data Volume 
-                              float3 CurPos, float Thickness, // Position of ray entry to cube and thickness in UVW coords.
-                              float StepCount, // Number of steps to take if Thickness is 1. 
-                              float4 WindowingParams,
-                              FMaterialPixelParameters MaterialParameters)                      // Material Parameters
+                                        float3 CurPos, float Thickness, // Position of ray entry to cube and thickness in UVW coords.
+                                        float StepCount, // Number of steps to take if Thickness is 1. 
+                                        float4 WindowingParams,
+                                        FMaterialPixelParameters MaterialParameters)                      // Material Parameters
 {
     // StepSize in UVW is inverse to StepCount.
     float StepSize = 1 / StepCount;
