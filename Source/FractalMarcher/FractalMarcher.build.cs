@@ -11,6 +11,7 @@ public class FractalMarcher : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		CppStandard = CppStandardVersion.Cpp20;
+		OptimizeCode = CodeOptimization.InShippingBuildsOnly;
 
 		PublicDependencyModuleNames.AddRange(
 			new string[]
