@@ -90,7 +90,7 @@ float4 PerformWindowedLitRaymarch(Texture3D DataVolume, // Data Volume
 bool IsInsideVolume(float3 CurPos)
 {
     return (CurPos.x) < 1 && (CurPos.y) < 1 && (CurPos.z) < 1 &&
-        (CurPos.x) > 0 && (CurPos.y) > 0 && (CurPos.z) > 0;
+           (CurPos.x) > 0 && (CurPos.y) > 0 && (CurPos.z) > 0;
 }
 
 bool GetNextSignificantPosition(const Texture3D DataVolume, const Texture3D OctreeVolume, const float3 LocalCamVec,
@@ -98,36 +98,35 @@ bool GetNextSignificantPosition(const Texture3D DataVolume, const Texture3D Octr
 {
     // Set to the mip number with worst detail.
 	const int MaxPossibleMip = 3;
-    int MinPossibleMip = 0;
+    const int MinPossibleMip = 0;
 	// Current mip where the algorithm raymarch data in octree.
     float CurrentMip = 0;
+    float OctreeMipCount = 0;
     
 	// Get the volume depth for later use when recalculating coordinates.
-	float DataVolumeWidth = 0, DataVolumeHeight = 0, DataVolumeDepth = 0;
-	DataVolume.GetDimensions(DataVolumeWidth, DataVolumeHeight, DataVolumeDepth);
+	float3 DataVolumeSize;
+	DataVolume.GetDimensions(DataVolumeSize.x, DataVolumeSize.y, DataVolumeSize.z);
 	
-	float OctreeWidth = 0, OctreeHeight = 0, OctreeDepth = 0, OctreeMipCount = 0;
-    OctreeVolume.GetDimensions(OctreeWidth, OctreeHeight, OctreeDepth);
+	float3 OctreeSize;
+    OctreeVolume.GetDimensions(OctreeSize.x, OctreeSize.y, OctreeSize.z);
 	// Copy the octree depth on mip level 0 for use when recalculating to correct texture coordinates.
-	float OctreeDepthConst = OctreeDepth;
-	float OctreeHeightConst = OctreeHeight;
-	float OctreeWidthConst = OctreeWidth;
-    // Move the CurPos to the inside of the octree.  
+    float3 OctreeSizeLowest = OctreeSize;
+
+    float3 DataVolumeSizeToLowestOctreeSize = DataVolumeSize / OctreeSizeLowest;
+
+    // Move the CurPos one step ahead (that's the minimal-distance next position).
     CurPos += LocalCamVec;
-    //while(length((CurPos - EntryPosition)) < MaxDistance)
-    while(IsInsideVolume(CurPos))
+    while(IsInsideVolume(CurPos)) // TODO Optimize this condition maybe?
     {
-        // Get the correct width, height and depth for current mip.
-        OctreeVolume.GetDimensions(CurrentMip, OctreeWidth, OctreeHeight, OctreeDepth, OctreeMipCount);
+        // Get the correct width, height and depth for current octree mip.
+        OctreeVolume.GetDimensions(CurrentMip, OctreeSize.x, OctreeSize.y, OctreeSize.z, OctreeMipCount); // TODO calculate size from octree mip directly
         // Because of different sizes of Volume vs Octree, need to adjust where we sample from.
         // (Volume can be arbitrary size, octree is always nearest higher power of 2)
-        float AdjustedWidth = (DataVolumeWidth / OctreeWidthConst) * OctreeWidth;
-        float AdjustedHeight = (DataVolumeHeight / OctreeHeightConst) * OctreeHeight;
-        float AdjustedDepth = (DataVolumeDepth / OctreeDepthConst) * OctreeDepth;
+        float3 AdjustedSize = OctreeSize * DataVolumeSizeToLowestOctreeSize;
 
         // Calculate the correct position in octree. The Z coordinate needs to be multiplied by ratio of the base volume depth vs base octree volume depth.
         // Multiply all the values by their respective volume size to get actual texel coordinates instead af UV coordinates.
-        int3 VoxelPos = int3(CurPos.x * AdjustedWidth, CurPos.y * AdjustedHeight, CurPos.z * AdjustedDepth);
+        int3 VoxelPos = int3(CurPos * AdjustedSize);
         
         // Get the bit mask saved in octree volume and check it against current window. In case the and operator results is true, the
         // value in the volume should be used. If not, find the next position in volume upper mip and starts again. 
@@ -135,19 +134,17 @@ bool GetNextSignificantPosition(const Texture3D DataVolume, const Texture3D Octr
         if (!(BitMask & UintWindowMask))
         {
             // Get the box min values calculated in UV coordinates.
-            float3 BoxMin = float3(VoxelPos.x / AdjustedWidth, VoxelPos.y / AdjustedHeight, VoxelPos.z / AdjustedDepth);
+            float3 BoxMin = VoxelPos / AdjustedSize;
             // Get the box max values calculated in UV coordinates.
-            float3 BoxMax = float3((VoxelPos.x + 1.0) / AdjustedWidth, (VoxelPos.y + 1.0) / AdjustedHeight, (VoxelPos.z + 1.0) / AdjustedDepth);
+            float3 BoxMax = (VoxelPos + 1) / AdjustedSize;;
             float2 EntryTimes = float2(0,0);
             if (CheckedRayAABBIntersection(CurPos, LocalCamVec, BoxMin, BoxMax, EntryTimes))
             {
                 // Use ceil to align with the requested step size.
                 CurPos += LocalCamVec * ceil(EntryTimes.y);
 
-                // Current mip does not have useful data, move to upper mip (bidirectional traversal).
-                CurrentMip += 1;
-                CurrentMip = clamp(CurrentMip, CurrentMip, MaxPossibleMip);
-                //CurrentMip = MaxPossibleMip;
+                // Current mip does not have useful data, move one mip above for next cycle (if possible).
+                CurrentMip = clamp(CurrentMip + 1, CurrentMip, MaxPossibleMip);
                 continue;
             }
             return false;
