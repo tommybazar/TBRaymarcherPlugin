@@ -527,7 +527,7 @@ void DICOMAppHelper::ImagePositionPatientCallback(
 
 		if (val)
 		{
-			sscanf_s(reinterpret_cast<char*>(val), "%f\\%f\\%f", &ord.ImagePositionPatient[0], &ord.ImagePositionPatient[1],
+			sscanf(reinterpret_cast<char*>(val), "%f\\%f\\%f", &ord.ImagePositionPatient[0], &ord.ImagePositionPatient[1],
 				&ord.ImagePositionPatient[2]);
 		}
 		else
@@ -550,7 +550,7 @@ void DICOMAppHelper::ImagePositionPatientCallback(
 		if (val)
 		{
 			// file found, add new values
-			sscanf_s(reinterpret_cast<char*>(val), "%f\\%f\\%f", &(*it).second.ImagePositionPatient[0],
+			sscanf(reinterpret_cast<char*>(val), "%f\\%f\\%f", &(*it).second.ImagePositionPatient[0],
 				&(*it).second.ImagePositionPatient[1], &(*it).second.ImagePositionPatient[2]);
 		}
 		else
@@ -578,7 +578,7 @@ void DICOMAppHelper::ImageOrientationPatientCallback(
 		DICOMOrderingElements ord;
 		if (val)
 		{
-			sscanf_s(reinterpret_cast<char*>(val), "%f\\%f\\%f\\%f\\%f\\%f", &ord.ImageOrientationPatient[0],
+			sscanf(reinterpret_cast<char*>(val), "%f\\%f\\%f\\%f\\%f\\%f", &ord.ImageOrientationPatient[0],
 				&ord.ImageOrientationPatient[1], &ord.ImageOrientationPatient[2], &ord.ImageOrientationPatient[3],
 				&ord.ImageOrientationPatient[4], &ord.ImageOrientationPatient[5]);
 		}
@@ -605,7 +605,7 @@ void DICOMAppHelper::ImageOrientationPatientCallback(
 		// file found, add new values
 		if (val)
 		{
-			sscanf_s(reinterpret_cast<char*>(val), "%f\\%f\\%f\\%f\\%f\\%f", &(*it).second.ImageOrientationPatient[0],
+			sscanf(reinterpret_cast<char*>(val), "%f\\%f\\%f\\%f\\%f\\%f", &(*it).second.ImageOrientationPatient[0],
 				&(*it).second.ImageOrientationPatient[1], &(*it).second.ImageOrientationPatient[2],
 				&(*it).second.ImageOrientationPatient[3], &(*it).second.ImageOrientationPatient[4],
 				&(*it).second.ImageOrientationPatient[5]);
@@ -698,7 +698,7 @@ void DICOMAppHelper::PixelSpacingCallback(
 {
 	if (group == 0x0028 && element == 0x0030)
 	{
-		if (!val || sscanf_s(reinterpret_cast<char*>(val), "%f\\%f", &this->PixelSpacing[0], &this->PixelSpacing[1]) != 2)
+		if (!val || sscanf(reinterpret_cast<char*>(val), "%f\\%f", &this->PixelSpacing[0], &this->PixelSpacing[1]) != 2)
 		{
 			this->PixelSpacing[0] = this->PixelSpacing[1] = 0.0;
 		}

@@ -17,7 +17,6 @@
 #include "SceneInterface.h"
 #include "SceneUtils.h"
 #include "ShaderParameterUtils.h"
-#include "Rendering/OctreeShaders.h"
 #include "VolumeTextureToolkit/Public/TextureUtilities.h"
 
 #include <Engine/TextureRenderTargetVolume.h>
@@ -97,7 +96,7 @@ void URaymarchUtils::GenerateOctree(FBasicRaymarchRenderingResources& Resources)
 	ENQUEUE_RENDER_COMMAND(CaptureCommand)
 	([=](FRHICommandListImmediate& RHICmdList)
 	{
-		GenerateOctreeForVolume_RenderThread(RHICmdList, Resources);
+		// GenerateOctreeForVolume_RenderThread(RHICmdList, Resources);
 	});
 }
 
