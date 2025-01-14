@@ -42,3 +42,19 @@ float4 SampleWindowedVolumeStep(const float3 CurPos, float StepSize, Texture3D V
 	const float DataValue = Volume.SampleLevel(VolumeSampler, CurPos, 0).r;
 	return SampleWindowedTransferFunction(DataValue, StepSize, TF, TFSampler, WindowingParams);
 }
+
+// Performs one raymarch step and accumulates the result to the existing Accumulated Light Energy.
+// Notice "Material.Clamp_WorldGroupSettings" used as a sampler. These are UE shared samplers.
+void AccumulateWindowedRaymarchStep(inout float4 AccumulatedLightEnergy, float3 CurPos, Texture3D DataVolume, SamplerState DataVolumeSampler,
+                                 Texture2D TF, Texture3D LightVolume, float StepSize,
+                                 float4 WindowingParams)
+{
+    float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSize, DataVolume, DataVolumeSampler,
+                                               TF, Material.Clamp_WorldGroupSettings, WindowingParams);
+    
+    // Get lighting information from illumination volume for current position and
+    // Multiply sampled color with light color to adjust intensity according to light strength.
+    ColorSample.rgb = ColorSample.rgb * LightVolume.SampleLevel(Material.Wrap_WorldGroupSettings, saturate(CurPos), 0).r;
+    // Accumulate current colored sample to the final values.
+    AccumulateLightEnergy(AccumulatedLightEnergy, ColorSample);
+}

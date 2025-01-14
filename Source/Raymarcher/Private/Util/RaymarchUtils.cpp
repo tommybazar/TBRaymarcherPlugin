@@ -187,34 +187,35 @@ FVector4 URaymarchUtils::GetBitMaskFromWindowedTFCurve(
     }
 
     // if (!((MinWindowVal > 1.0f && MaxWindowVal > 1.0f) || (MinWindowVal < 0.0f && MaxWindowVal < 0.0f)))
-    // {
-    // Sample the current value from the curve and set to relevant bit to non-zero if the curve alpha is non-zero
-    for (uint32_t BitNum = MinWindowBit; BitNum <= MaxWindowBit; BitNum++)
     {
-        // Sample multiple times for each bit to make sure that we don't miss a non-zero part of the range
-        // (e.g. TF could have alpha 0 at time 0, but alpha 0.1 at time 0.02, that would be missed without sampling multiple
-        // times per-bucket)
-        uint32_t SamplesPerBit = 8;
-        float SamplingOffset = Factor / SamplesPerBit;
-        for (uint32_t SampleNum = 0; SampleNum < SamplesPerBit; SampleNum++)
+        // Sample the current value from the curve and set to relevant bit to non-zero if the curve alpha is non-zero
+        for (uint32_t BitNum = MinWindowBit; BitNum <= MaxWindowBit; BitNum++)
         {
-            FLinearColor TFColor =
-                CurveTF->GetLinearColorValue(WindowingParams.GetPositionInWindow((Factor * BitNum) + SamplingOffset));
-            if (TFColor.A > MINIMUM_ALPHA)
+            // Sample multiple times for each bit to make sure that we don't miss a non-zero part of the range
+            // (e.g. TF could have alpha 0 at time 0, but alpha 0.1 at time 0.02, that would be missed without sampling multiple
+            // times per-bucket)
+            uint32_t SamplesPerBit = 8;
+            float SamplingOffset = Factor / SamplesPerBit;
+            for (uint32_t SampleNum = 0; SampleNum < SamplesPerBit; SampleNum++)
             {
-                Result |= (1 << BitNum);
-                break;    // Only breaks inner loop.
+                float PositionInWindow = (Factor * BitNum) + SamplingOffset;
+                FLinearColor TFColor =
+                    CurveTF->GetLinearColorValue(WindowingParams.GetPositionInWindow(PositionInWindow));
+                if (TFColor.A > MINIMUM_ALPHA)
+                {
+                    Result |= (1 << BitNum);
+                    break;    // Only breaks inner loop.
+                }
             }
         }
-    }
 
-    // Make the window mask bigger based on the edge Bits.
-    for (int Shake = 0; Shake < EdgeBits; Shake++)
-    {
-        Result |= (Result << 1);
-        Result |= (Result >> 1);
+        // Make the window mask bigger based on the edge Bits.
+        for (int Shake = 0; Shake < EdgeBits; Shake++)
+        {
+            Result |= (Result << 1);
+            Result |= (Result >> 1);
+        }
     }
-    // }
 
     // Use to output mask.
     std::bitset<32> bitmask(Result);

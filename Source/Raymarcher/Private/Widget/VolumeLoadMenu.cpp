@@ -32,7 +32,7 @@ bool UVolumeLoadMenu::Initialize()
 
         for (UVolumeAsset* VolumeAsset : AssetArray)
         {
-            AssetSelectionComboBox->AddOption(GetNameSafe(VolumeAsset));
+            AssetSelectionComboBox->AddOption(VolumeAsset->GetName());
         }
 
         AssetSelectionComboBox->OnSelectionChanged.AddDynamic(this, &UVolumeLoadMenu::OnAssetSelected);

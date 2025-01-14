@@ -29,7 +29,7 @@
 #include <iomanip>
 #include <iostream>
 
-#define DICOM_EXPORT __declspec(dllexport)
+#define DICOM_EXPORT
 #define DICOM_EXPIMP_TEMPLATE
 
 #endif // __DICOM_CONFIG_H_
