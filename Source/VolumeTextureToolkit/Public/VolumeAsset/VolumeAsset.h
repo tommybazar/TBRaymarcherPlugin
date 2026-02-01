@@ -10,7 +10,7 @@
 #include "WindowingParameters.h"
 #include "VolumeInfo.h"
 
-#include "VolumeAsset.Generated.h"
+#include "VolumeAsset.generated.h"
 
 /// Delegate that is broadcast when the color curve is changed.
 DECLARE_MULTICAST_DELEGATE_OneParam(FCurveAssetChangedDelegate, UCurveLinearColor*);
