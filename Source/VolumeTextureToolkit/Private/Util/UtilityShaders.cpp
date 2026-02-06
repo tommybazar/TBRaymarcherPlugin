@@ -43,13 +43,13 @@ void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHIT
 	// accessible, otherwise the renderer might touch our textures while we're writing them.
 	RHICmdList.Transition(FRHITransitionInfo(VolumeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 
-	ComputeShader->SetParameters(RHICmdList, VolumeUAVRef, ClearValues, VolumeResourceRef->GetSizeZ());
+	ComputeShader->SetParameters(RHICmdList, ShaderRHI, VolumeUAVRef, ClearValues, VolumeResourceRef->GetSizeZ());
 
 	uint32 GroupSizeX = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeX(), CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
 	uint32 GroupSizeY = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeY(), CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
 
 	RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
-	ComputeShader->UnbindUAV(RHICmdList);
+	ComputeShader->UnbindUAV(RHICmdList, ShaderRHI);
 	RHICmdList.Transition(FRHITransitionInfo(VolumeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }
 
@@ -63,13 +63,13 @@ void Clear2DTexture_RenderThread(
 
 	RHICmdList.Transition(FRHITransitionInfo(TextureUAVRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute));
 
-	ShaderRef->SetParameters(RHICmdList, TextureUAVRef, Value);
+	ShaderRef->SetParameters(RHICmdList, ShaderRHI, TextureUAVRef, Value);
 	uint32 GroupSizeX = FMath::DivideAndRoundUp(TextureSize.X, CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
 	uint32 GroupSizeY = FMath::DivideAndRoundUp(TextureSize.Y, CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
 
 	RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
 	//  DispatchComputeShader(RHICmdList, ShaderRef, GroupSizeX, GroupSizeY, 1);
-	ShaderRef->UnbindUAV(RHICmdList);
+	ShaderRef->UnbindUAV(RHICmdList, ShaderRHI);
 
 	RHICmdList.Transition(FRHITransitionInfo(TextureUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }

@@ -79,13 +79,13 @@ public:
 	void SetMandelbulbSDFParameters(
 		FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FMandelbulbSDFResources Parameters)
 	{
-		// Set the multiplier to -1 if we're removing the light. Set to 1 if adding it.
-		SetUAVParameter(RHICmdList, ShaderRHI, MandelbulbVolumeUAV, Parameters.MandelbulbVolumeUAVRef);
-		SetShaderValue(RHICmdList, ShaderRHI, MandelbulbVolumeDimensions, FVector3f(Parameters.MandelbulbVolumeDimensions));
-
-		SetShaderValue(RHICmdList, ShaderRHI, Center, FVector3f(Parameters.Center));
-		SetShaderValue(RHICmdList, ShaderRHI, Extent, FVector3f(Parameters.Extent));
-		SetShaderValue(RHICmdList, ShaderRHI, Power, Parameters.Power);
+		FRHIBatchedShaderParameters& Params = RHICmdList.GetScratchShaderParameters();
+		SetUAVParameter(Params, MandelbulbVolumeUAV, Parameters.MandelbulbVolumeUAVRef);
+		SetShaderValue(Params, MandelbulbVolumeDimensions, FVector3f(Parameters.MandelbulbVolumeDimensions));
+		SetShaderValue(Params, Center, FVector3f(Parameters.Center));
+		SetShaderValue(Params, Extent, FVector3f(Parameters.Extent));
+		SetShaderValue(Params, Power, Parameters.Power);
+		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
 protected:
