@@ -42,7 +42,11 @@ UObject* UVolumeAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
 			.Title(NSLOCTEXT("VolumeAssetFactory", "VolumeImportTitle", "Volume Import"))
 			.SizingRule(ESizingRule::Autosized)
 			.SupportsMaximize(false)
-			.SupportsMinimize(false)[SAssignNew(VolumeImporterWindow, SVolumeImporterWindow).WidgetWindow(&Window.Get())];
+			.SupportsMinimize(false);
+
+	Window->SetContent(
+		SAssignNew(VolumeImporterWindow, SVolumeImporterWindow).WidgetWindow(&Window.Get())
+	);
 
 	FString FileNamePart, FolderPart, ExtensionPart;
 	FPaths::Split(Filename, FolderPart, FileNamePart, ExtensionPart);

@@ -30,6 +30,7 @@ void FVolumeTextureToolkitModule::StartupModule()
 	// find our shaders.
 	AddShaderSourceDirectoryMapping(TEXT("/VolumeTextureToolkit"), PluginShaderDir);
 
+#if PLATFORM_WINDOWS
 	const FString DllBasePath = FPaths::Combine(
 		FPaths::ProjectPluginsDir(), TEXT("TBRaymarcherPlugin/Source/VolumeTextureToolkit/ThirdParty/dcmtk/Bin/Win64"));
 
@@ -43,6 +44,8 @@ void FVolumeTextureToolkitModule::StartupModule()
 		verify(DllHandle != NULL);
 		DllHandles.Add(DllHandle);
 	}
+#endif // PLATFORM_WINDOWS
+	// On Linux, DCMTK is statically linked - no DLL loading needed
 
 	// Register codecs for DICOM decompression so that they are available throughout app lifetime
 	DcmRLEDecoderRegistration::registerCodecs();
@@ -59,10 +62,12 @@ void FVolumeTextureToolkitModule::ShutdownModule()
 	DJDecoderRegistration::cleanup();
 	DJLSDecoderRegistration::cleanup();
 
+#if PLATFORM_WINDOWS
 	for (void* DllHandle : DllHandles)
 	{
 		FPlatformProcess::FreeDllHandle(DllHandle);
 	}
+#endif
 	
 }
 

@@ -68,17 +68,24 @@ public class VolumeTextureToolkit : ModuleRules
 		}
 		else if (Target.Platform == UnrealTargetPlatform.Linux)
 		{
-			// Use system-installed dcmtk on Linux
-			PublicSystemIncludePaths.Add("/usr/include");
+			// Use bundled static dcmtk libraries built with UE's toolchain
+			string LibPath = System.IO.Path.Combine(ModuleDirectory, "ThirdParty/dcmtk", "lib", "Linux");
+			string IncludePath = System.IO.Path.Combine(ModuleDirectory, "ThirdParty/dcmtk", "include");
 
-			string[] LinuxLibs = {
-				"ofstd", "oflog", "oficonv", "dcmdata", "dcmimgle", "dcmimage",
-				"dcmjpeg", "ijg8", "ijg12", "ijg16", "dcmjpls", "dcmtkcharls"
+			// Static libraries in link order (dependents before dependencies)
+			string[] Libs = {
+				"libdcmjpls.a", "libdcmjpeg.a", "libdcmimage.a", "libdcmimgle.a",
+				"libdcmdata.a", "liboflog.a", "libofstd.a", "liboficonv.a",
+				"libdcmtkcharls.a", "libijg8.a", "libijg12.a", "libijg16.a",
+				"libisoc23_compat.a"
 			};
 
-			foreach (string Lib in LinuxLibs)
+			PrivateIncludePaths.Add(IncludePath);
+
+			foreach (string Lib in Libs)
 			{
-				PublicSystemLibraries.Add(Lib);
+				string FullPath = System.IO.Path.Combine(LibPath, Lib);
+				PublicAdditionalLibraries.Add(FullPath);
 			}
 		}
 	}
