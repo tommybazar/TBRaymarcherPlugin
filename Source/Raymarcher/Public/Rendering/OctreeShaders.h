@@ -41,23 +41,21 @@ public:
 	void SetGeneratingResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTexture3DRHIRef pVolume,
 		const FTexture3DComputeResource* ComputeResource, int InLeafNodeSize, int InNumberOfMips)
 	{
-		SetTextureParameter(RHICmdList, ShaderRHI, Volume, pVolume);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, ComputeResource->UnorderedAccessViewRHIs[0]);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume1, ComputeResource->UnorderedAccessViewRHIs[1]);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume2, ComputeResource->UnorderedAccessViewRHIs[2]);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume3, ComputeResource->UnorderedAccessViewRHIs[3]);
-		SetShaderValue(RHICmdList, ShaderRHI, MinMaxValues, FVector2f(0.0, 1.0));
-		SetShaderValue(RHICmdList, ShaderRHI, LeafNodeSize, InLeafNodeSize);
-		SetShaderValue(RHICmdList, ShaderRHI, NumberOfMips, InNumberOfMips);
+		FRHIBatchedShaderParameters& Params = RHICmdList.GetScratchShaderParameters();
+		SetTextureParameter(Params, Volume, pVolume);
+		SetUAVParameter(Params, OctreeVolume0, ComputeResource->UnorderedAccessViewRHIs[0]);
+		SetUAVParameter(Params, OctreeVolume1, ComputeResource->UnorderedAccessViewRHIs[1]);
+		SetUAVParameter(Params, OctreeVolume2, ComputeResource->UnorderedAccessViewRHIs[2]);
+		SetUAVParameter(Params, OctreeVolume3, ComputeResource->UnorderedAccessViewRHIs[3]);
+		SetShaderValue(Params, MinMaxValues, FVector2f(0.0, 1.0));
+		SetShaderValue(Params, LeafNodeSize, InLeafNodeSize);
+		SetShaderValue(Params, NumberOfMips, InNumberOfMips);
+		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
 	void UnbindResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
 	{
-		SetTextureParameter(RHICmdList, ShaderRHI, Volume, nullptr);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, nullptr);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume1, nullptr);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume2, nullptr);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume3, nullptr);
+		// No-op: resource transitions handle state management on Vulkan/D3D12.
 	}
 
 protected:

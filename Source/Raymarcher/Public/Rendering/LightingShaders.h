@@ -67,97 +67,61 @@ public:
 		WriteBuffer.Bind(Initializer.ParameterMap, TEXT("WriteBuffer"), SPF_Mandatory);
 	}
 
-	void SetLightAdded(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, bool bLightAdded)
-	{
-		// Set the multiplier to -1 if we're removing the light. Set to 1 if adding it.
-		SetShaderValue(RHICmdList, ShaderRHI, bAdded, bLightAdded ? 1 : -1);
-	}
-
-	void SetRaymarchResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTexture3DRHIRef pVolume,
-		const FTexture2DRHIRef pTransferFunc, FWindowingParameters WindowingParams)
-	{
-		// Set the zero color to fit the zero point of the windowing parameters (Center - Width/2)
-		// so that after sampling out of bounds, it gets changed to 0 on the Transfer Function in
-		// GetTransferFuncPosition() hlsl function.
-		float ZeroTFValue = WindowingParams.Center - 0.5 * WindowingParams.Width;
-
-		FLinearColor VolumeClearColor = FLinearColor(ZeroTFValue, 0.0, 0.0, 0.0);
-		const uint32 BorderColorInt = VolumeClearColor.ToFColor(false).ToPackedARGB();
-
-		// Create a static sampler reference and bind it together with the volume texture.
-		FSamplerStateRHIRef DataVolumeSamplerRef = RHICreateSamplerState(
-			FSamplerStateInitializerRHI(SF_Trilinear, AM_Border, AM_Border, AM_Border, 0, 1, 0, 0, BorderColorInt));
-
-		FSamplerStateRHIRef TFSamplerRef = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-		SetTextureParameter(RHICmdList, ShaderRHI, Volume, VolumeSampler, DataVolumeSamplerRef, pVolume);
-		SetTextureParameter(RHICmdList, ShaderRHI, TransferFunc, TransferFuncSampler, TFSamplerRef, pTransferFunc);
-	}
-
-	// Sets the shader uniforms in the pipeline.
-	void SetRaymarchParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI,
-		FClippingPlaneParameters LocalClippingParams, FLinearColor pWindowingParameters)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingCenter, FVector3f(LocalClippingParams.Center));
-		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingDirection, FVector3f(LocalClippingParams.Direction));
-		SetShaderValue(RHICmdList, ShaderRHI, WindowingParameters, pWindowingParameters);
-	}
-
-	// Sets the step-size. This is a crucial parameter, because when raymarching, we need to know how long our step was,
-	// so that we can calculate how large an effect the volume's density has.
-	void SetStepSize(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, float pStepSize)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, StepSize, pStepSize);
-	}
-
-	// Sets loop-dependent uniforms in the pipeline.
-	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int loopIndex,
-		const FTexture2DRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
+	void SetAllParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, bool bLightAdded,
+		const FTexture3DRHIRef pVolume, const FTexture2DRHIRef pTransferFunc, FWindowingParameters WindowingParams,
+		FClippingPlaneParameters LocalClippingParams, FLinearColor pWindowingParameters, float pStepSize,
+		FUnorderedAccessViewRHIRef pALightVolume, FMatrix PermMatrix, FVector2D PixelOffset, FVector pUVWOffset,
+		const int loopIndex, const FTexture2DRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
 		const FUnorderedAccessViewRHIRef pWriteBuffer)
 	{
-		// Update the Loop index.
-		SetShaderValue(RHICmdList, ShaderRHI, Loop, loopIndex);
-		// Set read/write buffers.
-		SetUAVParameter(RHICmdList, ShaderRHI, WriteBuffer, pWriteBuffer);
-		SetTextureParameter(RHICmdList, ShaderRHI, ReadBuffer, ReadBufferSampler, pReadBuffSampler, pReadBuffer);
-	}
+		float ZeroTFValue = WindowingParams.Center - 0.5 * WindowingParams.Width;
+		FLinearColor VolumeClearColor = FLinearColor(ZeroTFValue, 0.0, 0.0, 0.0);
+		const uint32 BorderColorInt = VolumeClearColor.ToFColor(false).ToPackedARGB();
+		FSamplerStateRHIRef DataVolumeSamplerRef = RHICreateSamplerState(
+			FSamplerStateInitializerRHI(SF_Trilinear, AM_Border, AM_Border, AM_Border, 0, 1, 0, 0, BorderColorInt));
+		FSamplerStateRHIRef TFSamplerRef = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 
-	void SetALightVolume(
-		FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FUnorderedAccessViewRHIRef pALightVolume)
-	{
-		// Set the multiplier to -1 if we're removing the light. Set to 1 if adding it.
-		SetUAVParameter(RHICmdList, ShaderRHI, ALightVolume, pALightVolume);
-	}
+		FRHIBatchedShaderParameters& Params = RHICmdList.GetScratchShaderParameters();
 
-	void SetPermutationMatrix(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FMatrix PermMatrix)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, PermutationMatrix, FMatrix44f(PermMatrix));
-	}
+		// Light added/removed
+		SetShaderValue(Params, bAdded, bLightAdded ? 1 : -1);
 
-	void UnbindResourcesRaymarch(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
-	{
-		SetTextureParameter(RHICmdList, ShaderRHI, Volume, nullptr);
-		SetTextureParameter(RHICmdList, ShaderRHI, TransferFunc, nullptr);
+		// Raymarch resources
+		SetTextureParameter(Params, Volume, pVolume);
+		SetSamplerParameter(Params, VolumeSampler, DataVolumeSamplerRef);
+		SetTextureParameter(Params, TransferFunc, pTransferFunc);
+		SetSamplerParameter(Params, TransferFuncSampler, TFSamplerRef);
+
+		// Raymarch parameters
+		SetShaderValue(Params, LocalClippingCenter, FVector3f(LocalClippingParams.Center));
+		SetShaderValue(Params, LocalClippingDirection, FVector3f(LocalClippingParams.Direction));
+		SetShaderValue(Params, WindowingParameters, pWindowingParameters);
+
+		// Step size
+		SetShaderValue(Params, StepSize, pStepSize);
+
+		// Light volume
+		SetUAVParameter(Params, ALightVolume, pALightVolume);
+
+		// Permutation matrix
+		SetShaderValue(Params, PermutationMatrix, FMatrix44f(PermMatrix));
+
+		// UV/UVW offsets
+		SetShaderValue(Params, PrevPixelOffset, FVector2f(PixelOffset));
+		SetShaderValue(Params, UVWOffset, FVector3f(pUVWOffset));
+
+		// Loop parameters
+		SetShaderValue(Params, Loop, loopIndex);
+		SetUAVParameter(Params, WriteBuffer, pWriteBuffer);
+		SetTextureParameter(Params, ReadBuffer, pReadBuffer);
+		SetSamplerParameter(Params, ReadBufferSampler, pReadBuffSampler);
+
+		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
 	void UnbindResourcesLightPropagation(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
 	{
-		// Unbind volume buffer.
-		UnbindResourcesRaymarch(RHICmdList, ShaderRHI);
-		SetUAVParameter(RHICmdList, ShaderRHI, ALightVolume, nullptr);
-		SetUAVParameter(RHICmdList, ShaderRHI, WriteBuffer, nullptr);
-		SetTextureParameter(RHICmdList, ShaderRHI, ReadBuffer, nullptr);
-	}
-
-	void SetUVOffset(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector2D PixelOffset)
-	{
-		auto fPixelOffset = FVector2f(PixelOffset);
-		SetShaderValue(RHICmdList, ShaderRHI, PrevPixelOffset, fPixelOffset);
-	}
-
-	void SetUVWOffset(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector pUVWOffset)
-	{
-		auto fUVWOffset = FVector3f(pUVWOffset);
-		SetShaderValue(RHICmdList, ShaderRHI, UVWOffset, fUVWOffset);
+		// No-op: resource transitions handle state management on Vulkan/D3D12.
 	}
 
 protected:
@@ -249,134 +213,72 @@ public:
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 
-	// Sets loop-dependent uniforms in the pipeline.
-	void SetLoopAdd(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int loopIndex,
-		const FTexture2DRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
-		const FUnorderedAccessViewRHIRef pWriteBuffer)
-	{
-		// Update the Loop index.
-		SetShaderValue(RHICmdList, ShaderRHI, Loop, loopIndex);
-		// Set read/write buffers.
-		SetUAVParameter(RHICmdList, ShaderRHI, WriteBuffer, pWriteBuffer);
-		SetTextureParameter(RHICmdList, ShaderRHI, ReadBuffer, ReadBufferSampler, pReadBuffSampler, pReadBuffer);
-	}
-
-	// Sets loop-dependent uniforms in the pipeline.
-	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int loopIndex,
+	void SetAllParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI,
+		const FTexture3DRHIRef pVolume, const FTexture2DRHIRef pTransferFunc, FWindowingParameters WindowingParams,
+		FClippingPlaneParameters LocalClippingParams, FLinearColor pWindowingParameters,
+		FUnorderedAccessViewRHIRef pALightVolume, float pAddedStepSize, float pRemovedStepSize,
+		FMatrix PermMatrix, FVector2D AddedPixelOffset, FVector2D RemovedPixelOffset,
+		FVector pAddedUVWOffset, FVector pRemovedUVWOffset,
+		const int loopIndex,
 		const FTexture2DRHIRef pRemovedReadBuffer, const FSamplerStateRHIRef pRemovedReadBuffSampler,
 		const FUnorderedAccessViewRHIRef pRemovedWriteBuffer, const FTexture2DRHIRef pAddedReadBuffer,
 		const FSamplerStateRHIRef pAddedReadBuffSampler, const FUnorderedAccessViewRHIRef pAddedWriteBuffer)
 	{
-		// Actually sets the shader uniforms in the pipeline.
-		SetLoopAdd(RHICmdList, ShaderRHI, loopIndex, pAddedReadBuffer, pAddedReadBuffSampler, pAddedWriteBuffer);
-		// Set read/write buffers for removed light.
-		SetUAVParameter(RHICmdList, ShaderRHI, RemovedWriteBuffer, pRemovedWriteBuffer);
-		SetTextureParameter(
-			RHICmdList, ShaderRHI, RemovedReadBuffer, RemovedReadBufferSampler, pRemovedReadBuffSampler, pRemovedReadBuffer);
-	}
+		float ZeroTFValue = WindowingParams.Center - 0.5 * WindowingParams.Width;
+		FLinearColor VolumeClearColor = FLinearColor(ZeroTFValue, 0.0, 0.0, 0.0);
+		const uint32 BorderColorInt = VolumeClearColor.ToFColor(false).ToPackedARGB();
+		FSamplerStateRHIRef DataVolumeSamplerRef = RHICreateSamplerState(
+			FSamplerStateInitializerRHI(SF_Trilinear, AM_Border, AM_Border, AM_Border, 0, 1, 0, 0, BorderColorInt));
+		FSamplerStateRHIRef TFSamplerRef = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 
-	// Sets loop-dependent uniforms in the pipeline.
-	void SetLoop(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const int loopIndex,
-		const FTexture2DRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
-		const FUnorderedAccessViewRHIRef pWriteBuffer)
-	{
-		// Update the Loop index.
-		SetShaderValue(RHICmdList, ShaderRHI, Loop, loopIndex);
-		// Set read/write buffers.
-		SetUAVParameter(RHICmdList, ShaderRHI, WriteBuffer, pWriteBuffer);
-		SetTextureParameter(RHICmdList, ShaderRHI, ReadBuffer, ReadBufferSampler, pReadBuffSampler, pReadBuffer);
-	}
+		FRHIBatchedShaderParameters& Params = RHICmdList.GetScratchShaderParameters();
 
-	void SetALightVolume(
-		FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FUnorderedAccessViewRHIRef pALightVolume)
-	{
-		// Set the multiplier to -1 if we're removing the light. Set to 1 if adding it.
-		SetUAVParameter(RHICmdList, ShaderRHI, ALightVolume, pALightVolume);
-	}
+		// Raymarch resources
+		SetTextureParameter(Params, Volume, pVolume);
+		SetSamplerParameter(Params, VolumeSampler, DataVolumeSamplerRef);
+		SetTextureParameter(Params, TransferFunc, pTransferFunc);
+		SetSamplerParameter(Params, TransferFuncSampler, TFSamplerRef);
 
-	void SetPermutationMatrix(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FMatrix PermMatrix)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, PermutationMatrix, FMatrix44f(PermMatrix));
-	}
+		// Raymarch parameters
+		SetShaderValue(Params, LocalClippingCenter, FVector3f(LocalClippingParams.Center));
+		SetShaderValue(Params, LocalClippingDirection, FVector3f(LocalClippingParams.Direction));
+		SetShaderValue(Params, WindowingParameters, pWindowingParameters);
 
-	void SetPixelOffsets(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector2D AddedPixelOffset,
-		FVector2D RemovedPixelOffset)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, PrevPixelOffset, FVector2f(AddedPixelOffset));
-		SetShaderValue(RHICmdList, ShaderRHI, RemovedPrevPixelOffset, FVector2f(RemovedPixelOffset));
-	}
+		// Light volume
+		SetUAVParameter(Params, ALightVolume, pALightVolume);
 
-	void SetUVWOffsets(
-		FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FVector pAddedUVWOffset, FVector pRemovedUVWOffset)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, UVWOffset, FVector3f(pAddedUVWOffset));
-		SetShaderValue(RHICmdList, ShaderRHI, RemovedUVWOffset, FVector3f(pRemovedUVWOffset));
-	}
+		// Step sizes
+		SetShaderValue(Params, StepSize, pAddedStepSize);
+		SetShaderValue(Params, RemovedStepSize, pRemovedStepSize);
 
-	void SetStepSizes(
-		FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, float pAddedStepSize, float pRemovedStepSize)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, StepSize, pAddedStepSize);
-		SetShaderValue(RHICmdList, ShaderRHI, RemovedStepSize, pRemovedStepSize);
-	}
+		// Permutation matrix
+		SetShaderValue(Params, PermutationMatrix, FMatrix44f(PermMatrix));
 
-	void UnbindResourcesRaymarch(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
-	{
-		SetTextureParameter(RHICmdList, ShaderRHI, Volume, nullptr);
-		SetTextureParameter(RHICmdList, ShaderRHI, TransferFunc, nullptr);
-	}
+		// Pixel offsets
+		SetShaderValue(Params, PrevPixelOffset, FVector2f(AddedPixelOffset));
+		SetShaderValue(Params, RemovedPrevPixelOffset, FVector2f(RemovedPixelOffset));
 
-	void UnbindResourcesLightPropagation(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
-	{
-		// Unbind volume buffer.
-		UnbindResourcesRaymarch(RHICmdList, ShaderRHI);
-		SetUAVParameter(RHICmdList, ShaderRHI, ALightVolume, nullptr);
-		SetUAVParameter(RHICmdList, ShaderRHI, WriteBuffer, nullptr);
-		SetTextureParameter(RHICmdList, ShaderRHI, ReadBuffer, nullptr);
+		// UVW offsets
+		SetShaderValue(Params, UVWOffset, FVector3f(pAddedUVWOffset));
+		SetShaderValue(Params, RemovedUVWOffset, FVector3f(pRemovedUVWOffset));
+
+		// Loop parameters - added buffers
+		SetShaderValue(Params, Loop, loopIndex);
+		SetUAVParameter(Params, WriteBuffer, pAddedWriteBuffer);
+		SetTextureParameter(Params, ReadBuffer, pAddedReadBuffer);
+		SetSamplerParameter(Params, ReadBufferSampler, pAddedReadBuffSampler);
+
+		// Loop parameters - removed buffers
+		SetUAVParameter(Params, RemovedWriteBuffer, pRemovedWriteBuffer);
+		SetTextureParameter(Params, RemovedReadBuffer, pRemovedReadBuffer);
+		SetSamplerParameter(Params, RemovedReadBufferSampler, pRemovedReadBuffSampler);
+
+		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
 	void UnbindResourcesChangeDirLight(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
 	{
-		// Unbind parent and also our added parameters.
-		UnbindResourcesLightPropagation(RHICmdList, ShaderRHI);
-		SetUAVParameter(RHICmdList, ShaderRHI, RemovedWriteBuffer, nullptr);
-		SetTextureParameter(RHICmdList, ShaderRHI, RemovedReadBuffer, nullptr);
-	}
-
-	void SetRaymarchResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTexture3DRHIRef pVolume,
-		const FTexture2DRHIRef pTransferFunc, FWindowingParameters WindowingParams)
-	{
-		// Set the zero color to fit the zero point of the windowing parameters (Center - Width/2)
-		// so that after sampling out of bounds, it gets changed to 0 on the Transfer Function in
-		// GetTransferFuncPosition() hlsl function.
-		float ZeroTFValue = WindowingParams.Center - 0.5 * WindowingParams.Width;
-
-		FLinearColor VolumeClearColor = FLinearColor(ZeroTFValue, 0.0, 0.0, 0.0);
-		const uint32 BorderColorInt = VolumeClearColor.ToFColor(false).ToPackedARGB();
-
-		// Create a static sampler reference and bind it together with the volume texture.
-		FSamplerStateRHIRef DataVolumeSamplerRef = RHICreateSamplerState(
-			FSamplerStateInitializerRHI(SF_Trilinear, AM_Border, AM_Border, AM_Border, 0, 1, 0, 0, BorderColorInt));
-
-		FSamplerStateRHIRef TFSamplerRef = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-		SetTextureParameter(RHICmdList, ShaderRHI, Volume, VolumeSampler, DataVolumeSamplerRef, pVolume);
-		SetTextureParameter(RHICmdList, ShaderRHI, TransferFunc, TransferFuncSampler, TFSamplerRef, pTransferFunc);
-	}
-
-	// Sets the shader uniforms in the pipeline.
-	void SetRaymarchParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI,
-		FClippingPlaneParameters LocalClippingParams, FLinearColor pWindowingParameters)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingCenter, FVector3f(LocalClippingParams.Center));
-		SetShaderValue(RHICmdList, ShaderRHI, LocalClippingDirection, FVector3f(LocalClippingParams.Direction));
-		SetShaderValue(RHICmdList, ShaderRHI, WindowingParameters, pWindowingParameters);
-	}
-
-	// Sets the step-size. This is a crucial parameter, because when raymarching, we need to know how long our step was,
-	// so that we can calculate how large an effect the volume's density has.
-	void SetStepSize(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, float pStepSize)
-	{
-		SetShaderValue(RHICmdList, ShaderRHI, StepSize, pStepSize);
+		// No-op: resource transitions handle state management on Vulkan/D3D12.
 	}
 
 protected:

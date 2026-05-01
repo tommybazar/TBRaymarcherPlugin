@@ -39,15 +39,17 @@ public:
 		ClearTexture2DRW.Bind(Initializer.ParameterMap, TEXT("ClearTextureRW"), SPF_Mandatory);
 	}
 
-	void SetParameters(FRHICommandList& RHICmdList, FRHIUnorderedAccessView* TextureRW, float Value)
+	void SetParameters(FRHICommandList& RHICmdList, FRHIComputeShader* ShaderRHI, FRHIUnorderedAccessView* TextureRW, float Value)
 	{
-		SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), ClearTexture2DRW, TextureRW);
-		SetShaderValue(RHICmdList, RHICmdList.GetBoundComputeShader(), ClearValue, Value);
+		FRHIBatchedShaderParameters& Params = RHICmdList.GetScratchShaderParameters();
+		SetUAVParameter(Params, ClearTexture2DRW, TextureRW);
+		SetShaderValue(Params, ClearValue, Value);
+		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
-	void UnbindUAV(FRHICommandList& RHICmdList)
+	void UnbindUAV(FRHICommandList& RHICmdList, FRHIComputeShader* ShaderRHI)
 	{
-		SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), ClearTexture2DRW, nullptr);
+		// No-op: resource transitions handle state management on Vulkan/D3D12.
 	}
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -98,17 +100,18 @@ public:
 		ZSize.Bind(Initializer.ParameterMap, TEXT("ZSize"), SPF_Mandatory);
 	}
 
-	void SetParameters(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* VolumeRef, float clearColor, int ZSizeParam)
+	void SetParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FRHIUnorderedAccessView* VolumeRef, float clearColor, int ZSizeParam)
 	{
-		FRHIComputeShader* ShaderRHI = RHICmdList.GetBoundComputeShader();
-		SetUAVParameter(RHICmdList, ShaderRHI, Volume, VolumeRef);
-		SetShaderValue(RHICmdList, ShaderRHI, ClearValue, clearColor);
-		SetShaderValue(RHICmdList, ShaderRHI, ZSize, ZSizeParam);
+		FRHIBatchedShaderParameters& Params = RHICmdList.GetScratchShaderParameters();
+		SetUAVParameter(Params, Volume, VolumeRef);
+		SetShaderValue(Params, ClearValue, clearColor);
+		SetShaderValue(Params, ZSize, ZSizeParam);
+		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
-	void UnbindUAV(FRHICommandList& RHICmdList)
+	void UnbindUAV(FRHICommandList& RHICmdList, FRHIComputeShader* ShaderRHI)
 	{
-		SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), Volume, nullptr);
+		// No-op: resource transitions handle state management on Vulkan/D3D12.
 	}
 	
 protected:

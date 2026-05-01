@@ -7,6 +7,7 @@
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Util/UtilityShaders.h"
+#include "VolumeAsset/DICOMParser/DICOMTypes.h"
 #include "VolumeAsset/VolumeAsset.h"
 
 #include <Engine/TextureRenderTargetVolume.h>
@@ -77,12 +78,64 @@ void UVolumeTextureToolkit::CreateVolumeTextureMip(
 	VolumeTexture->GetPlatformData()->Mips.Add(mip);
 }
 
-bool UVolumeTextureToolkit::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, FString AssetName, FString FolderName,
-	EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData, bool IsPersistent, bool ShouldUpdateResource)
+void UVolumeTextureToolkit::CropDataTo2K(uint8* BulkData, FIntVector& Dimensions, EPixelFormat PixelFormat)
+{
+	int VoxelByteSize = GPixelFormats[PixelFormat].BlockBytes;
+
+	UE_LOG(LogTextureUtils, Warning, TEXT("Unreal doesn't support 3D textures larger than 2048 in any dimension"));
+	if (Dimensions.Z > 2048)
+	{
+		UE_LOG(LogTextureUtils, Warning, TEXT("Z dimension has been clipped to 2048"));
+		// No need to do anything else, the back of the BulkData will just be unused when the texture gets created and then it will
+		// get freed.
+		Dimensions.Z = 2048;
+	}
+
+	if (Dimensions.Y > 2048 || Dimensions.X > 2048)
+	{
+		// Need to reshuffle the data "forward" in BulkData to match clamped dimensions.
+		// TODO test this
+		// This could be optimized so that for Y it only does the copies for Y dimension and not per-row...
+
+		int ClampedX = std::clamp(Dimensions.X, 0, 2048);
+		int ClampedY = std::clamp(Dimensions.Y, 0, 2048);
+
+		for (int Z = 0; Z < Dimensions.Z; Z++)
+		{
+			for (int Y = 0; Y < ClampedY; Y++)
+			{
+				int RowLength = ClampedX * VoxelByteSize;
+				int NewOffset = ((ClampedX * Y) + (ClampedX * ClampedY * Z)) * VoxelByteSize;
+				int OldOffset = ((Dimensions.X * Y) + (Dimensions.X * Dimensions.Y * Z)) * VoxelByteSize;
+				FMemory::Memcpy(BulkData + NewOffset, BulkData + OldOffset, RowLength);
+			}
+		}
+		if (Dimensions.Y != ClampedY)
+		{
+			UE_LOG(LogTextureUtils, Warning, TEXT("Y dimension has been clipped to 2048"));
+			Dimensions.Y = ClampedY;
+		}
+		if (Dimensions.X != ClampedX)
+		{
+			UE_LOG(LogTextureUtils, Warning, TEXT("X dimension has been clipped to 2048"));
+			Dimensions.X = ClampedX;
+		}
+	}
+}
+
+bool UVolumeTextureToolkit::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, const FString& AssetName,
+	const FString& FolderName, EPixelFormat PixelFormat, FIntVector& Dimensions, uint8* BulkData, bool IsPersistent,
+	bool ShouldUpdateResource)
 {
 	if (Dimensions.X == 0 || Dimensions.Y == 0 || Dimensions.Z == 0)
 	{
 		return false;
+	}
+
+	if (Dimensions.X > 2048 || Dimensions.Y > 2048 || Dimensions.Z > 2048)
+	{
+		// Current RHI limitations make it impossible to create 3D textures larger than 2k in each dimension -> crop data.
+		CropDataTo2K(BulkData, Dimensions, PixelFormat);
 	}
 
 	FString PackageName = MakePackageName(AssetName, FolderName);
@@ -435,6 +488,6 @@ void UVolumeTextureToolkit::ClearVolumeTexture(UTextureRenderTargetVolume* RTVol
 
 	// Call the actual rendering code on RenderThread.
 	ENQUEUE_RENDER_COMMAND(CaptureCommand)
-	([VolumeTextureResource, ClearValue](
-		 FRHICommandListImmediate& RHICmdList) { ClearVolumeTexture_RenderThread(RHICmdList, VolumeTextureResource, ClearValue); });
+	([VolumeTextureResource, ClearValue](FRHICommandListImmediate& RHICmdList)
+		{ ClearVolumeTexture_RenderThread(RHICmdList, VolumeTextureResource, ClearValue); });
 }

@@ -37,15 +37,18 @@ public:
 	static void CreateVolumeTextureMip(
 		UVolumeTexture*& OutTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData = nullptr);
 
+	/** Hacky fix to loading large volumes - crop the data to 2048 */
+	static void CropDataTo2K(uint8* BulkData, FIntVector& Dimensions, EPixelFormat PixelFormat);
+	
 	/** Creates a Volume Texture asset with the given name, pixel format and
 	  dimensions and fills it with the bulk data provided. It can be set to be
 	  persistent and can also be immediately saved to disk.
 	  Returns a reference to the created texture in the CreatedTexture param.
 	*/
-	static bool CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, FString AssetName, FString FolderName,
-		EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData = nullptr, bool IsPersistent = false,
+	static bool CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, const FString& AssetName, const FString& FolderName,
+		EPixelFormat PixelFormat, FIntVector& Dimensions, uint8* BulkData = nullptr, bool IsPersistent = false,
 		bool ShouldUpdateResource = true);
-
+	
 	/** Updates the provided Volume Texture asset to have the provided format,
 	 * dimensions and pixel data*/
 	static bool UpdateVolumeTextureAsset(UVolumeTexture* VolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions,

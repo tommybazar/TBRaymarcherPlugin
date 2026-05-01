@@ -131,28 +131,24 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 
 		for (int j = Start; j != Stop; j += AxisDirection)
 		{
-			// Set all compute shader parameters
-			// TODO find out why this has to be set for every invocation when it was fine to just SetLoop before UE 5.3
-			ComputeShader->SetRaymarchParameters(
-				RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
-			ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI,
-				Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
-				Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
-			ComputeShader->SetLightAdded(RHICmdList, ShaderRHI, Added);
-			ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
-			ComputeShader->SetUVOffset(RHICmdList, ShaderRHI, UVOffset);
-			ComputeShader->SetUVWOffset(RHICmdList, ShaderRHI, UVWOffset);
-			ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermutationMatrix);
-			ComputeShader->SetStepSize(RHICmdList, ShaderRHI, StepSize);
-
 			// Switch read and write buffers each row.
 			if (j % 2 == 0)
 			{
-				ComputeShader->SetLoop(RHICmdList, ShaderRHI, j, Buffers.Buffers[0], readBuffSampler, Buffers.UAVs[1]);
+				ComputeShader->SetAllParameters(RHICmdList, ShaderRHI, Added,
+					Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+					Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters,
+					LocalClippingParameters, Resources.WindowingParameters.ToLinearColor(), StepSize,
+					Resources.LightVolumeUAVRef, PermutationMatrix, UVOffset, UVWOffset,
+					j, Buffers.Buffers[0], readBuffSampler, Buffers.UAVs[1]);
 			}
 			else
 			{
-				ComputeShader->SetLoop(RHICmdList, ShaderRHI, j, Buffers.Buffers[1], readBuffSampler, Buffers.UAVs[0]);
+				ComputeShader->SetAllParameters(RHICmdList, ShaderRHI, Added,
+					Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+					Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters,
+					LocalClippingParameters, Resources.WindowingParameters.ToLinearColor(), StepSize,
+					Resources.LightVolumeUAVRef, PermutationMatrix, UVOffset, UVWOffset,
+					j, Buffers.Buffers[1], readBuffSampler, Buffers.UAVs[0]);
 			}
 			RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
 		}
@@ -288,31 +284,33 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 
 		for (int LoopIndex = Start; LoopIndex != Stop; LoopIndex += AxisDirection)
 		{	 // Switch read and write buffers each cycle.
-			ComputeShader->SetRaymarchParameters(
-				RHICmdList, ShaderRHI, LocalClippingParameters, Resources.WindowingParameters.ToLinearColor());
-			ComputeShader->SetRaymarchResources(RHICmdList, ShaderRHI,
-				Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
-				Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters);
-			ComputeShader->SetALightVolume(RHICmdList, ShaderRHI, Resources.LightVolumeUAVRef);
-			ComputeShader->SetStepSizes(RHICmdList, ShaderRHI, AddedStepSize, RemovedStepSize);
-			ComputeShader->SetPermutationMatrix(RHICmdList, ShaderRHI, PermMatrix);
-
-			ComputeShader->SetPixelOffsets(RHICmdList, ShaderRHI, AddedPixOffset, RemovedPixOffset);
-			ComputeShader->SetUVWOffsets(RHICmdList, ShaderRHI, AddedUVWOffset, RemovedUVWOffset);
-
 			if (LoopIndex % 2 == 0)
 			{
 				TransitionBufferResources(RHICmdList, Buffers.Buffers[0], Buffers.UAVs[1]);
 				TransitionBufferResources(RHICmdList, Buffers.Buffers[2], Buffers.UAVs[3]);
-				ComputeShader->SetLoop(RHICmdList, ShaderRHI, LoopIndex, Buffers.Buffers[0], RemovedReadBuffSampler,
-					Buffers.UAVs[1], Buffers.Buffers[2], AddedReadBuffSampler, Buffers.UAVs[3]);
+				ComputeShader->SetAllParameters(RHICmdList, ShaderRHI,
+					Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+					Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters,
+					LocalClippingParameters, Resources.WindowingParameters.ToLinearColor(),
+					Resources.LightVolumeUAVRef, AddedStepSize, RemovedStepSize,
+					PermMatrix, AddedPixOffset, RemovedPixOffset, AddedUVWOffset, RemovedUVWOffset,
+					LoopIndex,
+					Buffers.Buffers[0], RemovedReadBuffSampler, Buffers.UAVs[1],
+					Buffers.Buffers[2], AddedReadBuffSampler, Buffers.UAVs[3]);
 			}
 			else
 			{
 				TransitionBufferResources(RHICmdList, Buffers.Buffers[1], Buffers.UAVs[0]);
 				TransitionBufferResources(RHICmdList, Buffers.Buffers[3], Buffers.UAVs[2]);
-				ComputeShader->SetLoop(RHICmdList, ShaderRHI, LoopIndex, Buffers.Buffers[1], RemovedReadBuffSampler,
-					Buffers.UAVs[0], Buffers.Buffers[3], AddedReadBuffSampler, Buffers.UAVs[2]);
+				ComputeShader->SetAllParameters(RHICmdList, ShaderRHI,
+					Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
+					Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters,
+					LocalClippingParameters, Resources.WindowingParameters.ToLinearColor(),
+					Resources.LightVolumeUAVRef, AddedStepSize, RemovedStepSize,
+					PermMatrix, AddedPixOffset, RemovedPixOffset, AddedUVWOffset, RemovedUVWOffset,
+					LoopIndex,
+					Buffers.Buffers[1], RemovedReadBuffSampler, Buffers.UAVs[0],
+					Buffers.Buffers[3], AddedReadBuffSampler, Buffers.UAVs[2]);
 			}
 			RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
 		}
