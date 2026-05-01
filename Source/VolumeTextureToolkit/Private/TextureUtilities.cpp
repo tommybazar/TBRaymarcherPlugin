@@ -15,6 +15,8 @@
 
 DEFINE_LOG_CATEGORY(LogTextureUtils);
 
+constexpr int MAX_TEXTURE_SIZE = 2048;
+
 FString UVolumeTextureToolkit::MakePackageName(FString AssetName, FString FolderName)
 {
 	if (FolderName.IsEmpty())
@@ -80,44 +82,44 @@ void UVolumeTextureToolkit::CreateVolumeTextureMip(
 
 void UVolumeTextureToolkit::CropDataTo2K(uint8* BulkData, FIntVector& Dimensions, EPixelFormat PixelFormat)
 {
-	int VoxelByteSize = GPixelFormats[PixelFormat].BlockBytes;
+	const int VoxelByteSize = GPixelFormats[PixelFormat].BlockBytes;
 
-	UE_LOG(LogTextureUtils, Warning, TEXT("Unreal doesn't support 3D textures larger than 2048 in any dimension"));
-	if (Dimensions.Z > 2048)
+	UE_LOG(LogTextureUtils, Warning, TEXT("Unreal doesn't support 3D textures larger than %d in any dimension"), MAX_TEXTURE_SIZE);
+	if (Dimensions.Z > MAX_TEXTURE_SIZE)
 	{
-		UE_LOG(LogTextureUtils, Warning, TEXT("Z dimension has been clipped to 2048"));
+		UE_LOG(LogTextureUtils, Warning, TEXT("Z dimension has been clipped to to %d"), MAX_TEXTURE_SIZE);
 		// No need to do anything else, the back of the BulkData will just be unused when the texture gets created and then it will
 		// get freed.
-		Dimensions.Z = 2048;
+		Dimensions.Z = MAX_TEXTURE_SIZE;
 	}
 
-	if (Dimensions.Y > 2048 || Dimensions.X > 2048)
+	if (Dimensions.Y > MAX_TEXTURE_SIZE || Dimensions.X > MAX_TEXTURE_SIZE)
 	{
 		// Need to reshuffle the data "forward" in BulkData to match clamped dimensions.
 		// TODO test this
 		// This could be optimized so that for Y it only does the copies for Y dimension and not per-row...
 
-		int ClampedX = std::clamp(Dimensions.X, 0, 2048);
-		int ClampedY = std::clamp(Dimensions.Y, 0, 2048);
+		const int ClampedX = std::clamp(Dimensions.X, 0, MAX_TEXTURE_SIZE);
+		const int ClampedY = std::clamp(Dimensions.Y, 0, MAX_TEXTURE_SIZE);
 
 		for (int Z = 0; Z < Dimensions.Z; Z++)
 		{
 			for (int Y = 0; Y < ClampedY; Y++)
 			{
-				int RowLength = ClampedX * VoxelByteSize;
-				int NewOffset = ((ClampedX * Y) + (ClampedX * ClampedY * Z)) * VoxelByteSize;
-				int OldOffset = ((Dimensions.X * Y) + (Dimensions.X * Dimensions.Y * Z)) * VoxelByteSize;
+				const int RowLength = ClampedX * VoxelByteSize;
+				const int NewOffset = ((ClampedX * Y) + (ClampedX * ClampedY * Z)) * VoxelByteSize;
+				const int OldOffset = ((Dimensions.X * Y) + (Dimensions.X * Dimensions.Y * Z)) * VoxelByteSize;
 				FMemory::Memcpy(BulkData + NewOffset, BulkData + OldOffset, RowLength);
 			}
 		}
 		if (Dimensions.Y != ClampedY)
 		{
-			UE_LOG(LogTextureUtils, Warning, TEXT("Y dimension has been clipped to 2048"));
+			UE_LOG(LogTextureUtils, Warning, TEXT("Y dimension has been clipped to %d"), MAX_TEXTURE_SIZE);
 			Dimensions.Y = ClampedY;
 		}
 		if (Dimensions.X != ClampedX)
 		{
-			UE_LOG(LogTextureUtils, Warning, TEXT("X dimension has been clipped to 2048"));
+			UE_LOG(LogTextureUtils, Warning, TEXT("X dimension has been clipped to %d"), MAX_TEXTURE_SIZE);
 			Dimensions.X = ClampedX;
 		}
 	}
@@ -132,7 +134,7 @@ bool UVolumeTextureToolkit::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture
 		return false;
 	}
 
-	if (Dimensions.X > 2048 || Dimensions.Y > 2048 || Dimensions.Z > 2048)
+	if (Dimensions.X > MAX_TEXTURE_SIZE || Dimensions.Y > MAX_TEXTURE_SIZE || Dimensions.Z > MAX_TEXTURE_SIZE)
 	{
 		// Current RHI limitations make it impossible to create 3D textures larger than 2k in each dimension -> crop data.
 		CropDataTo2K(BulkData, Dimensions, PixelFormat);
@@ -301,7 +303,7 @@ uint8* UVolumeTextureToolkit::LoadRawFileIntoArray(const FString FileName, const
 	{
 		UE_LOG(LogTextureUtils, Warning,
 			TEXT("Raw File is larger than expected,	check your dimensions and pixel format. (nonfatal, but the texture will "
-				 "probably be screwed up)"));
+				"probably be screwed up)"));
 	}
 
 	uint8* LoadedArray = new uint8[BytesToLoad];
@@ -340,8 +342,8 @@ uint8* UVolumeTextureToolkit::LoadZLibCompressedFileIntoArray(
 	{
 		UE_LOG(LogTextureUtils, Warning,
 			TEXT("Raw compressed file is larger than expected, check your dimensions and pixel format. (nonfatal, but the texture "
-				 "will "
-				 "probably be screwed up)"));
+				"will "
+				"probably be screwed up)"));
 	}
 
 	uint8* LoadedArray = new uint8[CompressedByteSize];
@@ -395,7 +397,7 @@ float* UVolumeTextureToolkit::ConvertArrayToFloat(const EVolumeVoxelFormat Voxel
 			return ConvertArrayToFloatTemplated<uint32>(InArray, VoxelCount);
 		case EVolumeVoxelFormat::SignedInt:
 			return ConvertArrayToFloatTemplated<int32>(InArray, VoxelCount);
-		case EVolumeVoxelFormat::Float:	   // fall through
+		case EVolumeVoxelFormat::Float: // fall through
 		default:
 			ensure(false);
 			return nullptr;
@@ -489,5 +491,7 @@ void UVolumeTextureToolkit::ClearVolumeTexture(UTextureRenderTargetVolume* RTVol
 	// Call the actual rendering code on RenderThread.
 	ENQUEUE_RENDER_COMMAND(CaptureCommand)
 	([VolumeTextureResource, ClearValue](FRHICommandListImmediate& RHICmdList)
-		{ ClearVolumeTexture_RenderThread(RHICmdList, VolumeTextureResource, ClearValue); });
+		{
+			ClearVolumeTexture_RenderThread(RHICmdList, VolumeTextureResource, ClearValue);
+		});
 }

@@ -98,8 +98,6 @@ void AFractalVisualizerScreen::OnConstruction(const FTransform& Transform)
 
 void AFractalVisualizerScreen::BeginDestroy()
 {
-	Super::BeginDestroy();
-	
 	if (MeshComponents.Num())
 	{
 		for (UStaticMeshComponent* Component : MeshComponents)
@@ -108,6 +106,7 @@ void AFractalVisualizerScreen::BeginDestroy()
 		}
 		MeshComponents.Empty();
 	}
+	Super::BeginDestroy();
 }
 
 void AFractalVisualizerScreen::SetScreenSpecificParameters(UMaterialInstanceDynamic* Material, FVector2D ScreenCount,
