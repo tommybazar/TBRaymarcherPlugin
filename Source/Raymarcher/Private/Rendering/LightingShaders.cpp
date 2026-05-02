@@ -5,7 +5,7 @@
 
 #include "Rendering/LightingShaders.h"
 
-#include "DataDrivenShaderPlatformInfo.h"
+#include "ShaderParameterStruct.h"
 #include "Engine/TextureRenderTargetVolume.h"
 #include "Rendering/LightingShaderUtils.h"
 #include "Runtime/RenderCore/Public/RenderUtils.h"
@@ -35,8 +35,14 @@ DECLARE_GPU_STAT_NAMED(GPUChangingLights, TEXT("ChangingLightsInVolume"));
 void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICmdList, FBasicRaymarchRenderingResources Resources,
 	const FDirLightParameters LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters)
 {
+	// TODO this still results in over-saturated (too much light) on Vulkan RHI - investigate and fix why
+	// @note - one thing that's obviously wrong is the border-color sampler-int is not correct - 
+	// @see FVulkanSamplerState::SetupSamplerCreateInfo - any non-zero color is assumed to be full opaque white when creating a 
+	// sampler -> for Vulkan, it's better to make a sampler that is WRAP or MIRROR instead of specifying BORDER color.
+	// This still doesn't remove the over-saturated effect, though...
+	
 	check(IsInRenderingThread());
-
+	
 	// Can't have directional light without direction...
 	if (LightParameters.LightDirection == FVector(0.0, 0.0, 0.0))
 	{
@@ -57,8 +63,7 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 	SCOPED_DRAW_EVENTF(RHICmdList, AddDirLightToSingleLightVolume_RenderThread, TEXT("Adding Lights"));
 	SCOPED_GPU_STAT(RHICmdList, GPUAddingLights);
 
-	// TODO create structure with 2 sets of buffers so we don't have to look for them again in the
-	// actual shader loop! Clear buffers for the two axes we will be using.
+	// Clear buffers for the two axes we will be using.
 	for (unsigned i = 0; i < 2; i++)
 	{
 		// Break if the axis weight == 0
@@ -98,7 +103,7 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 		OneAxisReadWriteBufferResources& Buffers = GetBuffers(LocalMajorAxes, i, Resources);
 
 		uint32 ColorInt = GetBorderColorIntSingle(LocalLightParams, LocalMajorAxes, i);
-		FSamplerStateRHIRef readBuffSampler = GetBufferSamplerRef(ColorInt);
+		FSamplerStateRHIRef ReadBuffSampler = GetBufferSamplerRef(ColorInt);
 
 		// Get the X, Y and Z transposed into the current axis orientation.
 		FIntVector TransposedDimensions = GetTransposedDimensions(
@@ -107,9 +112,6 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 		FVector2D UVOffset =
 			GetUVOffset(LocalMajorAxes.FaceWeight[i].first, -LocalLightParams.LightDirection, TransposedDimensions);
 		FMatrix PermutationMatrix = GetPermutationMatrix(LocalMajorAxes, i);
-
-		FIntVector LightVolumeSize = FIntVector(Resources.LightVolumeRenderTarget->SizeX, Resources.LightVolumeRenderTarget->SizeY,
-			Resources.LightVolumeRenderTarget->SizeZ);
 
 		FVector UVWOffset;
 		float StepSize;
@@ -127,36 +129,49 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 		uint32 GroupSizeY = FMath::DivideAndRoundUp(TransposedDimensions.Y, NUM_THREADS_PER_GROUP_DIMENSION);
 
 		int Start, Stop, AxisDirection;
-		GetLoopStartStopIndexes(Start, Stop, AxisDirection, LocalMajorAxes, i, TransposedDimensions.Z);
+		GetLoopStartStopIndices(Start, Stop, AxisDirection, LocalMajorAxes, i, TransposedDimensions.Z);
+
+		// Get the buffers from Unknown to the opposite read/write state than the first step will take.
+		if (Start % 2 == 0)
+		{
+			InitialTransitionBufferResources(RHICmdList, Buffers.Buffers[1], Buffers.UAVs[0]);
+		}
+		else
+		{
+			InitialTransitionBufferResources(RHICmdList, Buffers.Buffers[0], Buffers.UAVs[1]);
+		}
 
 		for (int j = Start; j != Stop; j += AxisDirection)
 		{
 			// Switch read and write buffers each row.
 			if (j % 2 == 0)
 			{
+				TransitionBufferResources(RHICmdList, Buffers.Buffers[0], Buffers.UAVs[1]);
 				ComputeShader->SetAllParameters(RHICmdList, ShaderRHI, Added,
 					Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
 					Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters,
 					LocalClippingParameters, Resources.WindowingParameters.ToLinearColor(), StepSize,
 					Resources.LightVolumeUAVRef, PermutationMatrix, UVOffset, UVWOffset,
-					j, Buffers.Buffers[0], readBuffSampler, Buffers.UAVs[1]);
+					j, Buffers.Buffers[0], ReadBuffSampler, Buffers.UAVs[1]);
 			}
 			else
 			{
+				TransitionBufferResources(RHICmdList, Buffers.Buffers[1], Buffers.UAVs[0]);
 				ComputeShader->SetAllParameters(RHICmdList, ShaderRHI, Added,
 					Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
 					Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters,
 					LocalClippingParameters, Resources.WindowingParameters.ToLinearColor(), StepSize,
 					Resources.LightVolumeUAVRef, PermutationMatrix, UVOffset, UVWOffset,
-					j, Buffers.Buffers[1], readBuffSampler, Buffers.UAVs[0]);
+					j, Buffers.Buffers[1], ReadBuffSampler, Buffers.UAVs[0]);
 			}
 			RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
+			// Barrier to make sure that LightVolumeUAVRef is fully written before next loop iteration starts reading from it.
+			RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVCompute));
 		}
 	}
-
-	// Unbind UAVs.
-	ComputeShader->UnbindResourcesLightPropagation(RHICmdList, ShaderRHI);
-
+	UnsetShaderSRVs(RHICmdList, ComputeShader, ShaderRHI);
+	UnsetShaderUAVs(RHICmdList, ComputeShader, ShaderRHI);
+	
 	// Transition resources back to the renderer.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }
@@ -167,7 +182,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 {
 	// Can't have directional light without direction...
 	if (AddedLightParameters.LightDirection == FVector(0.0, 0.0, 0.0) ||
-		RemovedLightParameters.LightDirection == FVector(0.0, 0.0, 0.0))
+	    RemovedLightParameters.LightDirection == FVector(0.0, 0.0, 0.0))
 	{
 		GEngine->AddOnScreenDebugMessage(
 			-1, 100.0f, FColor::Yellow, TEXT("Returning because the directional light doesn't have a direction."));
@@ -186,7 +201,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 	// If lights have different major axes, do a separate removal and addition.
 	// (Change dir light only works if it runs on the same major axes).
 	if (RemovedLocalMajorAxes.FaceWeight[0].first != AddedLocalMajorAxes.FaceWeight[0].first ||
-		RemovedLocalMajorAxes.FaceWeight[1].first != AddedLocalMajorAxes.FaceWeight[1].first)
+	    RemovedLocalMajorAxes.FaceWeight[1].first != AddedLocalMajorAxes.FaceWeight[1].first)
 	{
 		AddDirLightToSingleLightVolume_RenderThread(RHICmdList, Resources, RemovedLightParameters, false, WorldParameters);
 		AddDirLightToSingleLightVolume_RenderThread(RHICmdList, Resources, AddedLightParameters, true, WorldParameters);
@@ -226,9 +241,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
 	SetComputePipelineState(RHICmdList, ShaderRHI);
 
-	// Don't need barriers on these - we only ever read/write to the same pixel from one thread ->
-	// no race conditions But we definitely need to transition the resource to Compute-shader
-	// accessible, otherwise the renderer might touch our textures while we're writing them.
+	// Transition so renderer doesn't touch this UAV while it's getting written to.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 
 	for (unsigned AxisIndex = 0; AxisIndex < 2; AxisIndex++)
@@ -241,14 +254,8 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 		FSamplerStateRHIRef AddedReadBuffSampler = GetBufferSamplerRef(AddedColorInt);
 
 		OneAxisReadWriteBufferResources& Buffers = GetBuffers(RemovedLocalMajorAxes, AxisIndex, Resources);
-		// TODO take these from buffers.
 		FIntVector TransposedDimensions = GetTransposedDimensions(
 			RemovedLocalMajorAxes, Resources.LightVolumeRenderTarget->GetResource()->TextureRHI->GetTexture3D(), AxisIndex);
-
-		FVector2D AddedPixOffset = GetUVOffset(
-			AddedLocalMajorAxes.FaceWeight[AxisIndex].first, -AddedLocalLightParams.LightDirection, TransposedDimensions);
-		FVector2D RemovedPixOffset = GetUVOffset(
-			RemovedLocalMajorAxes.FaceWeight[AxisIndex].first, -RemovedLocalLightParams.LightDirection, TransposedDimensions);
 
 		FVector2D AddedUVOffset = GetUVOffset(
 			AddedLocalMajorAxes.FaceWeight[AxisIndex].first, -AddedLocalLightParams.LightDirection, TransposedDimensions);
@@ -280,10 +287,23 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 		uint32 GroupSizeY = FMath::DivideAndRoundUp(TransposedDimensions.Y, NUM_THREADS_PER_GROUP_DIMENSION);
 
 		int Start, Stop, AxisDirection;
-		GetLoopStartStopIndexes(Start, Stop, AxisDirection, RemovedLocalMajorAxes, AxisIndex, TransposedDimensions.Z);
+		GetLoopStartStopIndices(Start, Stop, AxisDirection, RemovedLocalMajorAxes, AxisIndex, TransposedDimensions.Z);
 
+		// Get the buffers from Unknown to the opposite read/write state than the first step will take.
+		if (Start % 2 == 0)
+		{
+			InitialTransitionBufferResources(RHICmdList, Buffers.Buffers[1], Buffers.UAVs[0]);
+			InitialTransitionBufferResources(RHICmdList, Buffers.Buffers[3], Buffers.UAVs[2]);
+		}
+		else
+		{
+			InitialTransitionBufferResources(RHICmdList, Buffers.Buffers[0], Buffers.UAVs[1]);
+			InitialTransitionBufferResources(RHICmdList, Buffers.Buffers[2], Buffers.UAVs[3]);
+		}
+		
 		for (int LoopIndex = Start; LoopIndex != Stop; LoopIndex += AxisDirection)
-		{	 // Switch read and write buffers each cycle.
+		{
+			// Switch read and write buffers each cycle.
 			if (LoopIndex % 2 == 0)
 			{
 				TransitionBufferResources(RHICmdList, Buffers.Buffers[0], Buffers.UAVs[1]);
@@ -293,7 +313,7 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 					Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters,
 					LocalClippingParameters, Resources.WindowingParameters.ToLinearColor(),
 					Resources.LightVolumeUAVRef, AddedStepSize, RemovedStepSize,
-					PermMatrix, AddedPixOffset, RemovedPixOffset, AddedUVWOffset, RemovedUVWOffset,
+					PermMatrix, AddedUVOffset, RemovedUVOffset, AddedUVWOffset, RemovedUVWOffset,
 					LoopIndex,
 					Buffers.Buffers[0], RemovedReadBuffSampler, Buffers.UAVs[1],
 					Buffers.Buffers[2], AddedReadBuffSampler, Buffers.UAVs[3]);
@@ -307,17 +327,19 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 					Resources.TFTextureRef->GetResource()->TextureRHI->GetTexture2D(), Resources.WindowingParameters,
 					LocalClippingParameters, Resources.WindowingParameters.ToLinearColor(),
 					Resources.LightVolumeUAVRef, AddedStepSize, RemovedStepSize,
-					PermMatrix, AddedPixOffset, RemovedPixOffset, AddedUVWOffset, RemovedUVWOffset,
+					PermMatrix, AddedUVOffset, RemovedUVOffset, AddedUVWOffset, RemovedUVWOffset,
 					LoopIndex,
 					Buffers.Buffers[1], RemovedReadBuffSampler, Buffers.UAVs[0],
 					Buffers.Buffers[3], AddedReadBuffSampler, Buffers.UAVs[2]);
 			}
 			RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
+			// Barrier to make sure that LightVolumeUAVRef is fully written before next loop iteration starts reading from it.
+			RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVCompute));
 		}
 	}
 
-	// Unbind Resources.
-	ComputeShader->UnbindResourcesChangeDirLight(RHICmdList, ShaderRHI);
+	UnsetShaderSRVs(RHICmdList, ComputeShader, ShaderRHI);
+	UnsetShaderUAVs(RHICmdList, ComputeShader, ShaderRHI);
 
 	// Transition resources back to the renderer.
 	RHICmdList.Transition(FRHITransitionInfo(Resources.LightVolumeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));

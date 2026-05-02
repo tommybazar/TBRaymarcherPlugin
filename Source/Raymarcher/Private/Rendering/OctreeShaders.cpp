@@ -5,6 +5,7 @@
 
 #include "Rendering/OctreeShaders.h"
 
+#include "ShaderParameterStruct.h"
 #include "Engine/TextureRenderTargetVolume.h"
 #include "Runtime/RenderCore/Public/RenderUtils.h"
 #include "Util/UtilityShaders.h"
@@ -48,8 +49,8 @@ void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, 
 	const uint32 GroupSizeY = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeY, GroupSizePerDimension);
 	const uint32 GroupSizeZ = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeZ, GroupSizePerDimension);
 	RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, GroupSizeZ);
-
-	ComputeShader->UnbindResources(RHICmdList, ShaderRHI);
+	
+	UnsetShaderUAVs(RHICmdList, ComputeShader, ShaderRHI);
 	RHICmdList.Transition(FRHITransitionInfo(Resources.OctreeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }
 

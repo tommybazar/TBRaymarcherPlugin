@@ -51,11 +51,11 @@ FIntVector GetTransposedDimensions(const FMajorAxes& Axes, const FRHITexture3D* 
 	unsigned axis = (uint8) face / 2;
 	switch (axis)
 	{
-		case 0:	   // going along X -> Volume Y = x, volume Z = y
+		case 0: // going along X -> Volume Y = x, volume Z = y
 			return FIntVector(VolumeRef->GetSizeY(), VolumeRef->GetSizeZ(), VolumeRef->GetSizeX());
-		case 1:	   // going along Y -> Volume X = x, volume Z = y
+		case 1: // going along Y -> Volume X = x, volume Z = y
 			return FIntVector(VolumeRef->GetSizeX(), VolumeRef->GetSizeZ(), VolumeRef->GetSizeY());
-		case 2:	   // going along Z -> Volume X = x, volume Y = y
+		case 2: // going along Z -> Volume X = x, volume Y = y
 			return FIntVector(VolumeRef->GetSizeX(), VolumeRef->GetSizeY(), VolumeRef->GetSizeZ());
 		default:
 			check(false);
@@ -87,27 +87,27 @@ FVector2D GetUVOffset(FCubeFace Axis, FVector LightPosition, FIntVector Transpos
 	FVector2D RetVal;
 	switch (Axis)
 	{
-		case FCubeFace::XPositive:	  // +X
+		case FCubeFace::XPositive: // +X
 			normLightPosition /= normLightPosition.X;
 			RetVal = FVector2D(normLightPosition.Y, normLightPosition.Z);
 			break;
-		case FCubeFace::XNegative:	  // -X
+		case FCubeFace::XNegative: // -X
 			normLightPosition /= -normLightPosition.X;
 			RetVal = FVector2D(normLightPosition.Y, normLightPosition.Z);
 			break;
-		case FCubeFace::YPositive:	  // +Y
+		case FCubeFace::YPositive: // +Y
 			normLightPosition /= normLightPosition.Y;
 			RetVal = FVector2D(normLightPosition.X, normLightPosition.Z);
 			break;
-		case FCubeFace::YNegative:	  // -Y
+		case FCubeFace::YNegative: // -Y
 			normLightPosition /= -normLightPosition.Y;
 			RetVal = FVector2D(normLightPosition.X, normLightPosition.Z);
 			break;
-		case FCubeFace::ZPositive:	  // +Z
+		case FCubeFace::ZPositive: // +Z
 			normLightPosition /= normLightPosition.Z;
 			RetVal = FVector2D(normLightPosition.X, normLightPosition.Y);
 			break;
-		case FCubeFace::ZNegative:	  // -Z
+		case FCubeFace::ZNegative: // -Z
 			normLightPosition /= -normLightPosition.Z;
 			RetVal = FVector2D(normLightPosition.X, normLightPosition.Y);
 			break;
@@ -136,21 +136,20 @@ void GetStepSizeAndUVWOffset(FCubeFace Axis, FVector LightPosition, FIntVector T
 	// Since we don't care about the direction, just the size, ignore signs.
 	switch (Axis)
 	{
-		case FCubeFace::XPositive:	  // +-X
+		case FCubeFace::XPositive: // +-X
 		case FCubeFace::XNegative:
 			OutUVWOffset /= abs(LightPosition.X) * TransposedDimensions.Z;
 			break;
-		case FCubeFace::YPositive:	  // +-Y
+		case FCubeFace::YPositive: // +-Y
 		case FCubeFace::YNegative:
 			OutUVWOffset /= abs(LightPosition.Y) * TransposedDimensions.Z;
 			break;
-		case FCubeFace::ZPositive:	  // +-Z
+		case FCubeFace::ZPositive: // +-Z
 		case FCubeFace::ZNegative:
 			OutUVWOffset /= abs(LightPosition.Z) * TransposedDimensions.Z;
 			break;
 		default:
-			check(false);
-			;
+			check(false);;
 	}
 
 	// Multiply StepSize by fixed volume density.
@@ -235,41 +234,48 @@ FMatrix GetPermutationMatrix(FMajorAxes MajorAxes, unsigned index)
 	FVector zVec(0, 0, 1);
 	switch (Axis)
 	{
-		case 0:	   // X Axis
+		case 0: // X Axis
 			retVal.SetAxes(&yVec, &zVec, &xVec);
 			break;
-		case 1:	   // Y Axis
+		case 1: // Y Axis
 			retVal.SetAxes(&xVec, &zVec, &yVec);
 			break;
-		case 2:	   // We keep identity set...
+		case 2: // We keep identity set...
 		default:
 			break;
 	}
 	return retVal;
 }
 
-void GetLoopStartStopIndexes(
+void GetLoopStartStopIndices(
 	int& OutStart, int& OutStop, int& OutAxisDirection, const FMajorAxes& MajorAxes, const unsigned& index, const int zDimension)
 {
 	OutAxisDirection = GetAxisDirection(MajorAxes, index);
 	if (OutAxisDirection == -1)
 	{
 		OutStart = zDimension - 1;
-		OutStop = -1;	 // We want to go all the way to zero, so stop at -1
+		OutStop = -1; // We want to go all the way to zero, so stop at -1
 	}
 	else
 	{
 		OutStart = 0;
-		OutStop = zDimension;	 // want to go to Z - 1, so stop at Z
+		OutStop = zDimension; // want to go to Z - 1, so stop at Z
 	}
+}
+
+// Is used to set to THE OPPOSITE configuration than the first step will take i.e. read-buffer in first step will be set to UAVCompute
+// and write-buffer in first step to SRVCompute (as we will call the non-initial transition at the beginning of the loop to flip it 
+// to the correct configuration. This is just to get from Unknown to the correct-opposite state before kicking off the loop.
+void InitialTransitionBufferResources(
+	FRHICommandListImmediate& RHICmdList, FRHITexture* WillBeWriteBuffer, FRHIUnorderedAccessView* WillBeReadBuffer)
+{
+	RHICmdList.Transition(FRHITransitionInfo(WillBeWriteBuffer, ERHIAccess::Unknown, ERHIAccess::SRVCompute));
+	RHICmdList.Transition(FRHITransitionInfo(WillBeReadBuffer, ERHIAccess::Unknown, ERHIAccess::UAVCompute));
 }
 
 void TransitionBufferResources(
 	FRHICommandListImmediate& RHICmdList, FRHITexture* NewlyReadableTexture, FRHIUnorderedAccessView* NewlyWriteableUAV)
 {
-	// 	RHICmdList.Transition(FRHITransitionInfo(NewlyReadableTexture, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
-	//
-	// 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, NewlyReadableTexture);
-	// 	RHICmdList.TransitionResource(
-	// 		EResourceTransitionAccess::EWritable, EResourceTransitionPipeline::EComputeToCompute, NewlyWriteableUAV);
+	RHICmdList.Transition(FRHITransitionInfo(NewlyReadableTexture, ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
+	RHICmdList.Transition(FRHITransitionInfo(NewlyWriteableUAV, ERHIAccess::SRVCompute, ERHIAccess::UAVCompute));
 }

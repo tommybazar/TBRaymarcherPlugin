@@ -53,11 +53,6 @@ public:
 		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
-	void UnbindResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
-	{
-		// No-op: resource transitions handle state management on Vulkan/D3D12.
-	}
-
 protected:
 	// Volume texture + transfer function resource parameters
 	LAYOUT_FIELD(FShaderResourceParameter, Volume);

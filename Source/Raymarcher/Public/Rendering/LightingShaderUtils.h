@@ -101,8 +101,12 @@ float GetLightAlpha(FDirLightParameters LightParams, FMajorAxes MajorAxes, unsig
 FMatrix GetPermutationMatrix(FMajorAxes MajorAxes, unsigned index);
 
 // Returns the Loop Start index, end index and the way the loop is going along the axis.
-void GetLoopStartStopIndexes(
+void GetLoopStartStopIndices(
 	int& OutStart, int& OutStop, int& OutAxisDirection, const FMajorAxes& MajorAxes, const unsigned& index, const int zDimension);
+
+// Initial transitions of buffer SRV/UAVs - to Readable and other to Writable.
+void InitialTransitionBufferResources(
+	FRHICommandListImmediate& RHICmdList, FRHITexture* WillBeWriteBuffer, FRHIUnorderedAccessView* WillBeReadBuffer);
 
 // Used for swapping read/write buffers - transitions one to Readable and other to Writable.
 void TransitionBufferResources(
