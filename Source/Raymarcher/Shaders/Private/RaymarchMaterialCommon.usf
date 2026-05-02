@@ -87,3 +87,8 @@ void AccumulateLightEnergy(inout float4 LightEnergy, in float4 CurrentSample)
     LightEnergy.a = LightEnergy.a + (CurrentSample.a * (1.0 - LightEnergy.a));
 }
 
+void AccumulateAlpha(inout float AccumulatedAlpha, in float CurrentSampleAlpha)
+{
+	AccumulatedAlpha = AccumulatedAlpha + (CurrentSampleAlpha * (1.0 - AccumulatedAlpha));
+}
+
