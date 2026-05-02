@@ -13,7 +13,8 @@ DEFINE_LOG_CATEGORY(LogFractalMarchVolume)
 // #pragma optimize("", off)
 
 // Sets default values
-AFractalVolume::AFractalVolume() : AActor()
+AFractalVolume::AFractalVolume()
+	: AActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
@@ -105,18 +106,16 @@ void AFractalVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChang
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	FName PropertyName = PropertyChangedEvent.GetPropertyName();
-	if (PropertyName == GET_MEMBER_NAME_CHECKED(AFractalVolume, MandelbulbDimensions)) 
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(AFractalVolume, MandelbulbDimensions))
 	{
 		InitializeFractalMarchResources();
 	}
-	
+
 	if (PropertyName != GET_MEMBER_NAME_CHECKED(AFractalVolume, MandelbulbVolume))
 	{
 		CalculateMandelbulbSDF();
 		return;
 	}
-
-
 }
 
 bool AFractalVolume::ShouldTickIfViewportsOnly() const
@@ -165,10 +164,8 @@ void AFractalVolume::InitializeFractalMarchResources()
 {
 	EPixelFormat PixelFormat = PF_G16;
 
-
-
-// 	UVolumeTextureToolkit::CreateVolumeTextureTransient(
-// 		MandelbulbResources.MandelbulbVolume, PixelFormat, MandelbulbDimensions, nullptr, true, true);
+	// 	UVolumeTextureToolkit::CreateVolumeTextureTransient(
+	// 		MandelbulbResources.MandelbulbVolume, PixelFormat, MandelbulbDimensions, nullptr, true, true);
 
 	MandelbulbVolume = MandelbulbResources.MandelbulbVolume;
 
@@ -188,7 +185,8 @@ void AFractalVolume::InitializeFractalMarchResources()
 	// Create UAV for light volume to be targettable in Compute Shader.
 	check(MandelbulbResources.MandelbulbVolume->GetResource()->TextureRHI);
 	MandelbulbResources.MandelbulbVolumeUAVRef =
-		RHICreateUnorderedAccessView(MandelbulbResources.MandelbulbVolume->GetResource()->TextureRHI);
+		FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(
+			MandelbulbResources.MandelbulbVolume->GetResource()->TextureRHI);
 	FlushRenderingCommands();
 }
 

@@ -9,6 +9,7 @@
 #include "Engine/DataAsset.h"
 #include "WindowingParameters.h"
 #include "VolumeInfo.h"
+#include "Curves/CurveLinearColor.h"
 
 #include "VolumeAsset.generated.h"
 

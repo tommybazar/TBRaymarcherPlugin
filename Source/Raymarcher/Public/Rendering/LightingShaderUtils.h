@@ -55,7 +55,7 @@ struct FMajorAxes
 };
 
 /// Returns the dimensions of the plane cutting through the volume when going along an axis at the given indes.
-FIntVector GetTransposedDimensions(const FMajorAxes& Axes, const FRHITexture3D* VolumeRef, const unsigned index);
+FIntVector GetTransposedDimensions(const FMajorAxes& Axes, const FRHITexture* VolumeRef, const unsigned index);
 
 /// Returns +1 if going along the specified axis index means increasing the index.
 /// Returns -1 if going along the axis decreases the index.

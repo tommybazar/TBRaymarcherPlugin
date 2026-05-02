@@ -17,11 +17,11 @@
 #include "ShaderParameters.h"
 
 void VOLUMETEXTURETOOLKIT_API ClearVolumeTexture_RenderThread(
-	FRHICommandListImmediate& RHICmdList, FRHITexture3D* ALightVolumeResource, float ClearValue);
+	FRHICommandListImmediate& RHICmdList, FRHITexture* ALightVolumeResource, float ClearValue);
 
 void VOLUMETEXTURETOOLKIT_API Clear2DTexture_RenderThread(
 	FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* TextureRW, FIntPoint TextureSize, float Value);
-// void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture2D* ALightVolumeResource, float
+// void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture* ALightVolumeResource, float
 // ClearValue);
 
 // Compute shader for clearing a single-channel 2D float RW texture

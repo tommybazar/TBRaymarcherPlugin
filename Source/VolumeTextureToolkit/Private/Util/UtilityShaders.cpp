@@ -24,7 +24,7 @@ FRHICommandListImmediate& GetCmdList()
 	return FRHICommandListExecutor::GetImmediateCommandList();
 }
 
-void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture3D* VolumeResourceRef, float ClearValues)
+void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture* VolumeResourceRef, float ClearValues)
 {
 	// For GPU profiling.
 	SCOPED_DRAW_EVENTF(RHICmdList, ClearVolumeTexture_RenderThread, TEXT("Clearing volume texture"));

@@ -206,7 +206,7 @@ void URaymarchUtils::ReleaseOneAxisReadWriteBufferResources(OneAxisReadWriteBuff
 		UAV = nullptr;
 	}
 
-	for (FTexture2DRHIRef& TextureRef : Buffer.Buffers)
+	for (FTextureRHIRef& TextureRef : Buffer.Buffers)
 	{
 		if (TextureRef)
 		{

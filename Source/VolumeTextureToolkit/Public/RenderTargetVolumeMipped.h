@@ -203,7 +203,7 @@ public:
 	ESamplerFilter SamplerFilter;
 
 	/** A reference to the texture's RHI resource as a texture 3D. */
-	FTexture3DRHIRef RenderTargetTextureRHI;
+	FTextureRHIRef RenderTargetTextureRHI;
 
 	FTextureReference* TextureReference;
 

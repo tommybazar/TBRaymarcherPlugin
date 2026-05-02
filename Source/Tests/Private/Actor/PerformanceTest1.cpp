@@ -23,7 +23,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		}
 		return;
 	}
-	
+
 	static constexpr float FirstRecomputeDuration = 1.0f;
 	static constexpr float WindowCenterMoveDuration = 2.0f;
 	static constexpr float SecondRecomputeDuration = 1.0f;
@@ -53,7 +53,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 SetWindowCenter1");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		SetWindowCenter(DefaultWindowCenter);
@@ -64,7 +64,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 RecomputeLights1");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		for (auto* ListenerVolume : ListenerVolumes)
@@ -77,7 +77,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 SetWindowCenter2");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		SetWindowCenter(DefaultWindowCenter + (CurrentTime - RecomputeTimeEnd) * WindowCenterChangeSpeed);
@@ -87,7 +87,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 RecomputeLights2");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		for (auto* ListenerVolume : ListenerVolumes)
@@ -100,7 +100,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotateCameraAroundVolume");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		// Rotate camera around the volume.
@@ -128,7 +128,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotateVolumeYaw");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		// Change the rotation of the volume.
@@ -146,7 +146,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotateVolumeRoll");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		// Change the rotation of the volume.
@@ -164,7 +164,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotatePlaneRoll");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		// Change the rotation of the plane.
@@ -182,7 +182,7 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 		const FString CurrentTestName = TEXT("PerformanceTest1 RotatePlaneYaw");
 		if (IsBookmarkNew(CurrentTestName))
 		{
-			TRACE_BOOKMARK(*CurrentTestName);
+			TRACE_BOOKMARK(TEXT("%s"), *CurrentTestName);
 		}
 
 		// Change the rotation of the plane.
@@ -209,10 +209,11 @@ void APerformanceTest1::Tick(float DeltaSeconds)
 
 	Super::Tick(DeltaSeconds);
 }
+
 void APerformanceTest1::BeginPlay()
 {
 	RunTest();
-	
+
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 	Super::BeginPlay();
@@ -229,7 +230,8 @@ void APerformanceTest1::RunTest(const TArray<FString>& Params)
 	MyGameSettings->SetFrameRateLimit(10000.0f);
 	MyGameSettings->ApplySettings(true);
 
-	OriginalOffsetVector = RotateAroundVolume->GetActorLocation() - GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
+	OriginalOffsetVector = RotateAroundVolume->GetActorLocation() - GetWorld()->GetFirstPlayerController()->GetPawn()->
+	                                                                            GetActorLocation();
 
 	if (UWorld* World = GetWorld())
 	{
@@ -260,7 +262,7 @@ void APerformanceTest1::SetWindowWidth(float Value)
 
 bool APerformanceTest1::IsBookmarkNew(FString Name)
 {
-	if(!BookmarksApplied.Find(Name))
+	if (!BookmarksApplied.Find(Name))
 	{
 		BookmarksApplied.Add(Name);
 		return true;

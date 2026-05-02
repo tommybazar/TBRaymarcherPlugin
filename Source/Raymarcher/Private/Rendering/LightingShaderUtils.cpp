@@ -45,7 +45,7 @@ FMajorAxes FMajorAxes::GetMajorAxes(FVector LightPos)
 	return RetVal;
 }
 
-FIntVector GetTransposedDimensions(const FMajorAxes& Axes, const FRHITexture3D* VolumeRef, const unsigned index)
+FIntVector GetTransposedDimensions(const FMajorAxes& Axes, const FRHITexture* VolumeRef, const unsigned index)
 {
 	FCubeFace face = Axes.FaceWeight[index].first;
 	unsigned axis = (uint8) face / 2;

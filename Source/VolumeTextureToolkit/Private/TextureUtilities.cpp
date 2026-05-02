@@ -486,7 +486,7 @@ void UVolumeTextureToolkit::ClearVolumeTexture(UTextureRenderTargetVolume* RTVol
 		return;
 	}
 
-	FRHITexture3D* VolumeTextureResource = RTVolume->GetResource()->TextureRHI->GetTexture3D();
+	FRHITexture* VolumeTextureResource = RTVolume->GetResource()->TextureRHI->GetTexture3D();
 
 	// Call the actual rendering code on RenderThread.
 	ENQUEUE_RENDER_COMMAND(CaptureCommand)

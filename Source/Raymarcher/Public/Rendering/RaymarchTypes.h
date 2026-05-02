@@ -75,7 +75,7 @@ struct FClippingPlaneParameters
 struct OneAxisReadWriteBufferResources
 {
 	// 2D Textures whose dimensions match the matching axis in the volume texture.
-	FTexture2DRHIRef Buffers[4];
+	FTextureRHIRef Buffers[4];
 	// UAV refs to the Buffers, when we need to make a RWTexture out of them.
 	FUnorderedAccessViewRHIRef UAVs[4];
 };

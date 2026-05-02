@@ -10,7 +10,7 @@ public class VolumeTextureToolkitEditor : ModuleRules
 	public VolumeTextureToolkitEditor(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		CppStandard = CppStandardVersion.Cpp17;
+		CppStandard = CppStandardVersion.Cpp20;
 
 		PublicIncludePaths.AddRange(
 			new string[] {

@@ -38,7 +38,7 @@ public:
 		NumberOfMips.Bind(Initializer.ParameterMap, TEXT("NumberOfMips"), SPF_Mandatory);
 	}
 		
-	void SetGeneratingResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTexture3DRHIRef pVolume,
+	void SetGeneratingResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTextureRHIRef pVolume,
 		const FTexture3DComputeResource* ComputeResource, int InLeafNodeSize, int InNumberOfMips)
 	{
 		FRHIBatchedShaderParameters& Params = RHICmdList.GetScratchShaderParameters();

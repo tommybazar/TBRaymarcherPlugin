@@ -899,7 +899,7 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 			}
 
 			RaymarchResources.LightVolumeUAVRef =
-				RHICreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
+				URaymarchUtils::GetCmdList().CreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
 
 			if (!RaymarchResources.OctreeVolumeRenderTarget || !RaymarchResources.OctreeVolumeRenderTarget->GetResource() ||
 				!RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI)
@@ -909,7 +909,7 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 			}
 
 			RaymarchResources.OctreeUAVRef =
-				RHICreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
+				URaymarchUtils::GetCmdList().CreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
 
 			RaymarchResources.bIsInitialized = true;
 		});

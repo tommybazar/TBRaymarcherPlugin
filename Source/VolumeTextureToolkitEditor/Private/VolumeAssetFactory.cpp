@@ -14,6 +14,7 @@
 #include "VolumeAsset/Loaders/MHDLoader.h"
 #include "VolumeAsset/VolumeAsset.h"
 #include "VolumeImporter.h"
+#include "Framework/Application/SlateApplication.h"
 
 /* UMHDVolumeTextureFactory structors
  *****************************************************************************/

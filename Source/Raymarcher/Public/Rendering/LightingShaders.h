@@ -68,10 +68,10 @@ public:
 	}
 
 	void SetAllParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, bool bLightAdded,
-		const FTexture3DRHIRef pVolume, const FTexture2DRHIRef pTransferFunc, FWindowingParameters WindowingParams,
+		const FTextureRHIRef pVolume, const FTextureRHIRef pTransferFunc, FWindowingParameters WindowingParams,
 		FClippingPlaneParameters LocalClippingParams, FLinearColor pWindowingParameters, float pStepSize,
 		FUnorderedAccessViewRHIRef pALightVolume, FMatrix PermMatrix, FVector2D PixelOffset, FVector pUVWOffset,
-		const int loopIndex, const FTexture2DRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
+		const int loopIndex, const FTextureRHIRef pReadBuffer, const FSamplerStateRHIRef pReadBuffSampler,
 		const FUnorderedAccessViewRHIRef pWriteBuffer)
 	{
 		float ZeroTFValue = WindowingParams.Center - 0.5 * WindowingParams.Width;
@@ -209,14 +209,14 @@ public:
 	}
 
 	void SetAllParameters(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI,
-		const FTexture3DRHIRef pVolume, const FTexture2DRHIRef pTransferFunc, FWindowingParameters WindowingParams,
+		const FTextureRHIRef pVolume, const FTextureRHIRef pTransferFunc, FWindowingParameters WindowingParams,
 		FClippingPlaneParameters LocalClippingParams, FLinearColor pWindowingParameters,
 		FUnorderedAccessViewRHIRef pALightVolume, float pAddedStepSize, float pRemovedStepSize,
 		FMatrix PermMatrix, FVector2D AddedPixelOffset, FVector2D RemovedPixelOffset,
 		FVector pAddedUVWOffset, FVector pRemovedUVWOffset,
 		const int loopIndex,
-		const FTexture2DRHIRef pRemovedReadBuffer, const FSamplerStateRHIRef pRemovedReadBuffSampler,
-		const FUnorderedAccessViewRHIRef pRemovedWriteBuffer, const FTexture2DRHIRef pAddedReadBuffer,
+		const FTextureRHIRef pRemovedReadBuffer, const FSamplerStateRHIRef pRemovedReadBuffSampler,
+		const FUnorderedAccessViewRHIRef pRemovedWriteBuffer, const FTextureRHIRef pAddedReadBuffer,
 		const FSamplerStateRHIRef pAddedReadBuffSampler, const FUnorderedAccessViewRHIRef pAddedWriteBuffer)
 	{
 		// TODO as now this Set gets called every loop invocation, this setup should be moved out and not re-done for every loop!

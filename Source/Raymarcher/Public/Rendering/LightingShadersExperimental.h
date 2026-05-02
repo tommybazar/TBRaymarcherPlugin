@@ -40,7 +40,7 @@
 //		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 //	}
 //
-//	void SetReadWriteBuffer(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FTexture2DRHIRef pTexture,
+//	void SetReadWriteBuffer(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FTextureRHIRef pTexture,
 //		FRHIUnorderedAccessView* pRWBuffer)
 //	{
 //		LightBuffer.SetTexture(RHICmdList, ShaderRHI, pTexture, pRWBuffer);

@@ -7,7 +7,7 @@ public class Raymarcher : ModuleRules
 	public Raymarcher(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		CppStandard = CppStandardVersion.Cpp17;
+		CppStandard = CppStandardVersion.Cpp20;
 
 		PublicIncludePaths.AddRange(
 			new string[]
