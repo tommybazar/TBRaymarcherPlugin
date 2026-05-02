@@ -6,6 +6,7 @@ bool IsInsideVolume(float3 CurPos)
 {
     return (CurPos.x) < 1 && (CurPos.y) < 1 && (CurPos.z) < 1 &&
            (CurPos.x) > 0 && (CurPos.y) > 0 && (CurPos.z) > 0;
+    // return saturate(CurPos) == CurPos;
 }
 
 bool GetNextSignificantPosition(const Texture3D DataVolume, const Texture3D OctreeVolume, const float3 LocalCamVec,
@@ -180,11 +181,11 @@ float4 PerformDebug1Raymarch(Texture3D DataVolume, // Data Volume
     uint UintWindowMask = asuint(WindowMask.r);
 
     float3 CurPos = EntryPos;
-    float debugStepCount = 0.0f;
+    float DebugStepCount = 0.0f;
     uint InCellSteps = 0;
     while(length((CurPos - EntryPos)) < Thickness)
     {
-        bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos, InCellSteps, debugStepCount);
+        bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos, InCellSteps, DebugStepCount);
         if(!PositionFound)
             break;
 
@@ -192,12 +193,10 @@ float4 PerformDebug1Raymarch(Texture3D DataVolume, // Data Volume
         // Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
         if (LightEnergy.a > 0.95f)
         {
-            LightEnergy.a = 1.0f;
             break;
         };
     }
-    return float4(debugStepCount, 0, 0, 1.0);
-    return LightEnergy;
+    return float4(DebugStepCount, 0, 0, 1.0);
 }
 
 // Performs debug raymarch 2 for the current pixel.
@@ -234,11 +233,11 @@ float4 PerformDebug2Raymarch(Texture3D DataVolume, // Data Volume
     // The distance the raymarch must pass to calculate required data.
 
     float3 CurPos = EntryPos;
-    float debugStepCount = 0.0f;
+    float DebugStepCount = 0.0f;
     uint InCellSteps = 0;
     while(length((CurPos - EntryPos)) < Thickness)
     {
-        bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos, InCellSteps, debugStepCount);
+        bool PositionFound = GetNextSignificantPosition(DataVolume, OctreeVolume, LocalCamVec, UintWindowMask, CurPos, InCellSteps, DebugStepCount);
         if(!PositionFound)
             break;
 
@@ -247,11 +246,16 @@ float4 PerformDebug2Raymarch(Texture3D DataVolume, // Data Volume
         int i = 0;
         while(length((CurPos - EntryPos)) < Thickness && i < 5)
         {
+            AccumulateWindowedRaymarchStep(LightEnergy, CurPos, DataVolume, DataVolumeSampler, TF, LightVolume, StepSizeWorld, WindowingParams);
             CurPos += LocalCamVec;
             i++;
+            DebugStepCount+=0.01;
         }
-        
-        LightEnergy.r += 0.01;
+        // Exit early if light energy (opacity) is already very high (so future steps would have almost no impact on color).
+        if (LightEnergy.a > 0.95f)
+        {
+            break;
+        };
     }
-    return LightEnergy;
+    return float4(DebugStepCount, 0, 0, 1.0);
 }
