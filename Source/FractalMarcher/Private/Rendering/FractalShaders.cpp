@@ -9,14 +9,14 @@
 IMPLEMENT_GLOBAL_SHADER(
 	FCalculateMandelbulbSDFCS, "/FractalMarcher/Private/CalculateMandelbulbSDF.usf", "MainComputeShader", SF_Compute);
 
-// IMPLEMENT_GLOBAL_SHADER(FQuickLight_CS, "/FractalMarcher/Private/CalculateMandelbulbSDF.usf", "MainComputeShader", SF_Compute);
+// For making statistics about GPU use
 
-// For making statistics about GPU use - Adding Lights.
-DECLARE_FLOAT_COUNTER_STAT(TEXT("Mandelbulb SDF Calculation"), STAT_GPU_MandelbulbSDF, STATGROUP_GPU);
+DECLARE_STATS_GROUP(TEXT("Fractals"), STATGROUP_FRACTALS, STATCAT_Advanced);
+
+DECLARE_FLOAT_COUNTER_STAT(TEXT("Mandelbulb SDF Calculation"), STAT_GPU_MandelbulbSDF, STATGROUP_FRACTALS);
 DECLARE_GPU_STAT_NAMED(GPUMandelbulbSDF, TEXT("MandelbulbSDF"));
 
-// For making statistics about GPU use - Changing Lights.
-DECLARE_FLOAT_COUNTER_STAT(TEXT("Mandelbulb Illumination Calculation"), STAT_GPU_MandelbulbLight, STATGROUP_GPU);
+DECLARE_FLOAT_COUNTER_STAT(TEXT("Mandelbulb Illumination Calculation"), STAT_GPU_MandelbulbLight, STATGROUP_FRACTALS);
 DECLARE_GPU_STAT_NAMED(GPUMandelbulbLight, TEXT("MandelbulbLight"));
 
 #define GROUPSIZE_X 16	// This has to be the same as in the compute shader's spec [16, 16, 4]

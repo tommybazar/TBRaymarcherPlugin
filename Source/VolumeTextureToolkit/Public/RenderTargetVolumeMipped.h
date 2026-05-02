@@ -104,7 +104,8 @@ public:
 		, TextureReference(&InOwner->TextureReference)
 	{
 		check(0 < NumMips && NumMips <= MAX_TEXTURE_MIP_COUNT);
-		check(FMath::IsPowerOfTwo(SizeX) && FMath::IsPowerOfTwo(SizeY) && FMath::IsPowerOfTwo(SizeZ)) uint32 MinAxis =
+		check(FMath::IsPowerOfTwo(SizeX) && FMath::IsPowerOfTwo(SizeY) && FMath::IsPowerOfTwo(SizeZ));
+		uint32 MinAxis =
 			FMath::Min3(SizeX, SizeY, SizeZ);
 		check((1U << (NumMips - 1)) <= MinAxis);
 
@@ -113,7 +114,7 @@ public:
 		// This one line is the point of this whole file - add TexCreate_UAV to the resource creation flags so we can target the
 		// texture in Compute shaders.
 		CreationFlags = (Owner->SRGB ? ETextureCreateFlags::SRGB : ETextureCreateFlags::None) | ETextureCreateFlags::UAV |
-						ETextureCreateFlags::ShaderResource | ETextureCreateFlags::RenderTargetable;
+		                ETextureCreateFlags::ShaderResource | ETextureCreateFlags::RenderTargetable;
 
 		SamplerFilter = SF_Trilinear;
 		bGreyScaleFormat = (PixelFormat == PF_G8) || (PixelFormat == PF_G16) || (PixelFormat == PF_BC4);
@@ -138,7 +139,8 @@ public:
 		for (int i = 0; i < NumMips; i++)
 		{
 			UnorderedAccessViewRHIs.Add(
-				FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(TextureRHI, i));
+				FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(TextureRHI,
+					FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(TextureRHI).SetMipLevel(i)));
 		}
 
 		RHIUpdateTextureReference(Owner->TextureReference.TextureReferenceRHI, TextureRHI);

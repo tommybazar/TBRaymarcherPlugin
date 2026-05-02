@@ -19,7 +19,8 @@
 IMPLEMENT_GLOBAL_SHADER(FGenerateOctreeShader, "/Raymarcher/Private/GenerateOctreeShader.usf", "MainComputeShader", SF_Compute);
 
 // For making statistics about GPU use - Generating Octree.
-DECLARE_FLOAT_COUNTER_STAT(TEXT("GeneratingOctree"), STAT_GPU_GeneratingOctree, STATGROUP_GPU);
+DECLARE_STATS_GROUP(TEXT("Octree generation"), STATGROUP_OCTREE_CREATION, STATCAT_Advanced);
+DECLARE_FLOAT_COUNTER_STAT(TEXT("GeneratingOctree"), STAT_GPU_GeneratingOctree, STATGROUP_OCTREE_CREATION);
 DECLARE_GPU_STAT_NAMED(GPUGeneratingOctree, TEXT("GeneratingOctree_"));
 
 // #TODO profile with different dimensions.

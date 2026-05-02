@@ -14,7 +14,8 @@ IMPLEMENT_GLOBAL_SHADER(
 	FClearFloatRWTextureCS, "/VolumeTextureToolkit/Private/ClearTextureShader.usf", "MainComputeShader", SF_Compute);
 
 // For making statistics about GPU use - Clearing Lights.
-DECLARE_FLOAT_COUNTER_STAT(TEXT("ClearingVolumeTextures"), STAT_GPU_ClearingVolumeTextures, STATGROUP_GPU);
+DECLARE_STATS_GROUP(TEXT("Utility shaders"), STATGROUP_UTILITY_SHADERS, STATCAT_Advanced);
+DECLARE_FLOAT_COUNTER_STAT(TEXT("ClearingVolumeTextures"), STAT_GPU_ClearingVolumeTextures, STATGROUP_UTILITY_SHADERS);
 DECLARE_GPU_STAT_NAMED(GPUClearingVolumeTextures, TEXT("ClearingVolumeTextures"));
 
 
@@ -36,7 +37,8 @@ void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHIT
 
 	// RHICmdList.TransitionResource(EResourceTransitionAccess::ERWNoBarrier,
 	// LightVolumeResource);
-	FUnorderedAccessViewRHIRef VolumeUAVRef = GetCmdList().CreateUnorderedAccessView(VolumeResourceRef);
+	FUnorderedAccessViewRHIRef VolumeUAVRef = GetCmdList().CreateUnorderedAccessView(
+		VolumeResourceRef, FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(VolumeResourceRef));
 
 	// Don't need barriers on these - we only ever read/write to the same pixel from one thread ->
 	// no race conditions But we definitely need to transition the resource to Compute-shader

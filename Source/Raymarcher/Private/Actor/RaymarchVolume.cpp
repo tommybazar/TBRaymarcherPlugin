@@ -442,7 +442,7 @@ void ARaymarchVolume::ResetAllLights()
 		if (!bResetWasSuccessful)
 		{
 			FString log = "Error. Could not add/remove light " + Light->GetName() + " in volume " + GetName() + " .";
-			UE_LOG(LogRaymarchVolume, Error, TEXT("%s"), *log, 3);
+			UE_LOG(LogRaymarchVolume, Error, TEXT("%s"), *log);
 			return;
 		}
 	}
@@ -461,7 +461,7 @@ void ARaymarchVolume::UpdateSingleLight(ARaymarchLight* UpdatedLight)
 	if (!bLightAddWasSuccessful)
 	{
 		FString log = "Error. Could not change light " + UpdatedLight->GetName() + " in volume " + GetName() + " .";
-		UE_LOG(LogRaymarchVolume, Error, TEXT("%s"), *log, 3);
+		UE_LOG(LogRaymarchVolume, Error, TEXT("%s"), *log);
 	}
 }
 
@@ -527,7 +527,7 @@ bool ARaymarchVolume::SetVolumeAsset(UVolumeAsset* InVolumeAsset)
 
 	if (!RaymarchResources.bIsInitialized)
 	{
-		UE_LOG(LogRaymarchVolume, Warning, TEXT("Could not initialize raymarching resources!"), 3);
+		UE_LOG(LogRaymarchVolume, Warning, TEXT("Could not initialize raymarching resources!"));
 		return false;
 	}
 
@@ -898,8 +898,11 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 				return;
 			}
 
+			const auto& LightVolumeRHI = RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI;
+			
 			RaymarchResources.LightVolumeUAVRef =
-				URaymarchUtils::GetCmdList().CreateUnorderedAccessView(RaymarchResources.LightVolumeRenderTarget->GetResource()->TextureRHI);
+				URaymarchUtils::GetCmdList().CreateUnorderedAccessView(
+					LightVolumeRHI, FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(LightVolumeRHI));
 
 			if (!RaymarchResources.OctreeVolumeRenderTarget || !RaymarchResources.OctreeVolumeRenderTarget->GetResource() ||
 				!RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI)
@@ -907,9 +910,10 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 				// Return if anything was not initialized.
 				return;
 			}
-
+			const auto& OctreeRHI = RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI;
 			RaymarchResources.OctreeUAVRef =
-				URaymarchUtils::GetCmdList().CreateUnorderedAccessView(RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI);
+				URaymarchUtils::GetCmdList().CreateUnorderedAccessView(
+					OctreeRHI, FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(OctreeRHI));
 
 			RaymarchResources.bIsInitialized = true;
 		});

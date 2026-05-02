@@ -22,11 +22,13 @@ IMPLEMENT_GLOBAL_SHADER(FAddDirLightShader, "/Raymarcher/Private/AddDirLightShad
 IMPLEMENT_GLOBAL_SHADER(FChangeDirLightShader, "/Raymarcher/Private/ChangeDirLightShader.usf", "MainComputeShader", SF_Compute);
 
 // For making statistics about GPU use - Adding Lights.
-DECLARE_FLOAT_COUNTER_STAT(TEXT("AddingLights"), STAT_GPU_AddingLights, STATGROUP_GPU);
+DECLARE_STATS_GROUP(TEXT("Light Propagation"), STATGROUP_LIGHT_PROPAGATION, STATCAT_Advanced);
+
+DECLARE_FLOAT_COUNTER_STAT(TEXT("AddingLights"), STAT_GPU_AddingLights, STATGROUP_LIGHT_PROPAGATION);
 DECLARE_GPU_STAT_NAMED(GPUAddingLights, TEXT("AddingLightsToVolume"));
 
 // For making statistics about GPU use - Changing Lights.
-DECLARE_FLOAT_COUNTER_STAT(TEXT("ChangingLights"), STAT_GPU_ChangingLights, STATGROUP_GPU);
+DECLARE_FLOAT_COUNTER_STAT(TEXT("ChangingLights"), STAT_GPU_ChangingLights, STATGROUP_LIGHT_PROPAGATION);
 DECLARE_GPU_STAT_NAMED(GPUChangingLights, TEXT("ChangingLightsInVolume"));
 
 // #TODO profile with different dimensions.

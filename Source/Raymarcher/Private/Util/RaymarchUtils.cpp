@@ -177,7 +177,7 @@ void URaymarchUtils::CreateBufferTextures(FIntPoint Size, EPixelFormat PixelForm
 {
 	if (Size.X == 0 || Size.Y == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Warning: Creating Buffer Textures: Size is Zero!"), 3);
+		UE_LOG(LogTemp, Warning, TEXT("Warning: Creating Buffer Textures: Size is Zero!"));
 		return;
 	}
 
@@ -189,9 +189,9 @@ void URaymarchUtils::CreateBufferTextures(FIntPoint Size, EPixelFormat PixelForm
 	
 	for (int i = 0; i < 4; i++)
 	{
-		RWBuffers.Buffers[i] =
-			RHICreateTexture(Desc);
-		RWBuffers.UAVs[i] = GetCmdList().CreateUnorderedAccessView(RWBuffers.Buffers[i]);
+		RWBuffers.Buffers[i] = RHICreateTexture(Desc);
+		RWBuffers.UAVs[i] = GetCmdList().CreateUnorderedAccessView(
+			RWBuffers.Buffers[i], FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(RWBuffers.Buffers[i]));
 	}
 }
 
