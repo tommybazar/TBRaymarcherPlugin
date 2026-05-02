@@ -1,54 +1,53 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #include "Util/UtilityShaders.h"
 
-#define CLEAR_NUM_THREADS_PER_GROUP_DIMENSION 16	  // This has to be the same as in the compute shader's spec [X, X, 1]
+#define CLEAR_NUM_THREADS_PER_GROUP_DIMENSION 16    // This has to be the same as in the compute shader's spec [X, X, 1]
 
 IMPLEMENT_GLOBAL_SHADER(
-	FClearVolumeTextureShaderCS, "/VolumeTextureToolkit/Private/ClearVolumeTextureShader.usf", "MainComputeShader", SF_Compute);
+    FClearVolumeTextureShaderCS, "/VolumeTextureToolkit/Private/ClearVolumeTextureShader.usf", "MainComputeShader", SF_Compute);
 
 IMPLEMENT_GLOBAL_SHADER(
-	FClearFloatRWTextureCS, "/VolumeTextureToolkit/Private/ClearTextureShader.usf", "MainComputeShader", SF_Compute);
+    FClearFloatRWTextureCS, "/VolumeTextureToolkit/Private/ClearTextureShader.usf", "MainComputeShader", SF_Compute);
 
 // For making statistics about GPU use - Clearing Lights.
 DECLARE_STATS_GROUP(TEXT("Utility shaders"), STATGROUP_UTILITY_SHADERS, STATCAT_Advanced);
 DECLARE_FLOAT_COUNTER_STAT(TEXT("ClearingVolumeTextures"), STAT_GPU_ClearingVolumeTextures, STATGROUP_UTILITY_SHADERS);
 DECLARE_GPU_STAT_NAMED(GPUClearingVolumeTextures, TEXT("ClearingVolumeTextures"));
 
-
 // Shorthand
 FRHICommandListImmediate& GetCmdList()
 {
-	return FRHICommandListExecutor::GetImmediateCommandList();
+    return FRHICommandListExecutor::GetImmediateCommandList();
 }
 
 void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture* VolumeResourceRef, float ClearValues)
 {
-	// For GPU profiling.
-	SCOPED_DRAW_EVENTF(RHICmdList, ClearVolumeTexture_RenderThread, TEXT("Clearing volume texture"));
-	SCOPED_GPU_STAT(RHICmdList, GPUClearingVolumeTextures);
+    // For GPU profiling.
+    SCOPED_DRAW_EVENTF(RHICmdList, ClearVolumeTexture_RenderThread, TEXT("Clearing volume texture"));
+    SCOPED_GPU_STAT(RHICmdList, GPUClearingVolumeTextures);
 
-	TShaderMapRef<FClearVolumeTextureShaderCS> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
-	SetComputePipelineState(RHICmdList, ShaderRHI);
+    TShaderMapRef<FClearVolumeTextureShaderCS> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+    FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
+    SetComputePipelineState(RHICmdList, ShaderRHI);
 
 	// RHICmdList.TransitionResource(EResourceTransitionAccess::ERWNoBarrier,
 	// LightVolumeResource);
 	FUnorderedAccessViewRHIRef VolumeUAVRef = GetCmdList().CreateUnorderedAccessView(
 		VolumeResourceRef, FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(VolumeResourceRef));
 
-	// Don't need barriers on these - we only ever read/write to the same pixel from one thread ->
-	// no race conditions But we definitely need to transition the resource to Compute-shader
-	// accessible, otherwise the renderer might touch our textures while we're writing them.
-	RHICmdList.Transition(FRHITransitionInfo(VolumeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
+    // Don't need barriers on these - we only ever read/write to the same pixel from one thread ->
+    // no race conditions But we definitely need to transition the resource to Compute-shader
+    // accessible, otherwise the renderer might touch our textures while we're writing them.
+    RHICmdList.Transition(FRHITransitionInfo(VolumeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 
 	ComputeShader->SetParameters(RHICmdList, ShaderRHI, VolumeUAVRef, ClearValues, VolumeResourceRef->GetSizeZ());
 
-	uint32 GroupSizeX = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeX(), CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
-	uint32 GroupSizeY = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeY(), CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
+    uint32 GroupSizeX = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeX(), CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
+    uint32 GroupSizeY = FMath::DivideAndRoundUp((int32) VolumeResourceRef->GetSizeY(), CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
 
 	RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, 1);
 	ComputeShader->UnbindUAV(RHICmdList, ShaderRHI);
@@ -57,13 +56,13 @@ void ClearVolumeTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHIT
 
 /// Clears a FloatTexture accesible as a UAV.
 void Clear2DTexture_RenderThread(
-	FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* TextureUAVRef, FIntPoint TextureSize, float Value)
+    FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* TextureUAVRef, FIntPoint TextureSize, float Value)
 {
-	TShaderMapRef<FClearFloatRWTextureCS> ShaderRef(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-	FRHIComputeShader* ShaderRHI = ShaderRef.GetComputeShader();
-	SetComputePipelineState(RHICmdList, ShaderRHI);
+    TShaderMapRef<FClearFloatRWTextureCS> ShaderRef(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+    FRHIComputeShader* ShaderRHI = ShaderRef.GetComputeShader();
+    SetComputePipelineState(RHICmdList, ShaderRHI);
 
-	RHICmdList.Transition(FRHITransitionInfo(TextureUAVRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute));
+    RHICmdList.Transition(FRHITransitionInfo(TextureUAVRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute));
 
 	ShaderRef->SetParameters(RHICmdList, ShaderRHI, TextureUAVRef, Value);
 	uint32 GroupSizeX = FMath::DivideAndRoundUp(TextureSize.X, CLEAR_NUM_THREADS_PER_GROUP_DIMENSION);
@@ -73,5 +72,5 @@ void Clear2DTexture_RenderThread(
 	//  DispatchComputeShader(RHICmdList, ShaderRef, GroupSizeX, GroupSizeY, 1);
 	ShaderRef->UnbindUAV(RHICmdList, ShaderRHI);
 
-	RHICmdList.Transition(FRHITransitionInfo(TextureUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
+    RHICmdList.Transition(FRHITransitionInfo(TextureUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }

@@ -1,6 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #pragma once
 
@@ -23,58 +24,58 @@
 USTRUCT()
 struct FMandelbulbSDFResources
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
-	/// Mandelbulb volume texture.
-	UPROPERTY();
-	UVolumeTexture* MandelbulbVolume = nullptr;
+    /// Mandelbulb volume texture.
+    UPROPERTY();
+    UVolumeTexture* MandelbulbVolume = nullptr;
 
-	/// The compute shader UAV. Used for all the calculations.
-	FUnorderedAccessViewRHIRef MandelbulbVolumeUAVRef;
+    /// The compute shader UAV. Used for all the calculations.
+    FUnorderedAccessViewRHIRef MandelbulbVolumeUAVRef;
 
-	UPROPERTY();
-	FIntVector MandelbulbVolumeDimensions = FIntVector(128, 128, 128);
+    UPROPERTY();
+    FIntVector MandelbulbVolumeDimensions = FIntVector(128, 128, 128);
 
-	/// Center of the volume texture will correspond this world coordinate when calculating SDF.
-	UPROPERTY();
-	FVector Center = FVector(0, 0, 0);
+    /// Center of the volume texture will correspond this world coordinate when calculating SDF.
+    UPROPERTY();
+    FVector Center = FVector(0, 0, 0);
 
-	/// The extent the whole volume covers. -> The whole volume will cover a box of Center +- FVector(Extent/2)
-	UPROPERTY();
-	float Extent = 2;
+    /// The extent the whole volume covers. -> The whole volume will cover a box of Center +- FVector(Extent/2)
+    UPROPERTY();
+    float Extent = 2;
 
-	/// Power used for mandelbulb calculation.
-	UPROPERTY();
-	float Power = 8;
+    /// Power used for mandelbulb calculation.
+    UPROPERTY();
+    float Power = 8;
 
-	UPROPERTY();
-	bool bIsInitialized = false;
+    UPROPERTY();
+    bool bIsInitialized = false;
 };
 
 // A shader calculating a Mandelbulb SDF function in a volume texture.
 class FCalculateMandelbulbSDFCS : public FGlobalShader
 {
-	DECLARE_EXPORTED_SHADER_TYPE(FCalculateMandelbulbSDFCS, Global, FRACTALMARCHER_API);
+    DECLARE_EXPORTED_SHADER_TYPE(FCalculateMandelbulbSDFCS, Global, FRACTALMARCHER_API);
 
 public:
-	FCalculateMandelbulbSDFCS() : FGlobalShader()
-	{
-	}
+    FCalculateMandelbulbSDFCS() : FGlobalShader()
+    {
+    }
 
-	FCalculateMandelbulbSDFCS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FGlobalShader(Initializer)
-	{
-		// Volume texture + Transfer function uniforms
-		MandelbulbVolumeUAV.Bind(Initializer.ParameterMap, TEXT("MandelbulbVolumeUAV"), SPF_Mandatory);
-		Center.Bind(Initializer.ParameterMap, TEXT("Center"), SPF_Mandatory);
-		Extent.Bind(Initializer.ParameterMap, TEXT("Extent"), SPF_Mandatory);
-		Power.Bind(Initializer.ParameterMap, TEXT("Power"), SPF_Mandatory);
-		MandelbulbVolumeDimensions.Bind(Initializer.ParameterMap, TEXT("MandelbulbVolumeDimensions"), SPF_Mandatory);
-	}
+    FCalculateMandelbulbSDFCS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FGlobalShader(Initializer)
+    {
+        // Volume texture + Transfer function uniforms
+        MandelbulbVolumeUAV.Bind(Initializer.ParameterMap, TEXT("MandelbulbVolumeUAV"), SPF_Mandatory);
+        Center.Bind(Initializer.ParameterMap, TEXT("Center"), SPF_Mandatory);
+        Extent.Bind(Initializer.ParameterMap, TEXT("Extent"), SPF_Mandatory);
+        Power.Bind(Initializer.ParameterMap, TEXT("Power"), SPF_Mandatory);
+        MandelbulbVolumeDimensions.Bind(Initializer.ParameterMap, TEXT("MandelbulbVolumeDimensions"), SPF_Mandatory);
+    }
 
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-	}
+    static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+    {
+        return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+    }
 
 	void SetMandelbulbSDFParameters(
 		FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, FMandelbulbSDFResources Parameters)
@@ -89,13 +90,13 @@ public:
 	}
 
 protected:
-	// Parameter for the added/removed multiplier.
-	LAYOUT_FIELD(FShaderResourceParameter, MandelbulbVolumeUAV);
-	LAYOUT_FIELD(FShaderParameter, MandelbulbVolumeDimensions);
-	LAYOUT_FIELD(FShaderParameter, Center);
-	LAYOUT_FIELD(FShaderParameter, Extent);
-	LAYOUT_FIELD(FShaderParameter, Power);
-	LAYOUT_FIELD(FShaderParameter, Power2);
+    // Parameter for the added/removed multiplier.
+    LAYOUT_FIELD(FShaderResourceParameter, MandelbulbVolumeUAV);
+    LAYOUT_FIELD(FShaderParameter, MandelbulbVolumeDimensions);
+    LAYOUT_FIELD(FShaderParameter, Center);
+    LAYOUT_FIELD(FShaderParameter, Extent);
+    LAYOUT_FIELD(FShaderParameter, Power);
+    LAYOUT_FIELD(FShaderParameter, Power2);
 };
 
 void EnqueueRenderCommand_CalculateMandelbulbSDF(FMandelbulbSDFResources Resources);

@@ -1,8 +1,8 @@
 
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 // This file contains functions used for raymarching in in-game materials, not for precomputing. 
 
@@ -17,6 +17,85 @@
 
 #pragma once
 #include "RaymarcherCommon.usf"
+
+// Performs raymarch cube setup for this pixel. Returns the position of entry to the cube in rgb channels 
+// and thickness of the cube in alpha. All values returned are in UVW space.
+// This version takes into account the clipping plane parameters immediately.
+float4 PerformRaymarchCubeSetup(float3 ClippingCenter,
+								float3 ClippingDirection, // Clipping plane position and direction of clipped away region
+								FMaterialPixelParameters MaterialParameters)
+{
+    // Get scene depth at this pixel.
+    float LocalSceneDepth = CalcSceneDepth(ScreenAlignedPosition(GetScreenPosition(MaterialParameters)));
+    
+    // Get camera forward vector in world space.
+    float3 CameraFWDVecWorld = mul(float3(0.00000000, 0.00000000, 1.00000000), ResolvedView.ViewToTranslatedWorld);
+
+    // Get world space vector going from camera center to current scene depth.
+    float3 WorldDepthVec = normalize(MaterialParameters.CameraVector) * LocalSceneDepth;
+
+    // Transform this vector into the box's local space
+    WorldDepthVec = mul(WorldDepthVec, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal));
+
+    // Get actual depth in local space, account for mesh bounds (by default, we use a centered 1x1x1 cube mesh, so this is unnecessary)
+    LocalSceneDepth = length(WorldDepthVec);
+
+    // Account for difference between camera center vector and camera-to-pixel depth
+    LocalSceneDepth /= abs(dot(CameraFWDVecWorld, MaterialParameters.CameraVector));
+
+    // Get cam pos and vector into local space too.
+    float3 LocalCamPos = mul(float4(LWCHackToFloat(ResolvedView.WorldCameraOrigin), 1.00000000), LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)).xyz;
+    float3 LocalCamVec = -normalize(mul(MaterialParameters.CameraVector, LWCHackToFloat(GetPrimitiveData(MaterialParameters.PrimitiveId).WorldToLocal)));
+
+    // Transform camera pos from object-local to UVW coords (from +-0.5 to [0 - 1]).
+    LocalCamPos += 0.5;
+
+	// Get times (or distances from LocalCamPos along LocalCamVec) to the box entry and exit.
+	float2 EntryExitTimes = RayAABBIntersection(LocalCamPos, LocalCamVec, 0, 1);
+
+    // Make sure the entry point is not behind the camera
+    EntryExitTimes.x = max(0, EntryExitTimes.x);
+
+    // Make sure the exit point is not behind other scene geometry.
+	EntryExitTimes.y = min(LocalSceneDepth, EntryExitTimes.y);
+
+	// Get entry position in UVW space.
+    float3 EntryPosition = LocalCamPos + ((EntryExitTimes.x) * LocalCamVec);
+	// Calculate the exit position.
+	float3 ExitPosition = LocalCamPos + (EntryExitTimes.y * LocalCamVec);
+
+	// Get the clipping plane intersection between entry position and direction vector.
+	float PlaneHitTime = LinePlaneIntersection(ClippingCenter, ClippingDirection, EntryPosition, LocalCamVec);
+	// Adjust the intersection to not calculate the one behid us.
+	PlaneHitTime = max(0, PlaneHitTime);
+
+    // Calculate box thickness at this pixel (in local space).
+    float BoxThickness = max(0, EntryExitTimes.y - EntryExitTimes.x);
+
+    bool bEntryPosClipped = IsPosClipped(EntryPosition, ClippingCenter, ClippingDirection);
+    bool bExitPosClipped = IsPosClipped(ExitPosition, ClippingCenter, ClippingDirection);
+    
+	if(bEntryPosClipped && bExitPosClipped)
+	{
+		// Both entry point and exit point is clipped. Nothing to show. Set the thickness to zero.
+		BoxThickness = 0;
+	}
+	else if(bEntryPosClipped)
+	{
+		// Entry position is clipped, start from the plane intersection position.
+		float3 PlaneIntersectionPoint = EntryPosition + (LocalCamVec * PlaneHitTime);
+		EntryPosition = PlaneIntersectionPoint;
+		BoxThickness = max(0, BoxThickness - PlaneHitTime);
+	}
+	else if(bExitPosClipped)
+	{
+		// Exit position is clipped. Adjust the thickness.
+		BoxThickness = max(0, PlaneHitTime);
+	}
+    
+	return float4(EntryPosition, BoxThickness);
+}
+
 
 // Performs raymarch cube setup for this pixel. Returns the position of entry to the cube in rgb channels 
 // and thickness of the cube in alpha. All values returned are in UVW space.
@@ -36,9 +115,6 @@ float4 PerformRaymarchCubeSetup(FMaterialPixelParameters MaterialParameters)
 
     // Get actual depth in local space, account for mesh bounds (by default, we use a centered 1x1x1 cube mesh, so this is unnecessary)
     LocalSceneDepth = length(WorldDepthVec);
-    
-    // We use unit cubes now, uncomment this if you want to use non-unit meshes for some reason.
-    // LocalSceneDepth /= (GetPrimitiveData(MaterialParameters.PrimitiveId).LocalObjectBoundsMax.x * 2);
 
     // Account for difference between camera center vector and camera-to-pixel depth
     LocalSceneDepth /= abs(dot(CameraFWDVecWorld, MaterialParameters.CameraVector));
@@ -52,20 +128,20 @@ float4 PerformRaymarchCubeSetup(FMaterialPixelParameters MaterialParameters)
 
 	// Get times (or distances from LocalCamPos along LocalCamVec) to the box entry and exit.
 	float2 EntryExitTimes = RayAABBIntersection(LocalCamPos, LocalCamVec, 0, 1);
-	
+
     // Make sure the entry point is not behind the camera
     EntryExitTimes.x = max(0, EntryExitTimes.x);
 
     // Make sure the exit point is not behind other scene geometry.
 	EntryExitTimes.y = min(LocalSceneDepth, EntryExitTimes.y);
 
+	// Get entry position in UVW space.
+    float3 EntryPosition = LocalCamPos + ((EntryExitTimes.x) * LocalCamVec);
+
     // Calculate box thickness at this pixel (in local space).
     float BoxThickness = max(0, EntryExitTimes.y - EntryExitTimes.x);
-
-    // Get entry position in UVW space.
-    float3 EntryPos = LocalCamPos + (EntryExitTimes.x * LocalCamVec);
     
-    return float4(EntryPos, BoxThickness);
+	return float4(EntryPosition, BoxThickness);
 }
 
 

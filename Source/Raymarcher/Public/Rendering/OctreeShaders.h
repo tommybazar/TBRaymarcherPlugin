@@ -1,7 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #pragma once
 
@@ -54,21 +54,18 @@ public:
 	}
 
 protected:
-	// Volume texture + transfer function resource parameters
-	LAYOUT_FIELD(FShaderResourceParameter, Volume);
+    // Volume texture + transfer function resource parameters
+    LAYOUT_FIELD(FShaderResourceParameter, Volume);
 
-	// OctreeVolume volume mips to modify.
-	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume0);
-	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume1);
-	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume2);
-	LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume3);
+    // OctreeVolume volume mips to modify.
+    LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume0);
+    LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume1);
+    LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume2);
+    LAYOUT_FIELD(FShaderResourceParameter, OctreeVolume3);
 
-	// Parameter for min/max values allowed.
-	LAYOUT_FIELD(FShaderParameter, MinMaxValues);
-	
-	// Length of the size of the cube that creates a single leaf. (Each leaf node will have LeafNodeSize^3 voxels)
-	LAYOUT_FIELD(FShaderParameter, LeafNodeSize);
+    // Length of the size of the cube that creates a single leaf. (Each leaf node will have LeafNodeSize^3 voxels)
+    LAYOUT_FIELD(FShaderParameter, LeafNodeSize);
 
-	// Number of mips to generate.
-	LAYOUT_FIELD(FShaderParameter, NumberOfMips)
+    // Number of mips to generate.
+    LAYOUT_FIELD(FShaderParameter, NumberOfMips)
 };

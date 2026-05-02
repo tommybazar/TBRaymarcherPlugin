@@ -8,6 +8,7 @@ public class Raymarcher : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		CppStandard = CppStandardVersion.Cpp20;
+		OptimizeCode = CodeOptimization.InShippingBuildsOnly;
 
 		PublicIncludePaths.AddRange(
 			new string[]

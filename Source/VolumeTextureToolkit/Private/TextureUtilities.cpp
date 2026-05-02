@@ -1,7 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #include "TextureUtilities.h"
 
@@ -19,65 +19,65 @@ constexpr int MAX_TEXTURE_SIZE = 2048;
 
 FString UVolumeTextureToolkit::MakePackageName(FString AssetName, FString FolderName)
 {
-	if (FolderName.IsEmpty())
-	{
-		FolderName = "GeneratedTextures";
-	}
-	return FolderName / AssetName;
+    if (FolderName.IsEmpty())
+    {
+        FolderName = "GeneratedTextures";
+    }
+    return FolderName / AssetName;
 }
 
 void UVolumeTextureToolkit::SetVolumeTextureDetails(UVolumeTexture*& VolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions)
 {
-	// Newly created Volume textures have this null'd
-	if (!VolumeTexture->GetPlatformData())
-	{
-		VolumeTexture->SetPlatformData(new FTexturePlatformData());
-	}
-	// Set Dimensions and Pixel format.
-	VolumeTexture->GetPlatformData()->SizeX = Dimensions.X;
-	VolumeTexture->GetPlatformData()->SizeY = Dimensions.Y;
-	VolumeTexture->GetPlatformData()->SetNumSlices(Dimensions.Z);
-	VolumeTexture->GetPlatformData()->PixelFormat = PixelFormat;
-	// Set sRGB and streaming to false.
-	VolumeTexture->SRGB = false;
-	VolumeTexture->NeverStream = true;
+    // Newly created Volume textures have this null'd
+    if (!VolumeTexture->GetPlatformData())
+    {
+        VolumeTexture->SetPlatformData(new FTexturePlatformData());
+    }
+    // Set Dimensions and Pixel format.
+    VolumeTexture->GetPlatformData()->SizeX = Dimensions.X;
+    VolumeTexture->GetPlatformData()->SizeY = Dimensions.Y;
+    VolumeTexture->GetPlatformData()->SetNumSlices(Dimensions.Z);
+    VolumeTexture->GetPlatformData()->PixelFormat = PixelFormat;
+    // Set sRGB and streaming to false.
+    VolumeTexture->SRGB = false;
+    VolumeTexture->NeverStream = true;
 }
 
 void UVolumeTextureToolkit::CreateVolumeTextureMip(
-	UVolumeTexture*& VolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData /*= nullptr*/)
+    UVolumeTexture*& VolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData /*= nullptr*/)
 {
-	int PixelByteSize = GPixelFormats[PixelFormat].BlockBytes;
-	const long long TotalSize = (long long) Dimensions.X * Dimensions.Y * Dimensions.Z * PixelByteSize;
+    int PixelByteSize = GPixelFormats[PixelFormat].BlockBytes;
+    const long long TotalSize = (long long) Dimensions.X * Dimensions.Y * Dimensions.Z * PixelByteSize;
 
-	// Create the one and only mip in this texture.
-	FTexture2DMipMap* mip = new FTexture2DMipMap();
-	mip->SizeX = Dimensions.X;
-	mip->SizeY = Dimensions.Y;
-	mip->SizeZ = Dimensions.Z;
+    // Create the one and only mip in this texture.
+    FTexture2DMipMap* mip = new FTexture2DMipMap();
+    mip->SizeX = Dimensions.X;
+    mip->SizeY = Dimensions.Y;
+    mip->SizeZ = Dimensions.Z;
 
-	mip->BulkData.Lock(LOCK_READ_WRITE);
-	// Allocate memory in the mip and copy the actual texture data inside
-	uint8* ByteArray = (uint8*) mip->BulkData.Realloc(TotalSize);
+    mip->BulkData.Lock(LOCK_READ_WRITE);
+    // Allocate memory in the mip and copy the actual texture data inside
+    uint8* ByteArray = (uint8*) mip->BulkData.Realloc(TotalSize);
 
-	if (BulkData)
-	{
-		FMemory::Memcpy(ByteArray, BulkData, TotalSize);
-	}
-	else
-	{
-		// If no data is provided, memset to zero
-		FMemory::Memset(ByteArray, 0, TotalSize);
-	}
+    if (BulkData)
+    {
+        FMemory::Memcpy(ByteArray, BulkData, TotalSize);
+    }
+    else
+    {
+        // If no data is provided, memset to zero
+        FMemory::Memset(ByteArray, 0, TotalSize);
+    }
 
-	mip->BulkData.Unlock();
+    mip->BulkData.Unlock();
 
-	// Newly created Volume textures have this null'd
-	if (!VolumeTexture->GetPlatformData())
-	{
-		VolumeTexture->SetPlatformData(new FTexturePlatformData());
-	}
-	// Add the new MIP to the list of mips.
-	VolumeTexture->GetPlatformData()->Mips.Add(mip);
+    // Newly created Volume textures have this null'd
+    if (!VolumeTexture->GetPlatformData())
+    {
+        VolumeTexture->SetPlatformData(new FTexturePlatformData());
+    }
+    // Add the new MIP to the list of mips.
+    VolumeTexture->GetPlatformData()->Mips.Add(mip);
 }
 
 void UVolumeTextureToolkit::CropDataTo2K(uint8* BulkData, FIntVector& Dimensions, EPixelFormat PixelFormat)
@@ -126,13 +126,13 @@ void UVolumeTextureToolkit::CropDataTo2K(uint8* BulkData, FIntVector& Dimensions
 }
 
 bool UVolumeTextureToolkit::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture, const FString& AssetName,
-	const FString& FolderName, EPixelFormat PixelFormat, FIntVector& Dimensions, uint8* BulkData, bool IsPersistent,
-	bool ShouldUpdateResource)
+    const FString& FolderName, EPixelFormat PixelFormat, FIntVector& Dimensions, uint8* BulkData, bool IsPersistent,
+    bool ShouldUpdateResource)
 {
-	if (Dimensions.X == 0 || Dimensions.Y == 0 || Dimensions.Z == 0)
-	{
-		return false;
-	}
+    if (Dimensions.X == 0 || Dimensions.Y == 0 || Dimensions.Z == 0)
+    {
+        return false;
+    }
 
 	if (Dimensions.X > MAX_TEXTURE_SIZE || Dimensions.Y > MAX_TEXTURE_SIZE || Dimensions.Z > MAX_TEXTURE_SIZE)
 	{
@@ -140,153 +140,153 @@ bool UVolumeTextureToolkit::CreateVolumeTextureAsset(UVolumeTexture*& OutTexture
 		CropDataTo2K(BulkData, Dimensions, PixelFormat);
 	}
 
-	FString PackageName = MakePackageName(AssetName, FolderName);
-	UPackage* Package = CreatePackage(*PackageName);
-	Package->FullyLoad();
+    FString PackageName = MakePackageName(AssetName, FolderName);
+    UPackage* Package = CreatePackage(*PackageName);
+    Package->FullyLoad();
 
-	UVolumeTexture* VolumeTexture = nullptr;
-	VolumeTexture = NewObject<UVolumeTexture>((UObject*) Package, FName(*AssetName), RF_Public | RF_Standalone | RF_MarkAsRootSet);
+    UVolumeTexture* VolumeTexture = nullptr;
+    VolumeTexture = NewObject<UVolumeTexture>((UObject*) Package, FName(*AssetName), RF_Public | RF_Standalone | RF_MarkAsRootSet);
 
-	// Prevent garbage collection of the texture
-	VolumeTexture->AddToRoot();
+    // Prevent garbage collection of the texture
+    VolumeTexture->AddToRoot();
 
-	SetVolumeTextureDetails(VolumeTexture, PixelFormat, Dimensions);
-	CreateVolumeTextureMip(VolumeTexture, PixelFormat, Dimensions, BulkData);
-	CreateVolumeTextureEditorData(VolumeTexture, PixelFormat, Dimensions, BulkData, IsPersistent);
+    SetVolumeTextureDetails(VolumeTexture, PixelFormat, Dimensions);
+    CreateVolumeTextureMip(VolumeTexture, PixelFormat, Dimensions, BulkData);
+    CreateVolumeTextureEditorData(VolumeTexture, PixelFormat, Dimensions, BulkData, IsPersistent);
 
-	// Update resource, mark that the folder needs to be rescan and notify editor
-	// about asset creation.
-	if (ShouldUpdateResource)
-	{
-		VolumeTexture->UpdateResource();
-	}
+    // Update resource, mark that the folder needs to be rescan and notify editor
+    // about asset creation.
+    if (ShouldUpdateResource)
+    {
+        VolumeTexture->UpdateResource();
+    }
 
-	Package->MarkPackageDirty();
-	FAssetRegistryModule::AssetCreated(VolumeTexture);
-	// Pass out the reference to our brand new texture.
-	OutTexture = VolumeTexture;
-	return true;
+    Package->MarkPackageDirty();
+    FAssetRegistryModule::AssetCreated(VolumeTexture);
+    // Pass out the reference to our brand new texture.
+    OutTexture = VolumeTexture;
+    return true;
 }
 
 bool UVolumeTextureToolkit::UpdateVolumeTextureAsset(UVolumeTexture* VolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions,
-	uint8* BulkData, bool IsPersistent /*= false*/, bool ShouldUpdateResource /*= true*/)
+    uint8* BulkData, bool IsPersistent /*= false*/, bool ShouldUpdateResource /*= true*/)
 {
-	if (!VolumeTexture || (Dimensions.X == 0 || Dimensions.Y == 0 || Dimensions.Z == 0))
-	{
-		return false;
-	}
+    if (!VolumeTexture || (Dimensions.X == 0 || Dimensions.Y == 0 || Dimensions.Z == 0))
+    {
+        return false;
+    }
 
-	SetVolumeTextureDetails(VolumeTexture, PixelFormat, Dimensions);
-	CreateVolumeTextureMip(VolumeTexture, PixelFormat, Dimensions, BulkData);
-	CreateVolumeTextureEditorData(VolumeTexture, PixelFormat, Dimensions, BulkData, IsPersistent);
+    SetVolumeTextureDetails(VolumeTexture, PixelFormat, Dimensions);
+    CreateVolumeTextureMip(VolumeTexture, PixelFormat, Dimensions, BulkData);
+    CreateVolumeTextureEditorData(VolumeTexture, PixelFormat, Dimensions, BulkData, IsPersistent);
 
-	// Update resource, mark the asset package dirty.
-	if (ShouldUpdateResource)
-	{
-		VolumeTexture->UpdateResource();
-	}
+    // Update resource, mark the asset package dirty.
+    if (ShouldUpdateResource)
+    {
+        VolumeTexture->UpdateResource();
+    }
 
-	// Notify asset manager that this is dirty now.
-	VolumeTexture->MarkPackageDirty();
-	return true;
+    // Notify asset manager that this is dirty now.
+    VolumeTexture->MarkPackageDirty();
+    return true;
 }
 
 bool UVolumeTextureToolkit::CreateVolumeTextureEditorData(
-	UTexture* Texture, const EPixelFormat PixelFormat, const FIntVector Dimensions, const uint8* BulkData, const bool IsPersistent)
+    UTexture* Texture, const EPixelFormat PixelFormat, const FIntVector Dimensions, const uint8* BulkData, const bool IsPersistent)
 {
-	// Handle persistency only if we're in editor
-	// These don't exist outside of the editor.
+    // Handle persistency only if we're in editor
+    // These don't exist outside of the editor.
 #if WITH_EDITORONLY_DATA
-	// Todo - figure out how to tell the Texture Builder to REALLY LEAVE THE
-	// BLOODY MIPS ALONE when setting TMGS_LeaveExistingMips and being persistent.
-	// Until then, we simply don't support mips on generated textures.
-	Texture->MipGenSettings = TMGS_NoMipmaps;
+    // Todo - figure out how to tell the Texture Builder to REALLY LEAVE THE
+    // BLOODY MIPS ALONE when setting TMGS_LeaveExistingMips and being persistent.
+    // Until then, we simply don't support mips on generated textures.
+    Texture->MipGenSettings = TMGS_NoMipmaps;
 
-	// CompressionNone assures the texture is actually saved in the format we want and not DXT1.
-	Texture->CompressionNone = true;
+    // CompressionNone assures the texture is actually saved in the format we want and not DXT1.
+    Texture->CompressionNone = true;
 
-	// If asset is to be persistent, handle creating the Source structure for it.
-	if (IsPersistent)
-	{
-		// If using a format that's not supported as Source format, fail.
-		ETextureSourceFormat TextureSourceFormat = PixelFormatToSourceFormat(PixelFormat);
-		if (TextureSourceFormat == TSF_Invalid)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				0, 10, FColor::Red, "Trying to create persistent asset with unsupported pixel format!");
-			return false;
-		}
-		// Otherwise initialize the source struct with our size and bulk data.
-		Texture->Source.Init(Dimensions.X, Dimensions.Y, Dimensions.Z, 1, TextureSourceFormat, BulkData);
-	}
-#endif	  // WITH_EDITORONLY_DATA
-	return true;
+    // If asset is to be persistent, handle creating the Source structure for it.
+    if (IsPersistent)
+    {
+        // If using a format that's not supported as Source format, fail.
+        ETextureSourceFormat TextureSourceFormat = PixelFormatToSourceFormat(PixelFormat);
+        if (TextureSourceFormat == TSF_Invalid)
+        {
+            GEngine->AddOnScreenDebugMessage(
+                0, 10, FColor::Red, "Trying to create persistent asset with unsupported pixel format!");
+            return false;
+        }
+        // Otherwise initialize the source struct with our size and bulk data.
+        Texture->Source.Init(Dimensions.X, Dimensions.Y, Dimensions.Z, 1, TextureSourceFormat, BulkData);
+    }
+#endif    // WITH_EDITORONLY_DATA
+    return true;
 }
 
 bool UVolumeTextureToolkit::Create2DTextureTransient(UTexture2D*& OutTexture, EPixelFormat PixelFormat, FIntPoint Dimensions,
-	uint8* BulkData, TextureAddress TilingX, TextureAddress TilingY)
+    uint8* BulkData, TextureAddress TilingX, TextureAddress TilingY)
 {
-	int BlockBytes = GPixelFormats[PixelFormat].BlockBytes;
-	int TotalBytes = Dimensions.X * Dimensions.Y * BlockBytes;
+    int BlockBytes = GPixelFormats[PixelFormat].BlockBytes;
+    int TotalBytes = Dimensions.X * Dimensions.Y * BlockBytes;
 
-	UTexture2D* TransientTexture = UTexture2D::CreateTransient(Dimensions.X, Dimensions.Y, PixelFormat);
-	TransientTexture->AddressX = TilingX;
-	TransientTexture->AddressY = TilingY;
+    UTexture2D* TransientTexture = UTexture2D::CreateTransient(Dimensions.X, Dimensions.Y, PixelFormat);
+    TransientTexture->AddressX = TilingX;
+    TransientTexture->AddressY = TilingY;
 
-	TransientTexture->SRGB = false;
-	TransientTexture->NeverStream = true;
+    TransientTexture->SRGB = false;
+    TransientTexture->NeverStream = true;
 
-	FTexture2DMipMap& Mip = TransientTexture->GetPlatformData()->Mips[0];
-	void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
+    FTexture2DMipMap& Mip = TransientTexture->GetPlatformData()->Mips[0];
+    void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
 
-	if (BulkData)
-	{
-		FMemory::Memcpy(Data, BulkData, TotalBytes);
-	}
-	else
-	{
-		FMemory::Memset(Data, 0, TotalBytes);
-	}
+    if (BulkData)
+    {
+        FMemory::Memcpy(Data, BulkData, TotalBytes);
+    }
+    else
+    {
+        FMemory::Memset(Data, 0, TotalBytes);
+    }
 
-	Mip.BulkData.Unlock();
+    Mip.BulkData.Unlock();
 
-	TransientTexture->UpdateResource();
-	OutTexture = TransientTexture;
-	return true;
+    TransientTexture->UpdateResource();
+    OutTexture = TransientTexture;
+    return true;
 }
 
 bool UVolumeTextureToolkit::CreateVolumeTextureTransient(
-	UVolumeTexture*& OutTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData, bool ShouldUpdateResource)
+    UVolumeTexture*& OutTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* BulkData, bool ShouldUpdateResource)
 {
-	UVolumeTexture* VolumeTexture = nullptr;
-	VolumeTexture = NewObject<UVolumeTexture>(GetTransientPackage(), NAME_None, RF_Transient);
+    UVolumeTexture* VolumeTexture = nullptr;
+    VolumeTexture = NewObject<UVolumeTexture>(GetTransientPackage(), NAME_None, RF_Transient);
 
-	SetVolumeTextureDetails(VolumeTexture, PixelFormat, Dimensions);
-	CreateVolumeTextureMip(VolumeTexture, PixelFormat, Dimensions, BulkData);
+    SetVolumeTextureDetails(VolumeTexture, PixelFormat, Dimensions);
+    CreateVolumeTextureMip(VolumeTexture, PixelFormat, Dimensions, BulkData);
 
-	// Update resource, mark that the folder needs to be rescan and notify editor
-	// about asset creation.
-	if (ShouldUpdateResource)
-	{
-		VolumeTexture->UpdateResource();
-	}
+    // Update resource, mark that the folder needs to be rescan and notify editor
+    // about asset creation.
+    if (ShouldUpdateResource)
+    {
+        VolumeTexture->UpdateResource();
+    }
 
-	OutTexture = VolumeTexture;
-	return true;
+    OutTexture = VolumeTexture;
+    return true;
 }
 
 uint8* UVolumeTextureToolkit::LoadRawFileIntoArray(const FString FileName, const int64 BytesToLoad)
 {
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	// Try opening as absolute path.
-	IFileHandle* FileHandle = PlatformFile.OpenRead(*FileName);
+    IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+    // Try opening as absolute path.
+    IFileHandle* FileHandle = PlatformFile.OpenRead(*FileName);
 
-	// If opening as absolute path failed, open as relative to content directory.
-	if (!FileHandle)
-	{
-		FString FullPath = FPaths::ProjectContentDir() + FileName;
-		FileHandle = PlatformFile.OpenRead(*FullPath);
-	}
+    // If opening as absolute path failed, open as relative to content directory.
+    if (!FileHandle)
+    {
+        FString FullPath = FPaths::ProjectContentDir() + FileName;
+        FileHandle = PlatformFile.OpenRead(*FullPath);
+    }
 
 	if (!FileHandle)
 	{
@@ -306,26 +306,26 @@ uint8* UVolumeTextureToolkit::LoadRawFileIntoArray(const FString FileName, const
 				"probably be screwed up)"));
 	}
 
-	uint8* LoadedArray = new uint8[BytesToLoad];
-	FileHandle->Read(LoadedArray, BytesToLoad);
-	delete FileHandle;
+    uint8* LoadedArray = new uint8[BytesToLoad];
+    FileHandle->Read(LoadedArray, BytesToLoad);
+    delete FileHandle;
 
-	return LoadedArray;
+    return LoadedArray;
 }
 
 uint8* UVolumeTextureToolkit::LoadZLibCompressedFileIntoArray(
-	const FString FileName, const int64 UncompressedByteSize, const int64 CompressedByteSize)
+    const FString FileName, const int64 UncompressedByteSize, const int64 CompressedByteSize)
 {
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	// Try opening as absolute path.
-	IFileHandle* FileHandle = PlatformFile.OpenRead(*FileName);
+    IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+    // Try opening as absolute path.
+    IFileHandle* FileHandle = PlatformFile.OpenRead(*FileName);
 
-	// If opening as absolute path failed, open as relative to content directory.
-	if (!FileHandle)
-	{
-		FString FullPath = FPaths::ProjectContentDir() + FileName;
-		FileHandle = PlatformFile.OpenRead(*FullPath);
-	}
+    // If opening as absolute path failed, open as relative to content directory.
+    if (!FileHandle)
+    {
+        FString FullPath = FPaths::ProjectContentDir() + FileName;
+        FileHandle = PlatformFile.OpenRead(*FullPath);
+    }
 
 	if (!FileHandle)
 	{
@@ -346,39 +346,39 @@ uint8* UVolumeTextureToolkit::LoadZLibCompressedFileIntoArray(
 				"probably be screwed up)"));
 	}
 
-	uint8* LoadedArray = new uint8[CompressedByteSize];
-	FileHandle->Read(LoadedArray, CompressedByteSize);
+    uint8* LoadedArray = new uint8[CompressedByteSize];
+    FileHandle->Read(LoadedArray, CompressedByteSize);
 
-	uint8* UncompressedArray = new uint8[UncompressedByteSize];
-	FCompression::UncompressMemory(NAME_Zlib, UncompressedArray, UncompressedByteSize, LoadedArray, CompressedByteSize);
+    uint8* UncompressedArray = new uint8[UncompressedByteSize];
+    FCompression::UncompressMemory(NAME_Zlib, UncompressedArray, UncompressedByteSize, LoadedArray, CompressedByteSize);
 
-	delete[] LoadedArray;
-	return UncompressedArray;
+    delete[] LoadedArray;
+    return UncompressedArray;
 }
 
 uint8* UVolumeTextureToolkit::NormalizeArrayByFormat(
-	const EVolumeVoxelFormat VoxelFormat, uint8* InArray, const int64 ByteSize, float& OutInMin, float& OutInMax)
+    const EVolumeVoxelFormat VoxelFormat, uint8* InArray, const int64 ByteSize, float& OutInMin, float& OutInMax)
 {
-	switch (VoxelFormat)
-	{
-		case EVolumeVoxelFormat::UnsignedChar:
-			return ConvertArrayToNormalizedArray<uint8, uint8>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::SignedChar:
-			return ConvertArrayToNormalizedArray<int8, uint8>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::UnsignedShort:
-			return ConvertArrayToNormalizedArray<uint16, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::SignedShort:
-			return ConvertArrayToNormalizedArray<int16, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::UnsignedInt:
-			return ConvertArrayToNormalizedArray<uint32, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::SignedInt:
-			return ConvertArrayToNormalizedArray<int32, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		case EVolumeVoxelFormat::Float:
-			return ConvertArrayToNormalizedArray<float, uint16>(InArray, ByteSize, OutInMin, OutInMax);
-		default:
-			ensure(false);
-			return nullptr;
-	}
+    switch (VoxelFormat)
+    {
+        case EVolumeVoxelFormat::UnsignedChar:
+            return ConvertArrayToNormalizedArray<uint8, uint8>(InArray, ByteSize, OutInMin, OutInMax);
+        case EVolumeVoxelFormat::SignedChar:
+            return ConvertArrayToNormalizedArray<int8, uint8>(InArray, ByteSize, OutInMin, OutInMax);
+        case EVolumeVoxelFormat::UnsignedShort:
+            return ConvertArrayToNormalizedArray<uint16, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+        case EVolumeVoxelFormat::SignedShort:
+            return ConvertArrayToNormalizedArray<int16, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+        case EVolumeVoxelFormat::UnsignedInt:
+            return ConvertArrayToNormalizedArray<uint32, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+        case EVolumeVoxelFormat::SignedInt:
+            return ConvertArrayToNormalizedArray<int32, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+        case EVolumeVoxelFormat::Float:
+            return ConvertArrayToNormalizedArray<float, uint16>(InArray, ByteSize, OutInMin, OutInMax);
+        default:
+            ensure(false);
+            return nullptr;
+    }
 }
 
 float* UVolumeTextureToolkit::ConvertArrayToFloat(const EVolumeVoxelFormat VoxelFormat, uint8* InArray, uint64 VoxelCount)
@@ -405,86 +405,86 @@ float* UVolumeTextureToolkit::ConvertArrayToFloat(const EVolumeVoxelFormat Voxel
 }
 
 void UVolumeTextureToolkit::LoadRawIntoNewVolumeTextureAsset(FString RawFileName, FString FolderName, FString TextureName,
-	FIntVector Dimensions, uint32 BytexPerVoxel, EPixelFormat OutPixelFormat, bool Persistent, UVolumeTexture*& LoadedTexture)
+    FIntVector Dimensions, uint32 BytexPerVoxel, EPixelFormat OutPixelFormat, bool Persistent, UVolumeTexture*& LoadedTexture)
 {
-	const int64 TotalSize = Dimensions.X * Dimensions.Y * Dimensions.Z * BytexPerVoxel;
+    const int64 TotalSize = Dimensions.X * Dimensions.Y * Dimensions.Z * BytexPerVoxel;
 
-	uint8* TempArray = UVolumeTextureToolkit::LoadRawFileIntoArray(RawFileName, TotalSize);
-	if (!TempArray)
-	{
-		return;
-	}
+    uint8* TempArray = UVolumeTextureToolkit::LoadRawFileIntoArray(RawFileName, TotalSize);
+    if (!TempArray)
+    {
+        return;
+    }
 
-	// Actually create the asset.
-	bool Success = UVolumeTextureToolkit::CreateVolumeTextureAsset(
-		LoadedTexture, TextureName, FolderName, OutPixelFormat, Dimensions, TempArray, Persistent);
+    // Actually create the asset.
+    bool Success = UVolumeTextureToolkit::CreateVolumeTextureAsset(
+        LoadedTexture, TextureName, FolderName, OutPixelFormat, Dimensions, TempArray, Persistent);
 
-	// Ddelete temp data.
-	delete[] TempArray;
+    // Ddelete temp data.
+    delete[] TempArray;
 }
 
 void UVolumeTextureToolkit::LoadRawIntoVolumeTextureAsset(FString RawFileName, UVolumeTexture* inTexture, FIntVector Dimensions,
-	uint32 BytexPerVoxel, EPixelFormat OutPixelFormat, bool Persistent)
+    uint32 BytexPerVoxel, EPixelFormat OutPixelFormat, bool Persistent)
 {
-	const int64 TotalSize = Dimensions.X * Dimensions.Y * Dimensions.Z * BytexPerVoxel;
+    const int64 TotalSize = Dimensions.X * Dimensions.Y * Dimensions.Z * BytexPerVoxel;
 
-	uint8* TempArray = UVolumeTextureToolkit::LoadRawFileIntoArray(RawFileName, TotalSize);
-	if (!TempArray)
-	{
-		return;
-	}
+    uint8* TempArray = UVolumeTextureToolkit::LoadRawFileIntoArray(RawFileName, TotalSize);
+    if (!TempArray)
+    {
+        return;
+    }
 
-	// Actually update the asset.
-	bool Success = UVolumeTextureToolkit::UpdateVolumeTextureAsset(inTexture, OutPixelFormat, Dimensions, TempArray, Persistent);
+    // Actually update the asset.
+    bool Success = UVolumeTextureToolkit::UpdateVolumeTextureAsset(inTexture, OutPixelFormat, Dimensions, TempArray, Persistent);
 
-	// Delete temp data.
-	delete[] TempArray;
+    // Delete temp data.
+    delete[] TempArray;
 }
 
 ETextureSourceFormat UVolumeTextureToolkit::PixelFormatToSourceFormat(EPixelFormat PixelFormat)
 {
-	// THIS IS UNTESTED FOR FORMATS OTHER THAN G8, G16 AND R16G16B16A16_SNORM!
-	switch (PixelFormat)
-	{
-		case PF_G8:
-		case PF_R8_UINT:
-			return TSF_G8;
+    // THIS IS UNTESTED FOR FORMATS OTHER THAN G8, G16 AND R16G16B16A16_SNORM!
+    switch (PixelFormat)
+    {
+        case PF_G8:
+        case PF_R8_UINT:
+            return TSF_G8;
 
-		case PF_G16:
-			return TSF_G16;
+        case PF_G16:
+            return TSF_G16;
 
-		case PF_B8G8R8A8:
-			return TSF_BGRA8;
+        case PF_B8G8R8A8:
+            return TSF_BGRA8;
 
-		case PF_R16G16B16A16_SINT:
-		case PF_R16G16B16A16_UINT:
-			return TSF_RGBA16;
+        case PF_R16G16B16A16_SINT:
+        case PF_R16G16B16A16_UINT:
+            return TSF_RGBA16;
 
-		case PF_R16G16B16A16_SNORM:
-		case PF_R16G16B16A16_UNORM:
-			return TSF_RGBA16F;
+        case PF_R16G16B16A16_SNORM:
+        case PF_R16G16B16A16_UNORM:
+            return TSF_RGBA16F;
 
-		default:
-			return TSF_Invalid;
-	}
+        default:
+            return TSF_Invalid;
+    }
 }
 
 void UVolumeTextureToolkit::SetupVolumeTexture(
-	UVolumeTexture*& OutVolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* ConvertedArray, bool Persistent)
+    UVolumeTexture*& OutVolumeTexture, EPixelFormat PixelFormat, FIntVector Dimensions, uint8* ConvertedArray, bool Persistent)
 {
-	SetVolumeTextureDetails(OutVolumeTexture, PixelFormat, Dimensions);
-	// Actually create the texture MIP.
-	CreateVolumeTextureMip(OutVolumeTexture, PixelFormat, Dimensions, ConvertedArray);
-	CreateVolumeTextureEditorData(OutVolumeTexture, PixelFormat, Dimensions, ConvertedArray, Persistent);
-	OutVolumeTexture->UpdateResource();
+    SetVolumeTextureDetails(OutVolumeTexture, PixelFormat, Dimensions);
+    // Actually create the texture MIP.
+    CreateVolumeTextureMip(OutVolumeTexture, PixelFormat, Dimensions, ConvertedArray);
+    CreateVolumeTextureEditorData(OutVolumeTexture, PixelFormat, Dimensions, ConvertedArray, Persistent);
+    OutVolumeTexture->UpdateResource();
 }
 
 void UVolumeTextureToolkit::ClearVolumeTexture(UTextureRenderTargetVolume* RTVolume, float ClearValue)
 {
-	if (!RTVolume || !RTVolume->GetResource() || !RTVolume->GetResource()->TextureRHI)
-	{
-		return;
-	}
+    if (!RTVolume || !RTVolume->GetResource() || !RTVolume->GetResource()->TextureRHI)
+    {
+        return;
+    }
 
 	FRHITexture* VolumeTextureResource = RTVolume->GetResource()->TextureRHI->GetTexture3D();
 

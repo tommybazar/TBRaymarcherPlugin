@@ -1,7 +1,7 @@
-// Copyright 2026 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 // This file contains functions used to sample a transfer function according to specified windowing parameters.
 
@@ -58,10 +58,26 @@ float SampleWindowedTransferFunctionAlpha(float VolumeDataValue, float StepSize,
 }
 
 // Samples and interpolate Data volume, transforms it to fit the Windowing parameters and then transforms it by the TF. Corrects the opacity to account for StepSize (in Unreal units).
-float4 SampleWindowedVolumeStep(float3 CurPos, float StepSize, Texture3D Volume, SamplerState VolumeSampler, Texture2D TF, SamplerState TFSampler, float4 WindowingParams)
+float4 SampleWindowedVolumeStep(const float3 CurPos, float StepSize, Texture3D Volume, SamplerState VolumeSampler, Texture2D TF, SamplerState TFSampler, float4 WindowingParams)
 {
 	const float DataValue = Volume.SampleLevel(VolumeSampler, CurPos, 0).r;
 	return SampleWindowedTransferFunction(DataValue, StepSize, TF, TFSampler, WindowingParams);
+}
+
+// Performs one raymarch step and accumulates the result to the existing Accumulated Light Energy.
+// Notice "Material.Clamp_WorldGroupSettings" used as a sampler. These are UE shared samplers.
+void AccumulateWindowedRaymarchStep(inout float4 AccumulatedLightEnergy, float3 CurPos, Texture3D DataVolume, SamplerState DataVolumeSampler,
+                                 Texture2D TF, Texture3D LightVolume, float StepSize,
+                                 float4 WindowingParams)
+{
+    float4 ColorSample = SampleWindowedVolumeStep(CurPos, StepSize, DataVolume, DataVolumeSampler,
+                                           TF, Material.Clamp_WorldGroupSettings, WindowingParams);
+    
+    // Get lighting information from illumination volume for current position and
+    // Multiply sampled color with light color to adjust intensity according to light strength.
+    ColorSample.rgb = ColorSample.rgb * LightVolume.SampleLevel(Material.Wrap_WorldGroupSettings, saturate(CurPos), 0).r;
+    // Accumulate current colored sample to the final values.
+    AccumulateLightEnergy(AccumulatedLightEnergy, ColorSample);
 }
 
 // Samples and interpolate Data volume, transforms it to fit the Windowing parameters and then transforms it by the TF. Corrects the opacity to account for StepSize (in Unreal units).

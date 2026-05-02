@@ -1,7 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #pragma once
 
@@ -15,26 +15,26 @@ class ARaymarchVolume;
 UCLASS()
 class RAYMARCHER_API ARaymarchLight : public AActor, public IGrabbable
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	ARaymarchLight();
+    ARaymarchLight();
 
-	virtual void Tick(float DeltaSeconds) override;
+    virtual void Tick(float DeltaSeconds) override;
 
-	FDirLightParameters GetCurrentParameters() const;
+    FDirLightParameters GetCurrentParameters() const;
 
-	FDirLightParameters PreviousTickParameters;
+    FDirLightParameters PreviousTickParameters;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float LightIntensity;
+    UPROPERTY(BlueprintReadWrite, EditAnywhere)
+    float LightIntensity;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	UStaticMeshComponent* StaticMeshComponent;
+    UPROPERTY(BlueprintReadWrite, EditAnywhere)
+    UStaticMeshComponent* StaticMeshComponent;
 
 #if WITH_EDITOR
-	// Override ShouldTickIfViewportsOnly to return true, so this also ticks in editor viewports.
-	virtual bool ShouldTickIfViewportsOnly() const override;
+    // Override ShouldTickIfViewportsOnly to return true, so this also ticks in editor viewports.
+    virtual bool ShouldTickIfViewportsOnly() const override;
 
 #endif
 };

@@ -1,7 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #include "Rendering/LightingShaders.h"
 
@@ -10,10 +10,6 @@
 #include "Rendering/LightingShaderUtils.h"
 #include "Runtime/RenderCore/Public/RenderUtils.h"
 #include "Util/UtilityShaders.h"
-
-#if !UE_BUILD_SHIPPING
-#pragma optimize("", off)
-#endif
 
 #define LOCTEXT_NAMESPACE "RaymarchPlugin"
 
@@ -120,15 +116,15 @@ void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICm
 		GetStepSizeAndUVWOffset(LocalMajorAxes.FaceWeight[i].first, -LocalLightParams.LightDirection, TransposedDimensions,
 			WorldParameters, StepSize, UVWOffset);
 
-		// Normalize UVW offset to length of largest voxel size to get rid of artifacts. (Not correct,
-		// but consistent!)
-		int LowestVoxelCount = FMath::Min3(TransposedDimensions.X, TransposedDimensions.Y, TransposedDimensions.Z);
-		float LongestVoxelSide = 1.0f / LowestVoxelCount;
-		UVWOffset.Normalize();
-		UVWOffset *= LongestVoxelSide;
+        // Normalize UVW offset to length of largest voxel size to get rid of artifacts. (Not correct,
+        // but consistent!)
+        int LowestVoxelCount = FMath::Min3(TransposedDimensions.X, TransposedDimensions.Y, TransposedDimensions.Z);
+        float LongestVoxelSide = 1.0f / LowestVoxelCount;
+        UVWOffset.Normalize();
+        UVWOffset *= LongestVoxelSide;
 
-		uint32 GroupSizeX = FMath::DivideAndRoundUp(TransposedDimensions.X, NUM_THREADS_PER_GROUP_DIMENSION);
-		uint32 GroupSizeY = FMath::DivideAndRoundUp(TransposedDimensions.Y, NUM_THREADS_PER_GROUP_DIMENSION);
+        uint32 GroupSizeX = FMath::DivideAndRoundUp(TransposedDimensions.X, NUM_THREADS_PER_GROUP_DIMENSION);
+        uint32 GroupSizeY = FMath::DivideAndRoundUp(TransposedDimensions.Y, NUM_THREADS_PER_GROUP_DIMENSION);
 
 		int Start, Stop, AxisDirection;
 		GetLoopStartStopIndices(Start, Stop, AxisDirection, LocalMajorAxes, i, TransposedDimensions.Z);
@@ -348,7 +344,3 @@ void ChangeDirLightInSingleLightVolume_RenderThread(FRHICommandListImmediate& RH
 }
 
 #undef LOCTEXT_NAMESPACE
-
-#if !UE_BUILD_SHIPPING
-#pragma optimize("", on)
-#endif

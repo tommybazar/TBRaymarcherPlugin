@@ -48,9 +48,12 @@ void URenderTargetVolumeMipped::PostEditChangeProperty(FPropertyChangedEvent& Pr
 	constexpr int32 MaxSize = 2048;
 
 	EPixelFormat Format = GetFormat();
-	SizeX = FMath::Clamp<int32>(SizeX - (SizeX % GPixelFormats[Format].BlockSizeX), 1, MaxSize);
-	SizeY = FMath::Clamp<int32>(SizeY - (SizeY % GPixelFormats[Format].BlockSizeY), 1, MaxSize);
-	SizeZ = FMath::Clamp<int32>(SizeZ - (SizeZ % GPixelFormats[Format].BlockSizeZ), 1, MaxSize);
+    if (Format != PF_Unknown)
+    {
+        SizeX = FMath::Clamp<int32>(SizeX - (SizeX % GPixelFormats[Format].BlockSizeX), 1, MaxSize);
+        SizeY = FMath::Clamp<int32>(SizeY - (SizeY % GPixelFormats[Format].BlockSizeY), 1, MaxSize);
+        SizeZ = FMath::Clamp<int32>(SizeZ - (SizeZ % GPixelFormats[Format].BlockSizeZ), 1, MaxSize);
+    }
 
 	UTexture::PostEditChangeProperty(PropertyChangedEvent);
 }

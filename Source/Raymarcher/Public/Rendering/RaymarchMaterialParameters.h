@@ -1,7 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #pragma once
 
@@ -21,5 +21,8 @@ const static FName TransferFunction = "TransferFunction";
 const static FName Steps = "Steps";
 const static FName OctreeVolume = "OctreeVolume";
 const static FName OctreeMip = "OctreeMip";
+const static FName OctreeStartingMip = "StartingMip";
+const static FName WindowMask = "WindowMask";
+const static FName LightParams = "LightParams";
 
-}	 // namespace RaymarchParams
+}    // namespace RaymarchParams

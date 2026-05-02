@@ -1,7 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #pragma once
 
@@ -17,19 +17,19 @@
 UCLASS(Abstract)
 class AVRMenuPanel : public AActor
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 public:
-	// Sets default values for this actor's properties
-	AVRMenuPanel();
+    // Sets default values for this actor's properties
+    AVRMenuPanel();
 
-	/// Mesh serving as a menu backgrounds.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UStaticMeshComponent* StaticMeshComponent;
+    /// Mesh serving as a menu backgrounds.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UStaticMeshComponent* StaticMeshComponent;
 
-	/// Actual menu.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UWidgetComponent* WidgetComponent;
+    /// Actual menu.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UWidgetComponent* WidgetComponent;
 
 protected:
-	virtual void EnsureWidgetIsSpawned();
+    virtual void EnsureWidgetIsSpawned();
 };

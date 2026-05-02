@@ -1,7 +1,7 @@
-// Copyright 2021 Tomas Bartipan and Technical University of Munich.
+// Copyright 2024 - Tomas Bartipan
 // Licensed under MIT license - See License.txt for details.
-// Special credits go to : Temaran (compute shader tutorial), TheHugeManatee (original concept, supervision) and Ryan Brucks
-// (original raymarching code).
+// Special credits go to :
+// Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
 #include "Rendering/OctreeShaders.h"
 
@@ -9,10 +9,6 @@
 #include "Engine/TextureRenderTargetVolume.h"
 #include "Runtime/RenderCore/Public/RenderUtils.h"
 #include "Util/UtilityShaders.h"
-
-#if !UE_BUILD_SHIPPING
-#pragma optimize("", off)
-#endif
 
 #define LOCTEXT_NAMESPACE "RaymarchPlugin"
 
@@ -56,7 +52,3 @@ void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, 
 }
 
 #undef LOCTEXT_NAMESPACE
-
-#if !UE_BUILD_SHIPPING
-#pragma optimize("", on)
-#endif
