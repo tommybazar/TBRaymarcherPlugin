@@ -119,11 +119,6 @@ public:
 		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
-	void UnbindResourcesLightPropagation(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
-	{
-		// No-op: resource transitions handle state management on Vulkan/D3D12.
-	}
-
 protected:
 	// Volume texture + transfer function resource parameters
 	LAYOUT_FIELD(FShaderResourceParameter, Volume);
@@ -224,6 +219,7 @@ public:
 		const FUnorderedAccessViewRHIRef pRemovedWriteBuffer, const FTexture2DRHIRef pAddedReadBuffer,
 		const FSamplerStateRHIRef pAddedReadBuffSampler, const FUnorderedAccessViewRHIRef pAddedWriteBuffer)
 	{
+		// TODO as now this Set gets called every loop invocation, this setup should be moved out and not re-done for every loop!
 		float ZeroTFValue = WindowingParams.Center - 0.5 * WindowingParams.Width;
 		FLinearColor VolumeClearColor = FLinearColor(ZeroTFValue, 0.0, 0.0, 0.0);
 		const uint32 BorderColorInt = VolumeClearColor.ToFColor(false).ToPackedARGB();
@@ -274,11 +270,6 @@ public:
 		SetSamplerParameter(Params, RemovedReadBufferSampler, pRemovedReadBuffSampler);
 
 		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
-	}
-
-	void UnbindResourcesChangeDirLight(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
-	{
-		// No-op: resource transitions handle state management on Vulkan/D3D12.
 	}
 
 protected:
