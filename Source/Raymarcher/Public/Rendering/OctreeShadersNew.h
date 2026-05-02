@@ -17,7 +17,7 @@ void GenerateOctreeForVolume_RenderThread_New(FRHICommandListImmediate& RHICmdLi
 // A shader that generates the first level of an octree from a volume.
 class FGenerateLevelZeroOctreeShader : public FGlobalShader
 {
-	DECLARE_EXPORTED_SHADER_TYPE(FGenerateLevelZeroOctreeShader, Global, RAYMARCHER_API);//
+	DECLARE_EXPORTED_SHADER_TYPE(FGenerateLevelZeroOctreeShader, Global, RAYMARCHER_API);
 
 public:
 	FGenerateLevelZeroOctreeShader() : FGlobalShader()
@@ -34,19 +34,15 @@ public:
 		LeafNodeSize.Bind(Initializer.ParameterMap, TEXT("LeafNodeSize"), SPF_Mandatory);
 	}
 
-	void SetGeneratingResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTexture3DRHIRef pVolume,
+	void SetGeneratingResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI, const FTextureRHIRef pVolume,
 		const FTexture3DComputeResource* ComputeResource, int InLeafNodeSize, int InNumberOfMips)
 	{
-		SetTextureParameter(RHICmdList, ShaderRHI, Volume, pVolume);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, ComputeResource->UnorderedAccessViewRHIs[0]);
-		SetShaderValue(RHICmdList, ShaderRHI, MinMaxValues, FVector2f(0.0, 1.0));
-		SetShaderValue(RHICmdList, ShaderRHI, LeafNodeSize, InLeafNodeSize);
-	}
-
-	void UnbindResources(FRHICommandListImmediate& RHICmdList, FRHIComputeShader* ShaderRHI)
-	{
-		SetTextureParameter(RHICmdList, ShaderRHI, Volume, nullptr);
-		SetUAVParameter(RHICmdList, ShaderRHI, OctreeVolume0, nullptr);
+		FRHIBatchedShaderParameters& Params = RHICmdList.GetScratchShaderParameters();
+		SetTextureParameter(Params, Volume, pVolume);
+		SetUAVParameter(Params, OctreeVolume0, ComputeResource->UnorderedAccessViewRHIs[0]);
+		SetShaderValue(Params, MinMaxValues, FVector2f(0.0, 1.0));
+		SetShaderValue(Params, LeafNodeSize, InLeafNodeSize);
+	    RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);
 	}
 
 protected:

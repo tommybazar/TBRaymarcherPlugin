@@ -33,7 +33,6 @@ public:
 		OctreeVolume1.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip1"), SPF_Mandatory);
 		OctreeVolume2.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip2"), SPF_Mandatory);
 		OctreeVolume3.Bind(Initializer.ParameterMap, TEXT("OctreeVolumeMip3"), SPF_Mandatory);
-		MinMaxValues.Bind(Initializer.ParameterMap, TEXT("MinMaxValues"), SPF_Mandatory);
 		LeafNodeSize.Bind(Initializer.ParameterMap, TEXT("LeafNodeSize"), SPF_Mandatory);
 		NumberOfMips.Bind(Initializer.ParameterMap, TEXT("NumberOfMips"), SPF_Mandatory);
 	}
@@ -47,7 +46,6 @@ public:
 		SetUAVParameter(Params, OctreeVolume1, ComputeResource->UnorderedAccessViewRHIs[1]);
 		SetUAVParameter(Params, OctreeVolume2, ComputeResource->UnorderedAccessViewRHIs[2]);
 		SetUAVParameter(Params, OctreeVolume3, ComputeResource->UnorderedAccessViewRHIs[3]);
-		SetShaderValue(Params, MinMaxValues, FVector2f(0.0, 1.0));
 		SetShaderValue(Params, LeafNodeSize, InLeafNodeSize);
 		SetShaderValue(Params, NumberOfMips, InNumberOfMips);
 		RHICmdList.SetBatchedShaderParameters(ShaderRHI, Params);

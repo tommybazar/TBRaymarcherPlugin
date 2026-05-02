@@ -5,6 +5,7 @@
 // Special credits go to :
 // Temaran (compute shader tutorial), TheHugeManatee (original concept) and Ryan Brucks(original raymarching code).
 
+#include "ShaderParameterStruct.h"
 #include "Engine/TextureRenderTargetVolume.h"
 #include "Runtime/RenderCore/Public/RenderUtils.h"
 #include "Util/UtilityShaders.h"
@@ -15,7 +16,8 @@ IMPLEMENT_GLOBAL_SHADER(
     FGenerateLevelZeroOctreeShader, "/Raymarcher/Private/GenerateOctreeLevelZeroShader.usf", "MainComputeShader", SF_Compute);
 
 // For making statistics about GPU use - Generating Octree.
-DECLARE_FLOAT_COUNTER_STAT(TEXT("GeneratingOctree_New"), STAT_GPU_GeneratingOctree_New, STATGROUP_GPU);
+DECLARE_STATS_GROUP(TEXT("Utility shaders"), STATGROU_OCTREE_SHADER, STATCAT_Advanced);
+DECLARE_FLOAT_COUNTER_STAT(TEXT("GeneratingOctree_New"), STAT_GPU_GeneratingOctree_New, STATGROU_OCTREE_SHADER);
 DECLARE_GPU_STAT_NAMED(GPUGeneratingOctree_New, TEXT("GeneratingOctree_New"));
 
 // #TODO profile with different dimensions.
@@ -46,7 +48,8 @@ void GenerateOctreeForVolume_RenderThread_New(FRHICommandListImmediate& RHICmdLi
     const uint32 GroupSizeZ = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeZ, GroupSizePerDimension);
     RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, GroupSizeZ);
 
-    ComputeShader->UnbindResources(RHICmdList, ShaderRHI);
+    UnsetShaderUAVs(RHICmdList, ComputeShader, ShaderRHI);
+    
     RHICmdList.Transition(FRHITransitionInfo(Resources.OctreeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }
 

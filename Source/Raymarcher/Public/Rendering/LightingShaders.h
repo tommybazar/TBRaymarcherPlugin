@@ -12,7 +12,6 @@
 #include "Rendering/RaymarchTypes.h"
 #include "ShaderParameterUtils.h"
 #include "ShaderParameters.h"
-#include "VolumeAsset/WindowingParameters.h"
 
 void AddDirLightToSingleLightVolume_RenderThread(FRHICommandListImmediate& RHICmdList, FBasicRaymarchRenderingResources Resources,
 	const FDirLightParameters LightParameters, const bool Added, const FRaymarchWorldParameters WorldParameters);

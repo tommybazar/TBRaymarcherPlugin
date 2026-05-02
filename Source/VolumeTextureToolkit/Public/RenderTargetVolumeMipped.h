@@ -134,7 +134,7 @@ public:
 		TextureRHI = RenderTargetTextureRHI;
 
 		TextureRHI->SetName(*TextureName);
-		RHIBindDebugLabelName(TextureRHI, *TextureName);
+		FRHICommandListImmediate::Get().BindDebugLabelName(TextureRHI, *TextureName);
 
 		for (int i = 0; i < NumMips; i++)
 		{
@@ -143,7 +143,7 @@ public:
 					FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(TextureRHI).SetMipLevel(i)));
 		}
 
-		RHIUpdateTextureReference(Owner->TextureReference.TextureReferenceRHI, TextureRHI);
+		FRHICommandListImmediate::Get().UpdateTextureReference(Owner->TextureReference.TextureReferenceRHI, TextureRHI);
 
 		Owner->MippedTexture3DRTResource = this;
 
@@ -156,7 +156,7 @@ public:
 	{
 		if (TextureReference)
 		{
-			RHIUpdateTextureReference(TextureReference->TextureReferenceRHI, nullptr);
+			FRHICommandListImmediate::Get().UpdateTextureReference(TextureReference->TextureReferenceRHI, nullptr);
 		}
 		RenderTargetTextureRHI.SafeRelease();
 		FTextureResource::ReleaseRHI();
