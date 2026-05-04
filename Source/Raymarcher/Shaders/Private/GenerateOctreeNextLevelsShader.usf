@@ -7,24 +7,23 @@
 // This shader generates an Octree acceleration structure's intermediate levels.
 //
 
-// The Volume we're reading data from.
-Texture3D Volume;
+// The Octree Higher Mip that we're populating in this shader.
+RWTexture3D<float> OctreeHigherMip;
 
-// The Octree Mip 0 texture we're populating in this shader.
-RWTexture3D<float> OctreeVolumeMip0;
+// The Octree Lower Mip we're reading data from
+Texture3D<float> OctreeLowerMip;
 
-// The minimum and maximum values found in the volume.
-float2 MinMaxValues;
-
-int NodeSize = 8;
+int NodeSize = 2;
 
 [numthreads(1, 1, 1)]
 void MainComputeShader(uint3 VoxelLoc : SV_DispatchThreadID)
 {
-    // Position in Leaf space (index of the leaf in the octree that this shader will generate)
+    // Position in the upper Mip texture index space.
     int3 Pos = int3(VoxelLoc.x, VoxelLoc.y, VoxelLoc.z);
-    int3 ThreadOffset = Pos * NodeSize;
-
+    // Position in the lower Mip texture index space. 
+    int3 LowerMipPos = Pos * NodeSize;
+    float MaxValue = 0.0;
+    
     // Copy the data from the input volume to maximal resolution mip first.
     for (int x = 0; x < NodeSize; x++)
     {
@@ -33,10 +32,11 @@ void MainComputeShader(uint3 VoxelLoc : SV_DispatchThreadID)
             for (int z = 0; z < NodeSize; z++)
             {
                 int3 LocalPos = int3(x, y, z);
-                int3 ActualPos = ThreadOffset + LocalPos;
-                // For now, just copy volume value. #TODO bitmask
-                OctreeVolumeMip0[ActualPos] = Volume.Load(int4(ActualPos, 0), 0).r * MinMaxValues.y;
+                int3 ActualPos = LowerMipPos + LocalPos;
+                // For now, just use max to visualize. #TODO bitmask
+                MaxValue = max(MaxValue, OctreeLowerMip.Load(int4(ActualPos, 0), 0).r);
             }
         }
     }
+    OctreeHigherMip[Pos] = MaxValue;
 }

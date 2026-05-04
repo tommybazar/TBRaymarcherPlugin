@@ -44,6 +44,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Raymarcher")
     static RAYMARCHER_API void GenerateOctree(FBasicRaymarchRenderingResources& Resources);
 
+    /** Generates an octree in the provided resources to accelerate raymarching through the volume.	 */
+    UFUNCTION(BlueprintCallable, Category = "Raymarcher")
+    static RAYMARCHER_API void GenerateOctreeNew(FBasicRaymarchRenderingResources& Resources);
+
     // Returns a bit mask where all the bits between the window center and window width are set to 1 if the TF curve is non-zero
     // at that position.
     static FVector4 GetBitMaskFromWindowedTFCurve(

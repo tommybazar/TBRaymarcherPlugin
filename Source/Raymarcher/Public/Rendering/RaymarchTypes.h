@@ -104,7 +104,7 @@ struct FBasicRaymarchRenderingResources
     UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
     UTextureRenderTargetVolume* LightVolumeRenderTarget = nullptr;
 
-    /// Pointer to the illumination volume texture render target.
+    /// Pointer to the octree mipped render target.
     UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient, Category = "Basic Raymarch Rendering Resources")
     URenderTargetVolumeMipped* OctreeVolumeRenderTarget = nullptr;
 
@@ -117,9 +117,6 @@ struct FBasicRaymarchRenderingResources
     FWindowingParameters WindowingParameters;
 
     // Following is not visible in BPs, it's too low level to be useful in BP.
-
-    // Unordered access view to Octree accelerator structure.
-    FUnorderedAccessViewRHIRef OctreeUAVRef;
 
     // Unordered access view to the Light Volume. Used in our compute shaders as a RWTexture.
     FUnorderedAccessViewRHIRef LightVolumeUAVRef;

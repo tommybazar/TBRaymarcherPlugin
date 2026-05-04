@@ -18,6 +18,7 @@
 #include "SceneInterface.h"
 #include "SceneUtils.h"
 #include "ShaderParameterUtils.h"
+#include "Rendering/OctreeShadersNew.h"
 #include "VolumeTextureToolkit/Public/TextureUtilities.h"
 
 #include <Engine/TextureRenderTargetVolume.h>
@@ -97,6 +98,13 @@ void URaymarchUtils::GenerateOctree(FBasicRaymarchRenderingResources& Resources)
     ([=](FRHICommandListImmediate& RHICmdList) { GenerateOctreeForVolume_RenderThread(RHICmdList, Resources); });
 }
 
+void URaymarchUtils::GenerateOctreeNew(FBasicRaymarchRenderingResources& Resources)
+{
+    // Call the actual rendering code on RenderThread. We capture by value so that if
+    ENQUEUE_RENDER_COMMAND(CaptureCommand)
+    ([=](FRHICommandListImmediate& RHICmdList) { GenerateOctreeForVolume_RenderThread_New(RHICmdList, Resources); });
+}
+
 // Function to sample from the Texture2D. The U and V coordinate are normalized texture coodinates.
 FFloat16Color SampleFromTexture(float U, float V, UTexture2D* TF)
 {
@@ -143,7 +151,7 @@ FVector4 URaymarchUtils::GetBitMaskFromWindowedTFCurve(
 
     // Define the maximal number of bits in bitmask window.
     static constexpr uint32_t MaxNumberOfBits = 31;
-    const float Factor = 1.0 / static_cast<float>(MaxNumberOfBits);
+    constexpr float Factor = 1.0 / static_cast<float>(MaxNumberOfBits);
 
     auto BitPositionForValue = [&](float Val) -> uint32_t { return static_cast<uint32_t>(Val / Factor); };
 

@@ -60,6 +60,9 @@ float3 UnitLocaltoUVW(float3 Local)
     return (Local + 0.5);
 }
 
+// #include "/Engine/Private/Common.ush"
+// #TODO investiage common.ush LineBoxIntersect
+
 // Returns the times at which the ray intersects the box. 
 // If the ray is parallel to the box, the function will return 0.0f for both times.
 // If the RayOrigin is inside the box, the function will return 0.0f in result.x and the time at which the ray exits the box in result.y.

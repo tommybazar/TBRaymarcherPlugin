@@ -19,7 +19,7 @@ RWTexture3D<uint> OctreeVolumeMip3;
 // The Volume we're propagating light through.
 Texture3D Volume;
 
-int LeafNodeSize = 8;
+int NodeSize = 8;
 int NumberOfMips = 4;
 
 uint GetValueIndexInBitMask(float Val)
@@ -34,14 +34,14 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 {
 	// Position in Leaf space (index of the leaf in the octree that this shader will generate)
 	int3 Pos = int3(voxelLoc.x, voxelLoc.y, voxelLoc.z);
-	int3 ThreadOffset = Pos * LeafNodeSize;
+	int3 ThreadOffset = Pos * NodeSize;
 
 	// Copy the data from the input volume to maximal resolution mip first.
-	for (int x = 0; x < LeafNodeSize; x++)
+	for (int x = 0; x < NodeSize; x++)
 	{
-		for (int y = 0; y < LeafNodeSize; y++)
+		for (int y = 0; y < NodeSize; y++)
 		{
-			for (int z = 0; z < LeafNodeSize; z++)
+			for (int z = 0; z < NodeSize; z++)
 			{
 				int3 LocalPos = int3(x, y, z);
 				int3 ActualPos = ThreadOffset + LocalPos;
@@ -98,11 +98,11 @@ void MainComputeShader(uint3 voxelLoc : SV_DispatchThreadID)
 
 		// Offset that declare the starting position of the mip we load data from (Mip - 1).
 		int3 LowerMipOffset = (2 * ThreadOffset) / Divisor;
-		for (int x = 0; x < LeafNodeSize / Divisor; x++)
+		for (int x = 0; x < NodeSize / Divisor; x++)
 		{
-			for (int y = 0; y < LeafNodeSize / Divisor; y++)
+			for (int y = 0; y < NodeSize / Divisor; y++)
 			{
-				for (int z = 0; z < LeafNodeSize / Divisor; z++)
+				for (int z = 0; z < NodeSize / Divisor; z++)
 				{
 					int3 LocalPos = int3(x, y, z);
 					

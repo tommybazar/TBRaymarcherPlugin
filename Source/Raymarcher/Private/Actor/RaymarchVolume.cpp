@@ -982,10 +982,6 @@ void ARaymarchVolume::InitializeRaymarchResources(UVolumeTexture* Volume)
 				// Return if anything was not initialized.
 				return;
 			}
-			const auto& OctreeRHI = RaymarchResources.OctreeVolumeRenderTarget->GetResource()->TextureRHI;
-			RaymarchResources.OctreeUAVRef =
-				URaymarchUtils::GetCmdList().CreateUnorderedAccessView(
-					OctreeRHI, FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(OctreeRHI));
 
             RaymarchResources.bIsInitialized = true;
         });

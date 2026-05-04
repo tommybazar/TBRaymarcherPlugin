@@ -35,11 +35,17 @@ void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, 
 	TShaderMapRef<FGenerateOctreeShader> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 	FRHIComputeShader* ShaderRHI = ComputeShader.GetComputeShader();
 	SetComputePipelineState(RHICmdList, ShaderRHI);
-	RHICmdList.Transition(FRHITransitionInfo(Resources.OctreeUAVRef, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
+
+    FTexture3DComputeResource* OctreeRTResource = Resources.OctreeVolumeRenderTarget->MippedTexture3DRTResource;
+    for (int32 Mip = 0; Mip < OctreeRTResource->NumMips; ++Mip)
+    {
+        RHICmdList.Transition(FRHITransitionInfo(OctreeRTResource->UnorderedAccessViewRHIs[Mip], ERHIAccess::Unknown,
+            ERHIAccess::UAVCompute));
+    }
 
 	ComputeShader->SetGeneratingResources(RHICmdList, ShaderRHI,
 		Resources.DataVolumeTextureRef->GetResource()->TextureRHI->GetTexture3D(),
-		Resources.OctreeVolumeRenderTarget->MippedTexture3DRTResource, LEAF_NODE_SIZE,
+		OctreeRTResource, LEAF_NODE_SIZE,
 		Resources.OctreeVolumeRenderTarget->GetNumMips());
 
 	const uint32 GroupSizeX = FMath::DivideAndRoundUp(Resources.OctreeVolumeRenderTarget->SizeX, GroupSizePerDimension);
@@ -48,7 +54,10 @@ void GenerateOctreeForVolume_RenderThread(FRHICommandListImmediate& RHICmdList, 
 	RHICmdList.DispatchComputeShader(GroupSizeX, GroupSizeY, GroupSizeZ);
 	
 	UnsetShaderUAVs(RHICmdList, ComputeShader, ShaderRHI);
-	RHICmdList.Transition(FRHITransitionInfo(Resources.OctreeUAVRef, ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
+    RHICmdList.Transition(FRHITransitionInfo(OctreeRTResource->UnorderedAccessViewRHIs[0], ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
+    RHICmdList.Transition(FRHITransitionInfo(OctreeRTResource->UnorderedAccessViewRHIs[1], ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
+    RHICmdList.Transition(FRHITransitionInfo(OctreeRTResource->UnorderedAccessViewRHIs[2], ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
+    RHICmdList.Transition(FRHITransitionInfo(OctreeRTResource->UnorderedAccessViewRHIs[3], ERHIAccess::UAVCompute, ERHIAccess::UAVGraphics));
 }
 
 #undef LOCTEXT_NAMESPACE
